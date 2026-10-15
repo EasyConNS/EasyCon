@@ -1,0 +1,16 @@
+FUNC twice($x:DOUBLE):DOUBLE
+    RETURN $x * 2.0
+ENDFUNC
+$values = [1.5, 2.5]
+$copy = $values
+$total = 0.0
+FOR $i = 1 TO 2000
+    $v = $values[0]
+    $part = $values[0:1]
+    $copy = APPEND($part, 2.5)
+    $total += $v
+NEXT
+PRINT $total
+PRINT $copy
+$answer = twice(2.5)
+PRINT $answer

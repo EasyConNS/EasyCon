@@ -18,6 +18,7 @@
  * 特征位：feats = ECS_FEAT_FILE（桩覆盖文件族 syscall 的"静默/默认值"行为）。
  */
 #include "ecs_vm.h"
+#include <inttypes.h>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -85,7 +86,7 @@ static void h_stick_click(void *ud, uint8_t side, int32_t x, int32_t y, int32_t 
 
 static void ret_str_ascii(ecs_value *ret, const char *s)
 {
-    uint16_t buf[512];
+    uint16_t buf[512] = {0};
     int32_t n = 0;
     for (; s && s[n] != 0 && n < 511; n++)
         buf[n] = (uint16_t)(unsigned char)s[n];
@@ -102,8 +103,9 @@ static int h_syscall(void *ud, int32_t id, ecs_value *args, int32_t nargs, ecs_v
     {
         case ECS_SYSCALL_FWRITE:
         {
-            /* S-14：句柄 1=stdout 行断协议；0=no-op 返 len；2=print(newline)；>2=文件族 → -1 */
-            int64_t handle = args[0].i64;
+            /* S-14：句柄 1=stdout 行断协议；0=no-op 返 len；2=print(newline)；>2=文件族 → -1
+             *（句柄为 PTR 类型 → 经 arg_wide 解箱；编译器也可能发 INT 句柄，两态同收） */
+            int32_t handle = (int32_t)ecs_vm_arg_wide(g_vm, args[0]);
             const uint16_t *u = NULL;
             int32_t len = ecs_vm_arg_str(g_vm, args[1], &u);
             if (handle == 1)
@@ -208,8 +210,22 @@ static const char *err_name(int rc)
         case ECS_ERR_UNSUPPORTED: return "UNSUPPORTED";
         case ECS_ERR_CRC: return "CRC";
         case ECS_ERR_POOL: return "POOL";
+        case ECS_WAITING: return "WAITING";
         default: return "?";
     }
+}
+
+/* ---- 实例容量度量（容量门禁 / docs/VmBudget.md 预算自检；不执行镜像） ---- */
+static int print_meminfo(void)
+{
+    ecs_vm_meminfo mi;
+    ecs_vm_query_meminfo(&mi);
+    printf("instance=%" PRIu64 " host=%" PRIu64 " arena=%" PRIu64 " frame_seg=%" PRIu64
+           " obj_seg=%" PRIu64 " obj_block=%u obj_block_count=%u value=%u\n",
+           (uint64_t)mi.instance_bytes, (uint64_t)mi.host_bytes, (uint64_t)mi.arena_bytes,
+           (uint64_t)mi.frame_seg_bytes, (uint64_t)mi.obj_seg_bytes,
+           mi.obj_block_bytes, mi.obj_block_count, mi.value_bytes);
+    return 0;
 }
 
 /* ecs_io 适配：stdio 随机访问读（seek + read）——EEPROM/flash/NVS 来源按同型适配 */
@@ -223,6 +239,8 @@ static uint32_t file_io_read(void *ud, uint32_t offset, uint8_t *out, uint32_t l
 
 int main(int argc, char **argv)
 {
+    if (argc == 2 && strcmp(argv[1], "--mem") == 0)
+        return print_meminfo();
     if (argc < 3 || strcmp(argv[1], "run") != 0)
     {
         fprintf(stderr, "用法: ecs-vm run image.ecx [--io] [--trace] [--print] [--strict-caps] [-- arg0...]\n");
@@ -320,8 +338,8 @@ int main(int argc, char **argv)
     do
     {
         rc = ecs_vm_run(vm);
-    } while (rc == ECS_YIELD && !vm_cancel_requested());
-    if (rc != ECS_OK && rc != ECS_YIELD && rc != ECS_CANCELLED)
+    } while ((rc == ECS_YIELD || rc == ECS_WAITING) && !vm_cancel_requested());
+    if (rc != ECS_OK && rc != ECS_YIELD && rc != ECS_CANCELLED && rc != ECS_WAITING)
     {
         int32_t ef, pc;
         ecs_vm_error_location(vm, &ef, &pc);

@@ -38,6 +38,7 @@ env:
   DOTNET_VERSION: '10.0.x'
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
   DOTNET_NOLOGO: 1
+  ECSVM_REQUIRE_CC: 1
 
 jobs:
   # ========================================
@@ -81,9 +82,9 @@ jobs:
       - name: 还原 NuGet 包
         run: dotnet restore
 
-      - name: 构建 ecs-vm（无 C 工具链则跳过）
+      - name: 构建 ecs-vm 普通与 budget 档（必须有 C99 工具链）
         shell: bash
-        run: sh ci/build-vm.sh
+        run: sh ci/build-vm.sh budget
 
       - name: Build (Debug)
         run: dotnet build --no-restore --configuration Debug
@@ -97,3 +98,44 @@ jobs:
           dotnet test test/EasyCon2.Avalonia.UiTests/EasyCon2.Avalonia.UiTests.csproj
           --configuration Debug --no-build
           --filter "FullyQualifiedName~MainWindowSaveTests.CtrlS_SavesLatestEditorTextFromTheFocusedEditor"
+
+  native-abi:
+    runs-on: ubuntu-latest
+    needs: format
+    strategy:
+      fail-fast: false
+      matrix:
+        bits: [64, 32]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: 安装 32 位 C 运行库与工具链
+        if: matrix.bits == 32
+        run: sudo apt-get update && sudo apt-get install -y gcc-multilib
+      - name: 指定实际 C 编译器
+        shell: bash
+        run: |
+          if [ "${{ matrix.bits }}" = "32" ]; then
+            chmod +x ci/cc32.sh
+            echo "ECSVM_CC=$PWD/ci/cc32.sh" >> "$GITHUB_ENV"
+          else
+            echo "ECSVM_CC=/usr/bin/gcc" >> "$GITHUB_ENV"
+          fi
+      - name: 普通与 budget 构建及容量门禁
+        run: sh ci/build-vm.sh budget | tee vm-budget-${{ matrix.bits }}.txt
+      - name: 执行 C# 与 C VM 差分及 P0 ABI 回归
+        run: >-
+          dotnet test test/EasyCon.Tests/EasyCon.Tests.csproj -c Release
+          --filter "FullyQualifiedName~Bytecode"
+          --logger "trx;LogFileName=native-${{ matrix.bits }}.trx"
+          --results-directory TestResults
+      - name: 上传原生验收记录
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cvm-p0-${{ matrix.bits }}
+          path: |
+            vm-budget-*.txt
+            TestResults/*.trx
