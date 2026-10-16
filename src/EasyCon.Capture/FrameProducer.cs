@@ -49,7 +49,9 @@ public sealed class FrameProducer : IDisposable
             _cts = new CancellationTokenSource();
             CancellationToken token = _cts.Token;
             long epoch = SourceEpoch = _store.BeginSource();
-            _loopTask = Task.Run(() => Loop(token, epoch));
+            // 相机 Read 是长期阻塞调用；不占用运行、帧通知和 UI 工作所需的线程池。
+            _loopTask = Task.Factory.StartNew(() => Loop(token, epoch), CancellationToken.None,
+                TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
     }
 

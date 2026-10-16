@@ -93,9 +93,14 @@ public sealed class MaaHostTests
         public bool IsOpened { get; set; } = true;
         public int Reads;
         public bool Disposed;
+        public bool? ReaderUsesThreadPool;
         public Mat GetMatFrame()
         {
-            if (Interlocked.Increment(ref Reads) == 1) Trace(_trace, "capture-read-started", new { blue });
+            if (Interlocked.Increment(ref Reads) == 1)
+            {
+                ReaderUsesThreadPool = Thread.CurrentThread.IsThreadPoolThread;
+                Trace(_trace, "capture-read-started", new { blue, ReaderUsesThreadPool });
+            }
             Thread.Sleep(15);
             return new Mat(36, 64, MatType.CV_8UC3, new Scalar(blue, 27, 93));
         }
@@ -111,6 +116,18 @@ public sealed class MaaHostTests
             connection.Select(connStr);
             return connection;
         }
+    }
+
+    [Test]
+    public async Task FrameReader_UsesDedicatedThread_AndPublishesWithoutBlockingPoolWork()
+    {
+        using FrameHub hub = new();
+        Source source = new();
+        hub.Connect(source, "dedicated-reader");
+        using FrameLease frame = await hub.WaitForFrameAfterAsync(0, 0, new CancellationTokenSource(3000).Token);
+        Assert.That(source.ReaderUsesThreadPool, Is.False);
+        Assert.That(await Task.Run(() => frame.Metadata.SourceId), Is.EqualTo("dedicated-reader"));
+        Trace(TestContext.Out, "dedicated-reader-frame", frame.Metadata);
     }
 
     [Test]
@@ -175,7 +192,7 @@ public sealed class MaaHostTests
                 Assert.That(controller.InputEpoch, Is.EqualTo(inputEpoch));
                 int otherCount = connections.Where(p => p.Key != endpoint).Single().Value.Writes.Count;
                 controller.ApplyReport(new SwitchReport { Button = (ushort)SwitchButton.A });
-                WaitFor(connections[endpoint], new SwitchReport { Button = (ushort)SwitchButton.A });
+                await WaitForAsync(connections[endpoint], new SwitchReport { Button = (ushort)SwitchButton.A });
                 Assert.That(connections.Where(p => p.Key != endpoint).Single().Value.Writes.Count, Is.EqualTo(otherCount));
                 Snapshot(controller, hub, frame);
                 controller.Reset();
@@ -252,7 +269,7 @@ public sealed class MaaHostTests
         using ControllerRunLease run = controller.BeginRun("input", default);
         IPadInput pad = controller.CreatePad(DelayType.LowCPU, run);
         pad.PressButtons(GamePadKey.A);
-        WaitFor(connection, new SwitchReport { Button = (ushort)SwitchButton.A });
+        await WaitForAsync(connection, new SwitchReport { Button = (ushort)SwitchButton.A });
         int writes = connection.Writes.Count;
         long frameId = hub.Store.FrameCount;
         using (MaaControllerBinding preview = MaaControllerBinding.CaptureOnly(hub))
@@ -284,7 +301,7 @@ public sealed class MaaHostTests
             scope.Token.WaitHandle.WaitOne();
             scope.Token.ThrowIfCancellationRequested();
         }, requiresCapture: true));
-        WaitFor(connection, new SwitchReport { Button = (ushort)SwitchButton.A });
+        await WaitForAsync(connection, new SwitchReport { Button = (ushort)SwitchButton.A });
         source.IsOpened = false;
         Assert.ThrowsAsync<OperationCanceledException>(async () => await run.WaitAsync(TimeSpan.FromSeconds(5)));
         Assert.That(coordinator.LastResult!.ErrorCode, Is.EqualTo("CaptureLost"));
@@ -312,7 +329,7 @@ public sealed class MaaHostTests
             scope.Token.WaitHandle.WaitOne();
             scope.Token.ThrowIfCancellationRequested();
         }));
-        WaitFor(connection, new SwitchReport { Button = (ushort)SwitchButton.A });
+        await WaitForAsync(connection, new SwitchReport { Button = (ushort)SwitchButton.A });
         connection.Lose();
         Assert.ThrowsAsync<OperationCanceledException>(async () => await run.WaitAsync(TimeSpan.FromSeconds(5)));
         using FrameLease next = await hub.WaitForFrameAfterAsync(initial.Metadata.FrameId, 0, new CancellationTokenSource(5000).Token);
@@ -336,7 +353,7 @@ public sealed class MaaHostTests
         using ControllerRunLease run = controller.BeginRun("keys-only", default);
         long inputEpoch = controller.InputEpoch;
         Task pulse = Task.Run(() => controller.CreatePad(DelayType.LowCPU, run).ClickButtons(GamePadKey.A, 30_000, run.Token));
-        WaitFor(connection, new SwitchReport { Button = (ushort)SwitchButton.A });
+        await WaitForAsync(connection, new SwitchReport { Button = (ushort)SwitchButton.A });
         using FrameLease next = await hub.WaitForFrameAfterAsync(initial.Metadata.FrameId, 0, new CancellationTokenSource(5000).Token);
         Assert.That(hub.Disconnect(), Is.True);
         hub.Connect(new Source(), "B");
@@ -360,7 +377,7 @@ public sealed class MaaHostTests
         Assert.That(await old.StopAsync(), Is.EqualTo(CleanupStatus.Written));
         using ControllerRunLease current = controller.BeginRun("current", default);
         controller.CreatePad(DelayType.LowCPU, current).PressButtons(GamePadKey.A);
-        WaitFor(connection, new SwitchReport { Button = (ushort)SwitchButton.A });
+        await WaitForAsync(connection, new SwitchReport { Button = (ushort)SwitchButton.A });
         int writes = connection.Writes.Count;
         Assert.That(stale.KeyForOwner(2, false), Is.False);
         Assert.That(stale.InactiveForOwner(), Is.False);
@@ -411,6 +428,23 @@ public sealed class MaaHostTests
             "未收到实际出队 HID: " + Convert.ToHexString(expected));
     }
 
+    private static async Task WaitForAsync(Connection connection, SwitchReport report)
+    {
+        byte[] expected = report.GetBytes();
+        TaskCompletionSource written = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnWritten(string port, byte[] bytes)
+        {
+            if (bytes.SequenceEqual(expected)) written.TrySetResult();
+        }
+        connection.BytesSent += OnWritten;
+        try
+        {
+            if (connection.Writes.Any(bytes => bytes.SequenceEqual(expected))) return;
+            await written.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        }
+        finally { connection.BytesSent -= OnWritten; }
+    }
+
     [Test]
     public void InputOnly_UsesRealMaa_AndPreservesAtomicReports()
     {
@@ -435,7 +469,7 @@ public sealed class MaaHostTests
         Task pulse = Task.Run(() => pad.ClickButtons(GamePadKey.A, 30_000, run.Token));
         SwitchReport pressed = new();
         ECKeyUtil.Button(SwitchButton.A).Down(pressed);
-        WaitFor(connection, pressed);
+        await WaitForAsync(connection, pressed);
         Assert.Throws<ControllerOperationException>(() => controller.Down(ECKeyUtil.Button(SwitchButton.B)));
         Stopwatch watch = Stopwatch.StartNew();
         run.Cancel();
@@ -517,7 +551,7 @@ public sealed class MaaHostTests
         {
             scope.CreatePad().ClickButtons(GamePadKey.A, 30_000, scope.Token);
         }));
-        WaitFor(firstConnection, new SwitchReport { Button = (ushort)SwitchButton.A });
+        await WaitForAsync(firstConnection, new SwitchReport { Button = (ushort)SwitchButton.A });
         Assert.That(controller.TryConnect("fake:switch-second"), Is.EqualTo(ControllerConnectResult.Success));
         Assert.That(run.IsCompleted, Is.True, "切换应等旧运行释放后再连接新端点");
         Assert.ThrowsAsync<OperationCanceledException>(async () => await run);
