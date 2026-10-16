@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core.Services;
 using EasyCon2.Avalonia.Localization;
 using EasyCon2.Avalonia.Services;
-using EasyCon2.Avalonia.Services;
 using System;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
@@ -24,6 +23,15 @@ public partial class CaptureConnectionViewModel : ObservableObject
 
     [ObservableProperty]
     private string? _selectedCaptureSource;
+    private HashSet<string> _availableSources = [];
+    [ObservableProperty]
+    private bool _selectionUnavailable;
+    public string SelectionNotice => SelectionUnavailable ? "所选视频来源当前不可用，请刷新后重新选择" : "";
+    partial void OnSelectedCaptureSourceChanged(string? value)
+    {
+        SelectionUnavailable = value != null && !_availableSources.Contains(value);
+        OnPropertyChanged(nameof(SelectionNotice));
+    }
 
     [ObservableProperty]
     private string _captureSourceStatus = L10nBridge.T("Text.Status.NotConnected");
@@ -49,6 +57,7 @@ public partial class CaptureConnectionViewModel : ObservableObject
     partial void OnSelectedCaptureTypeChanged(string value)
     {
         _captureService.CaptureType = NormalizeCaptureType(value);
+        RefreshCaptureSources();
         CaptureTypeChanged?.Invoke();
     }
 
@@ -106,15 +115,16 @@ public partial class CaptureConnectionViewModel : ObservableObject
     private void SyncFromService()
     {
         var connected = _captureService.IsConnected;
-        if (IsCaptureSourceConnected == connected)
-            return;
         IsCaptureSourceConnected = connected;
         SetCaptureStatus(connected ? "Text.Status.Connected" : "Text.Status.NotConnected");
         CaptureSourceButtonText = connected
             ? L10nBridge.T("Text.Btn.DisconnectCapture")
             : L10nBridge.T("Text.Btn.ConnectCapture");
         if (connected)
+        {
+            CaptureSourceStatus = $"{L10nBridge.T("Text.Status.Connected")}: {_captureService.ActiveSource ?? SelectedCaptureSource} ({_captureService.ActiveBackend ?? SelectedCaptureType})";
             CaptureConnected?.Invoke();   // 与手动连接一致：父级借此自动打开监视器
+        }
     }
 
     private async Task ConnectCaptureSource()
@@ -160,6 +170,7 @@ public partial class CaptureConnectionViewModel : ObservableObject
                     {
                         IsCaptureSourceConnected = true;
                         SetCaptureStatus("Text.Status.Connected");
+                        CaptureSourceStatus += $": {_captureService.ActiveSource ?? sourceName} ({_captureService.ActiveBackend ?? SelectedCaptureType})";
                         CaptureSourceButtonText = L10nBridge.T("Text.Btn.DisconnectCapture");
                         _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.CaptureOk"), sourceName));
 
@@ -187,11 +198,13 @@ public partial class CaptureConnectionViewModel : ObservableObject
     private void RefreshCaptureSources()
     {
         var captureSources = _captureService.GetAvailableSources();
+        _availableSources = [.. captureSources];
         var oldSelected = SelectedCaptureSource;
         CaptureSourceOptions = new ObservableCollection<string>(captureSources);
-        SelectedCaptureSource = CaptureSourceOptions.FirstOrDefault();
-        if (oldSelected != null && CaptureSourceOptions.Contains(oldSelected))
-            SelectedCaptureSource = oldSelected;
+        // 保留待应用选择；来源消失也不自动改选第一路。
+        if (oldSelected != null && !CaptureSourceOptions.Contains(oldSelected)) CaptureSourceOptions.Add(oldSelected);
+        SelectedCaptureSource = oldSelected;
+        OnSelectedCaptureSourceChanged(oldSelected);
     }
 
     private static string NormalizeCaptureType(string? captureType)

@@ -1,9 +1,9 @@
-﻿using OpenCvSharp;
+using OpenCvSharp;
 using System.Diagnostics;
 
 namespace EasyCon.Capture;
 
-public class OpenCVCapture(int idx = 0, VideoCaptureAPIs apiRefs = VideoCaptureAPIs.ANY) : IDisposable
+public class OpenCVCapture(int idx = 0, VideoCaptureAPIs apiRefs = VideoCaptureAPIs.ANY) : IFrameSource
 {
     private readonly VideoCapture videoCapture = new();
 
@@ -11,6 +11,7 @@ public class OpenCVCapture(int idx = 0, VideoCaptureAPIs apiRefs = VideoCaptureA
     private VideoCaptureAPIs refs = apiRefs;
 
     public bool IsOpened => videoCapture.IsOpened();
+    public VideoCaptureAPIs Backend => (VideoCaptureAPIs)(int)videoCapture.Get(VideoCaptureProperties.Backend);
 
     public bool Open(int idx, int apiRefs = 0)
     {

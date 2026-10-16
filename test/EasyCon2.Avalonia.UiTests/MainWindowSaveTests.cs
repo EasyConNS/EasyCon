@@ -450,7 +450,7 @@ public class MainWindowSaveTests
         public bool TryConnect(string sourceName) => false;
         public string? AutoConnect() => null;
         public void Disconnect() { }
-        public NintendoSwitch GetDevice() => null!;
+        public EasyCon.Core.Maa.IControllerSession GetDevice() => null!;
         public void Reset() { }
         public bool RemoteStart() => false;
         public bool RemoteStop() => false;

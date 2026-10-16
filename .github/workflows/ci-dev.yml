@@ -55,7 +55,7 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: 检查代码格式
-        run: dotnet format --verbosity diagnostic
+        run: dotnet format --verify-no-changes --verbosity diagnostic
 
   # ========================================
   # 2. 构建 + 测试 (Debug)
@@ -90,8 +90,19 @@ jobs:
         run: dotnet build --no-restore --configuration Debug
 
       - name: 运行 EasyCon 测试
-        shell: cmd
-        run: ci\test.bat Debug
+        run: dotnet test EasyCon2.slnx --no-build -c Debug --logger trx --results-directory TestResults
+
+      - name: Maa 原生宿主无硬件自检
+        run: dotnet run --no-build -c Debug --project src/EasyCon2.CLI -- maa doctor | Tee-Object maa-runtime.json
+
+      - name: 上传宿主与测试验收记录
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: host-p1-tests
+          path: |
+            TestResults/*.trx
+            maa-runtime.json
 
       - name: 串行运行真实窗口保存快捷键回归
         run: >-

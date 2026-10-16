@@ -3,6 +3,7 @@ using EasyCon.Core;
 using EasyCon.Core.Capabilities;
 using EasyCon.Core.Flow;
 using EasyCon.Core.Hosting;
+using EasyCon.Core.Maa;
 using EasyCon.Script;
 using EasyDevice;
 using EasyScript;
@@ -17,7 +18,7 @@ namespace EasyCon2.CLI;
 /// </summary>
 public static class FlowCommand
 {
-    public static Command Create(NintendoSwitch ns)
+    public static Command Create(MaaHostSession host)
     {
         var command = new Command("flow", "执行编排图（*.flow.json；节点式流程，PC 执行）");
         var fileArgument = new Argument<string>("file")
@@ -64,13 +65,13 @@ public static class FlowCommand
             var maxSteps = parseResult.GetValue(maxStepsOption);
             var timeoutSec = parseResult.GetValue(timeoutOption);
 
-            return await RunAsync(ns, file, port, videoId, videoType, maxSteps, timeoutSec, cancellationToken);
+            return await RunAsync(host, file, port, videoId, videoType, maxSteps, timeoutSec, cancellationToken);
         });
         return command;
     }
 
     private static async Task<int> RunAsync(
-        NintendoSwitch ns, string file, string port, int videoId, VideoCaptureAPIs videoType,
+        MaaHostSession host, string file, string port, int videoId, VideoCaptureAPIs videoType,
         int maxSteps, int timeoutSec, CancellationToken ct)
     {
         if (!File.Exists(file))
@@ -92,77 +93,40 @@ public static class FlowCommand
         if (maxSteps > 0) graph.MaxSteps = maxSteps;
         if (timeoutSec > 0) graph.TimeoutSec = timeoutSec;
 
-        // 采集源（可选）：与 run 命令同款 OpenCVCapture + FrameProducer
-        OpenCVCapture? cvcap = null;
-        FrameProducer? producer = null;
-        if (videoId >= 0)
+        if (videoId >= 0 && !host.Frames.Connect(videoId, videoType))
         {
-            cvcap = new OpenCVCapture(videoId, videoType);
-            if (!cvcap.Open(videoId, (int)videoType))
-            {
-                Console.Error.WriteLine($"错误: 视频源连接失败: [{videoId}] {videoType}");
-                return 1;
-            }
-            cvcap.SetProperties(1920, 1080);
-            producer = new FrameProducer(cvcap);
-            producer.Start();
-            Console.WriteLine($"视频源已连接: [{videoId}]");
+            Console.Error.WriteLine($"错误: 视频源连接失败: [{videoId}] {videoType}");
+            return 1;
         }
-
-        // 单片机（可选）：mock = 虚拟手柄，否则连接真实端口
-        var isMock = port.Equals("mock", StringComparison.OrdinalIgnoreCase);
-        ICGamePad pad;
-        if (isMock)
+        bool isMock = port.Equals("mock", StringComparison.OrdinalIgnoreCase);
+        bool requiresInput = FlowRequirements.RequiresInput(graph, AppDomain.CurrentDomain.BaseDirectory);
+        if (requiresInput && !isMock && host.Controller.TryConnect(port) != ControllerConnectResult.Success)
         {
-            pad = new MockGamePad();
-            Console.WriteLine("单片机: Mock 模式");
+            Console.Error.WriteLine($"错误: 单片机连接失败: {port}");
+            return 1;
         }
-        else
-        {
-            if (ns.TryConnect(port) != NintendoSwitch.ConnectResult.Success)
-            {
-                Console.Error.WriteLine($"错误: 单片机连接失败: {port}");
-                producer?.Dispose();
-                cvcap?.Dispose();
-                return 1;
-            }
-            pad = new GamePadAdapter(ns);
-            Console.WriteLine($"单片机已连接: {port}");
-        }
-
-        // 能力装配（唯一装配点）：OCR 默认值/释放由租约承担
-        FrameDelegate? frameDelegate = producer != null
-            ? FrameDelegateFactory.CreateFrame(() => producer.Store.AcquireLatest())
-            : null;
-        using var lease = ScriptHostAssembler.Assemble(new ScriptHostContext
-        {
-            Pad = pad,
-            Frame = frameDelegate,
-            AppDir = AppDomain.CurrentDomain.BaseDirectory,
-        });
-
-        var context = new FlowHostContext
-        {
-            Capture = lease.Capabilities.Capture,
-            Ocr = lease.Capabilities.Ocr,
-            Pad = lease.Capabilities.Input,
-            AppDir = AppDomain.CurrentDomain.BaseDirectory,
-        };
-
         Console.WriteLine($"开始执行编排图: {graph.Name}（节点 {graph.Nodes.Count}，看门狗 {graph.MaxSteps} 步 / {graph.TimeoutSec}s）");
-        var executor = new FlowExecutor(graph, context);
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        FlowRunReport report;
-        try
+        FlowRunReport report = null!;
+        host.Runs.Run("flow", Path.GetFullPath(file), requiresInput && !isMock, ct, scope =>
         {
-            report = executor.Run(ct);
-        }
-        finally
-        {
-            producer?.Dispose();
-            cvcap?.Dispose();
-        }
-
+            using CapabilityLease lease = ScriptHostAssembler.Assemble(new ScriptHostContext
+            {
+                PadInput = isMock ? new PadInputAdapter(new MockGamePad()) : scope.CreatePad(),
+                CaptureSource = host.Frames.CaptureConnected ? scope.WrapCapture(new FrameHubCaptureSource(host.Frames)) : null,
+                AppDir = AppDomain.CurrentDomain.BaseDirectory,
+            });
+            FlowHostContext context = new()
+            {
+                Capture = lease.Capabilities.Capture,
+                Ocr = lease.Capabilities.Ocr,
+                Inference = lease.Capabilities.Inference,
+                Pad = lease.Capabilities.Input,
+                AppDir = AppDomain.CurrentDomain.BaseDirectory,
+            };
+            report = new FlowExecutor(graph, context).Run(scope.Token);
+            if (report.Error != null) scope.MarkFailed("FlowError", report.ErrorNodeId);
+            if (report.WatchdogTriggered) scope.MarkFailed("Deadline", report.ErrorNodeId);
+        });
         // 报告输出
         Console.WriteLine();
         Console.WriteLine($"== 执行{(report.Completed ? "完成" : report.WatchdogTriggered ? "被看门狗中止" : "出错")} ==");

@@ -49,8 +49,9 @@ public partial class App : Application
             // Core 层 VM 的本地化桥接到 App 的 L10n（保持单一译文来源）
             EasyCon2.Avalonia.Localization.L10nBridge.Resolver = EasyCon2.Avalonia.Markup.L10n.T;
 
-            var deviceService = new DeviceService(logService);
-            var captureService = new CaptureService(logService);
+            var maaHost = new EasyCon.Core.Maa.MaaHostSession();
+            var deviceService = new DeviceService(logService, maaHost.Controller);
+            var captureService = new CaptureService(logService, maaHost.Frames);
             AlertService alertService = new(
                 resultLogger: message => logService.Print(message, true),
                 imageProvider: () =>
@@ -91,7 +92,7 @@ public partial class App : Application
             UiPreloader.Warmup();
 
             StartLoopbackServices(mainWindowViewModel, deviceService, captureService);
-            WireExitCleanup(desktop, controllerService, captureService, deviceService, audioSource, alertService, logService);
+            WireExitCleanup(desktop, controllerService, captureService, deviceService, audioSource, alertService, logService, maaHost);
         }
         base.OnFrameworkInitializationCompleted();
     }
@@ -166,7 +167,7 @@ public partial class App : Application
     }
 
     /// <summary>关窗清理：desktop.Exit 单一清理入口，服务释放统一在此（带防御）。</summary>
-    private static void WireExitCleanup(IClassicDesktopStyleApplicationLifetime desktop, IControllerService controllerService, CaptureService captureService, DeviceService deviceService, IAudioCaptureSource audioSource, AlertService alertService, CoreLogService logService)
+    private static void WireExitCleanup(IClassicDesktopStyleApplicationLifetime desktop, IControllerService controllerService, CaptureService captureService, DeviceService deviceService, IAudioCaptureSource audioSource, AlertService alertService, CoreLogService logService, EasyCon.Core.Maa.MaaHostSession maaHost)
     {
         desktop.Exit += (_, _) =>
         {
@@ -180,6 +181,7 @@ public partial class App : Application
             try { _flowHttp?.DisposeAsync().AsTask().Wait(TimeSpan.FromSeconds(2)); } catch { }
 #pragma warning restore VSTHRD002
             try { _flowState?.Dispose(); } catch { }
+            try { maaHost.Dispose(); } catch { }
             logService.Dispose();
             EasyCon.Core.Logging.CoreLog.Sink = null;
         };
@@ -221,6 +223,9 @@ public partial class App : Application
         // 桥接 GUI 监控页的设备实例（DisconnectVideo 阻塞等待采集循环退出，勿在 UI 线程调用）
         _flowState = new EasyCon.Core.Flow.FlowServiceState(new EasyCon.Core.Flow.FlowDeviceBridge
         {
+            Controller = deviceService.GetDevice(),
+            Frames = captureService.FrameHub,
+            GetVideoSources = captureService.GetSourceDescriptors,
             IsVideoConnected = () => captureService.IsConnected,
             ConnectVideo = index => captureService.TryConnect(index)
                 ? null

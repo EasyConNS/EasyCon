@@ -1,3 +1,4 @@
+using EasyCon.Core.Maa;
 using EasyDevice;
 using SDL;
 
@@ -11,7 +12,7 @@ namespace EasyCon.SDLInput.Tests;
 public class KeyboardMappingHidTests
 {
     private FakeConnection _connection = null!;
-    private TestSwitch _switch = null!;
+    private MaaControllerSession _switch = null!;
     private SdlEventLoop _loop = null!;
     private SdlKeyboardInputBinder _binder = null!;
 
@@ -19,12 +20,13 @@ public class KeyboardMappingHidTests
     public void SetUp()
     {
         _connection = new FakeConnection("fake://test");
-        _switch = new TestSwitch(_connection);
+        _switch = new MaaControllerSession(new TestSwitch(_connection));
         _loop = new SdlEventLoop();
         _binder = new SdlKeyboardInputBinder(_loop, _switch);
         _binder.UpdateKeyMapping(SdlKeyMappingDefaults.Create());
         _binder.Start();
-        Assert.That(_switch.TryConnect("fake://test"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
+        Assert.That(_switch.TryConnect("fake://test"), Is.EqualTo(ControllerConnectResult.Success));
+        _connection.ClearQueue(); // 连接已确认写出中性包；以下断言只比较本次按键。
     }
 
     [TearDown]
@@ -32,7 +34,7 @@ public class KeyboardMappingHidTests
     {
         _binder.Dispose();
         _loop.Dispose();
-        _switch.Disconnect();
+        _switch.Dispose();
     }
 
     [Test]

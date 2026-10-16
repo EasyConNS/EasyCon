@@ -23,12 +23,16 @@ public partial class NintendoSwitch : IReporter
 
     bool _reset = false;
     CancellationTokenSource source = new();
+    private Task _writeLoop;
 
     /// <summary>重连前取消上一条设备写循环，避免新旧两个 Loop 并行向设备写报告。</summary>
     private void CancelStaleLoop()
     {
         try { source.Cancel(); }
         catch (ObjectDisposedException) { }
+        if (_writeLoop != null && !_writeLoop.Wait(TimeSpan.FromSeconds(5)))
+            throw new InvalidOperationException("busy: 上一设备写循环仍在停止中");
+        source.Dispose();
     }
 
     DirectionKey _leftStick = 0;
@@ -51,11 +55,12 @@ public partial class NintendoSwitch : IReporter
         {
             CancelStaleLoop();
             source = new();
-            Task.Run(() =>
+            CancellationToken token = source.Token;
+            // Loop 长期阻塞等待设备事件，使用专用线程，避免短按等待线程池调度后被释放覆盖。
+            _writeLoop = Task.Factory.StartNew(() =>
             {
-                Loop(source.Token);
-            },
-            source.Token);
+                Loop(token);
+            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
         else
         {
@@ -65,11 +70,11 @@ public partial class NintendoSwitch : IReporter
             {
                 CancelStaleLoop();
                 source = new();
-                Task.Run(() =>
+                CancellationToken token = source.Token;
+                _writeLoop = Task.Factory.StartNew(() =>
                 {
-                    Loop(source.Token);
-                },
-                source.Token);
+                    Loop(token);
+                }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
             }
         }
 
@@ -83,6 +88,7 @@ public partial class NintendoSwitch : IReporter
             DebugKey("Reset");
             Signal();
             _keystrokes.Clear();
+            _leftStick = _rightStick = _hat = 0;
             _reset = true;
             clientCon?.ClearQueue();
         }
@@ -165,7 +171,7 @@ public partial class NintendoSwitch : IReporter
 
     SwitchReport IReporter.GetReport()
     {
-        return _report.Clone() as SwitchReport;
+        lock (this) return _report.Clone() as SwitchReport;
     }
 
     public void StartRecord()

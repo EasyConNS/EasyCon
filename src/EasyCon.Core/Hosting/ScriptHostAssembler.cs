@@ -74,6 +74,8 @@ public sealed class ScriptHostContext
     /// 否则内层脚本运行结束时释放掉外层运行还在用的 OCR/推理服务。
     /// </summary>
     public bool BorrowResources { get; init; }
+    public bool BorrowOcr { get; init; }
+    public bool BorrowInference { get; init; }
 }
 
 /// <summary>
@@ -82,9 +84,10 @@ public sealed class ScriptHostContext
 /// 装配器**接管**传入的 <see cref="ScriptHostContext.Ocr"/>/<see cref="ScriptHostContext.Inference"/> 所有权。
 /// </summary>
 public sealed class CapabilityLease(CapabilitySet capabilities, IOcrService? ocr, IInference? inference,
-    bool ownsResources = true) : IDisposable
+    bool ownsOcr = true, bool ownsInference = true) : IDisposable
 {
     private int _disposed;
+    internal event Action? Released;
 
     /// <summary>本次运行的能力集。</summary>
     public CapabilitySet Capabilities { get; } = capabilities;
@@ -95,11 +98,9 @@ public sealed class CapabilityLease(CapabilitySet capabilities, IOcrService? ocr
             return;
 
         // 借用语义：资源所有权在调用方（嵌套装配的外层），内层释放不得拆掉共享服务
-        if (!ownsResources)
-            return;
-
-        DisposeQuietly(ocr, nameof(IOcrService));
-        DisposeQuietly(inference, nameof(IInference));
+        if (ownsOcr) DisposeQuietly(ocr, nameof(IOcrService));
+        if (ownsInference) DisposeQuietly(inference, nameof(IInference));
+        Released?.Invoke();
     }
 
     /// <summary>释放失败不能反噬调用方（本方法通常在 finally 中执行）。</summary>
@@ -177,6 +178,8 @@ public static class ScriptHostAssembler
             Inference = inference,
         };
 
-        return new CapabilityLease(capabilities, ocr, inference, ownsResources: !context.BorrowResources);
+        return new CapabilityLease(capabilities, ocr, inference,
+            ownsOcr: context.Ocr == null || !(context.BorrowOcr || context.BorrowResources),
+            ownsInference: context.Inference == null || !(context.BorrowInference || context.BorrowResources));
     }
 }

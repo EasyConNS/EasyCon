@@ -1,9 +1,10 @@
-﻿using Avalonia.Threading;
+using Avalonia.Threading;
 using EasyCon.Capture;
 using EasyCon.Core;
 using EasyCon.Core.Capabilities;
 using EasyCon.Core.Hosting;
 using EasyCon.Core.LLM.Agent.Tools;
+using EasyCon.Core.Maa;
 using EasyCon2.Avalonia.Services;
 using EasyDevice;
 using EasyScript;
@@ -28,7 +29,7 @@ public class ToolCallService : IToolCallService
     private readonly Func<string?> _getScriptPath;
     private readonly Func<bool> _hasScriptPath;
     private readonly Func<DeviceStatusInfo> _getDeviceStatus;
-    private readonly Func<NintendoSwitch?>? _getDevice;
+    private readonly Func<IControllerSession?>? _getDevice;
     private CapabilityLease? _ocrLease;
 
     public ToolCallService(
@@ -42,7 +43,7 @@ public class ToolCallService : IToolCallService
         Func<string?> getScriptPath,
         Func<bool> hasScriptPath,
         Func<DeviceStatusInfo> getDeviceStatus,
-        Func<NintendoSwitch?>? getDevice = null)
+        Func<IControllerSession?>? getDevice = null)
     {
         _getDevice = getDevice;
 

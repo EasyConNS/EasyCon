@@ -3,122 +3,142 @@ using System.Diagnostics;
 
 namespace EasyCon.Capture;
 
-/// <summary>
-/// 单生产者采集循环：后台 Task 持续 Read 最新帧并发布到 FrameStore。
-/// 由 OpenCVCapture 的阻塞 Read 自然控制节奏，无需 Thread.Sleep。
-/// </summary>
+/// <summary>单生产者。停止超时仍保留任务身份，拒绝重启，迟到的 Read 不再发布。</summary>
 public sealed class FrameProducer : IDisposable
 {
-    private readonly OpenCVCapture _capture;
-    private readonly FrameStore _store = new();
+    private readonly IFrameSource _capture;
+    private readonly FrameStore _store;
+    private readonly FrameNormalization _normalization;
+    private readonly string _sourceId;
     private readonly object _lifecycleLock = new();
     private CancellationTokenSource? _cts;
     private Task? _loopTask;
+    private bool _disposed;
+    private string? _lastError;
+    private bool _sourceOpened;
 
-    public FrameProducer(OpenCVCapture capture)
+    public FrameProducer(IFrameSource capture, FrameStore? store = null,
+        FrameNormalization? normalization = null, string sourceId = "camera")
     {
         _capture = capture;
+        _store = store ?? new FrameStore();
+        _normalization = normalization ?? new FrameNormalization();
+        _sourceId = sourceId;
+        _sourceOpened = capture.IsOpened;
     }
 
     public FrameStore Store => _store;
-
-    /// <summary>累计发布帧数（透传 <see cref="FrameStore.FrameCount"/>）。</summary>
     public long FrameCount => _store.FrameCount;
-
-    public bool IsOpened => _capture.IsOpened;
-
-    /// <summary>转发采集参数设置（分辨率、FourCC、FPS）。</summary>
-    public void SetProperties(int width, int height)
-    {
-        _capture.SetProperties(width, height);
-    }
+    public long SourceEpoch { get; private set; }
+    public bool IsOpened => Volatile.Read(ref _sourceOpened);
+    public bool IsStopping => _cts?.IsCancellationRequested == true && _loopTask?.IsCompleted == false;
+    public string? LastError => Volatile.Read(ref _lastError);
+    public void SetProperties(int width, int height) => _capture.SetProperties(width, height);
 
     public void Start()
     {
         lock (_lifecycleLock)
         {
-            if (_cts != null) return;
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_loopTask?.IsCompleted == false)
+            {
+                if (_cts!.IsCancellationRequested) throw new InvalidOperationException("上一采集循环仍在停止中");
+                return;
+            }
+            _cts?.Dispose();
             _cts = new CancellationTokenSource();
-            var ct = _cts.Token;
-            _loopTask = Task.Run(() => Loop(ct));
+            CancellationToken token = _cts.Token;
+            long epoch = SourceEpoch = _store.BeginSource();
+            _loopTask = Task.Run(() => Loop(token, epoch));
         }
     }
 
-    private void Loop(CancellationToken ct)
+    private void Loop(CancellationToken token, long epoch)
     {
-        while (!ct.IsCancellationRequested)
+        while (!token.IsCancellationRequested)
         {
             try
             {
-                // 设备未打开（未连接/已断开）时阻塞 Read 不再生效，需主动降频避免空转。
-                if (!_capture.IsOpened)
+                bool opened = _capture.IsOpened;
+                Volatile.Write(ref _sourceOpened, opened);
+                if (!opened)
                 {
-                    Thread.Sleep(100);
+                    token.WaitHandle.WaitOne(100);
                     continue;
                 }
-
-                var mat = _capture.GetMatFrame();
-                if (mat.Empty())
+                using Mat raw = _capture.GetMatFrame();
+                long arrival = Stopwatch.GetTimestamp();
+                if (token.IsCancellationRequested) break;
+                if (raw.Empty())
                 {
-                    mat.Dispose();
-                    Thread.Sleep(5);   // 尚无新帧，短暂让出 CPU
+                    token.WaitHandle.WaitOne(5);
                     continue;
                 }
-                _store.Publish(mat);
+                Mat? normalized = _normalization.Apply(raw);
+                try
+                {
+                    FrameMetadata metadata = new(_sourceId, epoch, 0, arrival, Stopwatch.Frequency,
+                        raw.Size(), normalized.Size(), _normalization.Id);
+                    lock (_lifecycleLock)
+                    {
+                        if (token.IsCancellationRequested) break;
+                        _store.Publish(normalized, metadata);
+                        normalized = null;
+                        Volatile.Write(ref _lastError, null);
+                    }
+                }
+                finally { normalized?.Dispose(); }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"FrameProducer 采集异常: {ex.Message}");
-                Thread.Sleep(5);
+                Volatile.Write(ref _lastError, ex.Message);
+                Debug.WriteLine($"FrameProducer: {ex.Message}");
+                token.WaitHandle.WaitOne(20);
             }
         }
     }
 
-    public void Stop()
+    public bool Stop(TimeSpan? timeout = null)
     {
         Task? loop;
         lock (_lifecycleLock)
         {
+            if (_loopTask?.IsCompleted != false)
+            {
+                _store.ReleaseCurrent();
+                return true;
+            }
             _cts?.Cancel();
-            _cts = null;
             loop = _loopTask;
-            _loopTask = null;
+            _store.ReleaseCurrent();
         }
-
-        if (loop != null)
-        {
-            try
-            {
-                loop.Wait(TimeSpan.FromSeconds(5));
-            }
-            catch (AggregateException)
-            {
-                // 采集异常已在 Loop 内部捕获，这里兜底忽略
-            }
-        }
-        _store.ReleaseCurrent();
+        if (loop == null) return true;
+        try { return loop.Wait(timeout ?? TimeSpan.FromSeconds(5)); }
+        catch (AggregateException) { return loop.IsCompleted; }
     }
 
     public void Dispose()
     {
-        // 先在锁内记录循环任务，再 Stop（Stop 会把 _loopTask 置 null）。
-        // 若采集循环卡在阻塞 Read 上（设备停滞但 IsOpened 仍为 true），
-        // Stop 等待超时后循环仍在运行，此时释放底层 VideoCapture 属于 use-after-release，
-        // 可能崩溃或挂起，故放弃释放（native 句柄交由进程退出兜底）。
-        Task? loop;
         lock (_lifecycleLock)
         {
-            loop = _loopTask;
+            if (_disposed) return;
+            _disposed = true;
         }
-        Stop();
-
-        if (loop == null || loop.IsCompleted)
+        if (Stop())
         {
+            Volatile.Write(ref _sourceOpened, false);
             _capture.Dispose();
+            _cts?.Dispose();
         }
         else
         {
-            Debug.WriteLine("FrameProducer: 采集循环未在超时内退出，跳过 VideoCapture 释放");
+            // 阻塞 Read 的所有者保留到实际退出，不能释放它正在使用的 native 对象。
+            _ = _loopTask!.ContinueWith(_ =>
+            {
+                Volatile.Write(ref _sourceOpened, false);
+                _capture.Dispose();
+                _cts?.Dispose();
+            }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
     }
 }

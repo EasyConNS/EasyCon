@@ -3,6 +3,7 @@ using EasyCon.Core;
 using EasyCon.Core.Capabilities;
 using EasyCon.Core.Config;
 using EasyCon.Core.Hosting;
+using EasyCon.Core.Maa;
 using EasyCon.Core.Script;
 using EasyCon.Core.Services;
 using EasyCon.Script;
@@ -19,6 +20,7 @@ public class ScriptService : IScriptService
     private readonly ILogService _logService;
     private readonly IAlertService? _alertService;
     private readonly IScriptEngine _engine = new EasyScriptEngine();
+    private readonly HostRunCoordinator _runs;
     private readonly object _runGate = new();
     private IScriptSession? _session;
     private CancellationTokenSource? _cts;
@@ -53,6 +55,7 @@ public class ScriptService : IScriptService
         _captureService = captureService;
         _logService = logService;
         _alertService = alertService;
+        _runs = new HostRunCoordinator(deviceService.GetDevice(), captureService.FrameHub);
     }
 
     public async Task<bool> CompileAsync(string scriptText, string? fileName)
@@ -104,13 +107,13 @@ public class ScriptService : IScriptService
             IScriptSession? session = CompileCore(
                 () => _engine.LoadFile(fullPath, Options([.. labelDict.Keys])), fullPath);
             return (session, BuildLabelMatchDelegate(labelDict));
-        }, args);
+        }, args, scriptPath);
     }
 
     public void RunFromContent(string content, string[]? args = null, string? fileName = null)
     {
         _logService.AddLog("===开始运行脚本===");
-        ExecuteScript(() => CompileContent(content, fileName), args);
+        ExecuteScript(() => CompileContent(content, fileName), args, fileName);
     }
 
     public void Stop()
@@ -120,20 +123,7 @@ public class ScriptService : IScriptService
             _cts?.Cancel();
         }
 
-        // Reset 会抢设备写循环的锁，移到后台执行，避免卡顿串口拖住 UI 线程。
-        var device = _deviceService;
-        _ = Task.Run(() =>
-        {
-            try
-            {
-                device.Reset();
-            }
-            catch (Exception ex)
-            {
-                // 复位失败时设备可能停在最后一次按键状态，必须留痕
-                _logService.AddLog($"设备复位失败: {ex.Message}");
-            }
-        });
+        // 取消由运行令牌直接到达 Maa pulse；完成清理由统一协调器等待写出。
     }
 
     // ── 私有方法 ────────────────────────────────
@@ -227,7 +217,7 @@ public class ScriptService : IScriptService
     /// 脚本执行主流程：编译 → 检查需求 → 连接设备 → 能力装配 → 运行。
     /// </summary>
     /// <param name="compile">编译回调，返回 (会话（null=编译失败）, 标签匹配委托)</param>
-    private void ExecuteScript(Func<(IScriptSession? Session, LabelMatchDelegate? LabelMatch)> compile, string[]? args)
+    private void ExecuteScript(Func<(IScriptSession? Session, LabelMatchDelegate? LabelMatch)> compile, string[]? args, string? sourcePath = null)
     {
         CancellationToken token;
         lock (_runGate)
@@ -288,32 +278,30 @@ public class ScriptService : IScriptService
                     _logService.AddLog($"自动连接成功: {port}");
                 }
 
-                ICGamePad? pad = null;
-                if (hasKeyAction)
-                    pad = new GamePadAdapter(_deviceService.GetDevice(), HighResolutionTiming);
-
                 _captureService.SetCaptureProperties(1920, 1080);
-
-                var frameDelegate = FrameDelegateFactory.CreateFrame(() => _captureService.AcquireLatestFrame());
-
-                // 能力装配：唯一装配点（ScriptHostAssembler）。宿主只提供原料（pad/帧/标签委托/日志），
-                // OCR、推理、宿主环境、文件能力的默认值与释放统一由租约承担。
-                // args 经 HostEnvironment 进入 VM —— 此前 ExecuteScript 的 args 形参被静默丢弃，ARG() 恒为空。
-                using CapabilityLease lease = ScriptHostAssembler.Assemble(new ScriptHostContext
+                _runs.Run("ecs", sourcePath, hasKeyAction, token, scope =>
                 {
-                    Pad = pad,
-                    Console = new ConsoleIoAdapter(_logService, _alertService),
-                    Frame = frameDelegate,
-                    Roi = MatExtensions.CropBase64,
-                    LabelMatch = labelMatch,
-                    Args = args,
-                    AppDir = AppDomain.CurrentDomain.BaseDirectory,
-                });
+                    var frameDelegate = FrameDelegateFactory.CreateFrame(() => scope.AcquireFrame(_captureService.AcquireLatestFrame));
 
-                if (hasKeyAction && lease.Capabilities.Input == null)
-                    throw new InvalidOperationException("脚本包含按键操作，但运行能力中未装配输入设备");
+                    // 能力装配：唯一装配点（ScriptHostAssembler）。宿主只提供原料（pad/帧/标签委托/日志），
+                    // OCR、推理、宿主环境、文件能力的默认值与释放统一由租约承担。
+                    // args 经 HostEnvironment 进入 VM —— 此前 ExecuteScript 的 args 形参被静默丢弃，ARG() 恒为空。
+                    using CapabilityLease lease = ScriptHostAssembler.Assemble(new ScriptHostContext
+                    {
+                        PadInput = hasKeyAction ? scope.CreatePad(HighResolutionTiming ? DelayType.HighResolution : DelayType.LowCPU) : null,
+                        Console = new ConsoleIoAdapter(_logService, _alertService),
+                        Frame = frameDelegate,
+                        Roi = MatExtensions.CropBase64,
+                        LabelMatch = labelMatch == null ? null : name => { scope.RequireCapture(); return labelMatch(name); },
+                        Args = args,
+                        AppDir = AppDomain.CurrentDomain.BaseDirectory,
+                    });
 
-                session.Run(token, lease.Capabilities);
+                    if (hasKeyAction && lease.Capabilities.Input == null)
+                        throw new InvalidOperationException("脚本包含按键操作，但运行能力中未装配输入设备");
+
+                    session.Run(scope.Token, lease.Capabilities);
+                }, requiresCapture: needImageRecognition, compatibilityProfile: "EasyCon.Legacy.GUI.Truncate");
                 _logService.AddLog("脚本运行完成");
             }
             catch (OperationCanceledException)
@@ -336,16 +324,6 @@ public class ScriptService : IScriptService
             {
                 // OCR/推理原生资源的释放已由 CapabilityLease 在 try 作用域内完成，
                 // 此处只收尾设备状态与运行标志。
-
-                try
-                {
-                    _deviceService.Reset();
-                }
-                catch (Exception ex)
-                {
-                    // 复位失败不能拦住下面的 IsRunning 复位，否则运行按钮永久卡死
-                    _logService.AddLog($"设备复位失败: {ex.Message}");
-                }
 
                 lock (_runGate)
                 {

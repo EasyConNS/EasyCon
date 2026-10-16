@@ -22,13 +22,14 @@ public partial class NintendoSwitch
         if (connStr == "")
             return ConnectResult.InvalidArgument;
 
-        var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
+        using EventWaitHandle ewh = new(false, EventResetMode.AutoReset);
         var result = ConnectResult.None;
+        bool listening = true;
         void statuschanged(Status status)
         {
             lock (ewh)
             {
-                if (result != ConnectResult.None)
+                if (!listening || result != ConnectResult.None)
                     return;
                 if (status == Status.Connected)
                 {
@@ -44,35 +45,67 @@ public partial class NintendoSwitch
         }
 
         Disconnect();
-        clientCon = CreateConnection(connStr, baudrate);
-        clientCon.BytesSent += BytesSent;
-        clientCon.BytesReceived += BytesReceived;
-        clientCon.StatusChanged += StatusChanged;
-
-        clientCon.StatusChanged += statuschanged;
-        clientCon.Connect();
-        if (!ewh.WaitOne(1000))
+        IConnection connection = CreateConnection(connStr, baudrate);
+        clientCon = connection;
+        connection.BytesSent += (port, bytes) => { if (ReferenceEquals(clientCon, connection)) BytesSent?.Invoke(port, bytes); };
+        connection.BytesReceived += (port, bytes) => { if (ReferenceEquals(clientCon, connection)) BytesReceived?.Invoke(port, bytes); };
+        connection.StatusChanged += status => { if (ReferenceEquals(clientCon, connection)) StatusChanged?.Invoke(status); };
+        connection.StatusChanged += statuschanged;
+        try
         {
-            clientCon.Disconnect();
-            clientCon = null;
-            return ConnectResult.Timeout;
-        }
-        if (result != ConnectResult.Success)
-        {
-            clientCon?.Disconnect();
-            clientCon = null;
+            connection.Connect();
+            if (!ewh.WaitOne(1000)) result = ConnectResult.Timeout;
+            if (result != ConnectResult.Success)
+            {
+                clientCon = null;
+                connection.Disconnect();
+            }
             return result;
         }
-        clientCon.StatusChanged -= statuschanged;
-
-        return ConnectResult.Success;
+        finally
+        {
+            lock (ewh) listening = false;
+            connection.StatusChanged -= statuschanged;
+        }
     }
 
     public void Disconnect()
     {
-        clientCon?.Disconnect();
+        CancelStaleLoop();
+        IConnection connection = clientCon;
         clientCon = null;
-        source?.Cancel();
+        connection?.Disconnect();
+    }
+
+    /// <summary>复位并等待串口实际写出中性包；不表示主机/游戏已确认。</summary>
+    public async Task<bool> ResetAndWaitForWriteAsync(TimeSpan timeout, CancellationToken token = default)
+    {
+        IConnection connection = clientCon;
+        if (connection == null || !IsConnected()) { Reset(); return false; }
+        byte[] neutral = new SwitchReport().GetBytes().ToArray();
+        TaskCompletionSource<bool> written = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnWritten(string port, byte[] bytes)
+        {
+            // 一次串口写可合并多个包，最后一个必须是中性包。
+            if (bytes.AsSpan().EndsWith(neutral)) written.TrySetResult(true);
+        }
+        void OnStatus(Status status)
+        {
+            if (status == Status.Error) written.TrySetResult(false);
+        }
+        connection.BytesSent += OnWritten;
+        connection.StatusChanged += OnStatus;
+        try
+        {
+            Reset();
+            return await written.Task.WaitAsync(timeout, token).ConfigureAwait(false);
+        }
+        catch (TimeoutException) { return false; }
+        finally
+        {
+            connection.BytesSent -= OnWritten;
+            connection.StatusChanged -= OnStatus;
+        }
     }
 
     public bool IsConnected() => clientCon?.CurrentStatus == Status.Connected;

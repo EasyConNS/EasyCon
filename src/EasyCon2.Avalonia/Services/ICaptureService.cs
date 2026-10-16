@@ -1,9 +1,15 @@
 using EasyCon.Capture;
+using EasyCon.Core.Maa;
 
 namespace EasyCon2.Avalonia.Services;
 
 public interface ICaptureService
 {
+    FrameHub? FrameHub => null;
+    string? ActiveSource => null;
+    string? ActiveBackend => null;
+    FrameNormalization? Normalization { get => null; set { } }
+    CaptureSourceDescriptor? DescribeSelection(string? displayKey) => null;
     bool IsConnected { get; }
     string CaptureType { get; set; }
     event Action? ConnectionLost;
