@@ -183,6 +183,9 @@ Device logic (queue, throttle, report building, serialization) can be exercised 
   build with full tests → both zips attached to a GitHub Release via `gh release create --generate-notes`.
   `workflow_dispatch` builds and uploads artifacts without publishing. Reuses `ci\windows-x64.bat` / `ci/macos-app.sh`.
 - PR format commits use `[skip ci]` to avoid recursive triggers
+- Before opening or updating a PR, read the target branch's workflow and match its build configuration and required native/UI checks. A local Release run does not replace the `dev` Debug checks.
+- Run `actionlint` when reviewing or changing `.github/workflows/`. Checkout inputs such as `ref` belong to `actions/checkout`, not SDK setup actions.
+- After pushing, check the PR's completed CI results and the event/ref/commit of any failed follow-up run. `workflow_run` uses the default branch's workflow; routing fixes must also reach `main` to take effect.
 
 ## Native code (OpenCV)
 

@@ -28,7 +28,7 @@ on:
     types: [checks_requested]
 
 concurrency:
-  group: ci-dev-${{ github.ref }}
+  group: ci-dev-${{ github.event.workflow_run.head_repository.full_name || github.repository }}-${{ github.event.workflow_run.head_branch || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -45,9 +45,22 @@ jobs:
   # 1. 代码格式检查
   # ========================================
   format:
+    # Fork 格式检查不写提交，后续构建由 pull_request CI 负责。
+    # workflow_run 从默认分支读取本文件；此路由修复须同步到 main。
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'pull_request' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: windows-latest
+    outputs:
+      commit: ${{ steps.checkout.outputs.commit }}
     steps:
       - uses: actions/checkout@v6
+        id: checkout
+        with:
+          # 同仓库自动格式化可能新增提交，先解析来源分支，再让后续任务固定到该提交。
+          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
 
       - name: 安装 .NET SDK
         uses: actions/setup-dotnet@v5
@@ -55,7 +68,7 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: 检查代码格式
-        run: dotnet format --verbosity diagnostic
+        run: dotnet format --verify-no-changes --verbosity diagnostic
 
   # ========================================
   # 2. 构建 + 测试 (Debug)
@@ -65,12 +78,13 @@ jobs:
     needs: format
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.format.outputs.commit }}
 
       - name: 安装 .NET SDK
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-          ref: ${{ github.event.workflow_run.head_branch }}
 
       - name: 缓存 NuGet 包
         uses: actions/cache@v4
@@ -108,6 +122,8 @@ jobs:
         bits: [64, 32]
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.format.outputs.commit }}
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
