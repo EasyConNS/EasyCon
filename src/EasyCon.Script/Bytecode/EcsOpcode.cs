@@ -184,6 +184,7 @@ public static class EcsImageFeatures
     public const uint Ffi = 0x4;       // EXTERN FFI（"库!导出名" 动态原生）
     public const uint File = 0x8;      // 文件族 syscall
     public const uint Vision = 0x10;   // ONNX 推理函数（NET_LOAD/NET_RUNH/NET_OUT 句柄族）；缺能力宿主按缺省值表降级
+    public const uint Audio = 0x20;    // AUDIO/AUDIO_WAIT/AUDIO_WAIT_SCORE；缺能力必须拒跑，不能降级为“未命中”
 }
 
 /// <summary>

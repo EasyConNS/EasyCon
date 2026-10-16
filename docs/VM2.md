@@ -338,6 +338,8 @@ CLI：ecs-vm run image.ecx [--io] [--trace] [--print] [--strict-caps] [-- arg0..
 
 ### 6.3 特征元信息与能力降级（S-21）
 
+声音检测是明确的例外：新增 `AUDIO = 0x20` 特征位，`AUDIO` / `AUDIO_WAIT` / `AUDIO_WAIT_SCORE` 使用 L3 名表路由，不能降级成 0/false。桌面执行桥在任何脚本操作之前要求 `IAudioService` 并建立独立运行会话；C VM 即使没有启用 `strict_caps`，缺少 `ECS_FEAT_AUDIO` 仍在加载期返回 `ECS_ERR_FEAT`（14）。没有原生实现的直接解释器调用保持 `ERR_NOSUCHNATIVE`，不进入缺省值表。具体函数语义见 `docs/Functions.md`。
+
 ```text
 feats = 头部掩码 | (flags.I ? FEAT_IL : 0)     ← 元信息：缺省不拒载
 运行期 miss（宿主回调缺失/未实现）：

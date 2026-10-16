@@ -22,7 +22,11 @@ public sealed record AudioChunk(
     long TimestampNs,
     AudioFormat Format,
     ReadOnlyMemory<byte> Pcm,
-    int BytesRecorded);
+    int BytesRecorded)
+{
+    /// <summary>The immutable connected state that produced this block, even if delivery races a reconnect.</summary>
+    public AudioCaptureState? Session { get; init; }
+}
 
 public sealed record AudioLevel(double Peak, double Rms, bool Silent);
 

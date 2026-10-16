@@ -8,6 +8,27 @@ public sealed class WasapiAudioLifecycleTests
 {
     private static readonly TimeSpan _timeout = TimeSpan.FromSeconds(3);
 
+    [Test]
+    public async Task BlocksRetainTheirOriginalConnectionIdentityAfterReconnect()
+    {
+        ControlledCapture first = new();
+        ControlledCapture second = new();
+        int opens = 0;
+        using WasapiAudioCapture source = new(_ => new AudioCaptureSession(new AudioDeviceInfo("device", "Capture"),
+            ++opens == 1 ? first : second));
+        List<AudioChunk> chunks = [];
+        source.DataAvailable += chunks.Add;
+        Assert.That(source.TryConnect("device"), Is.True);
+        first.Emit();
+        AudioCaptureState initial = source.State;
+        await source.DisconnectAsync();
+        Assert.That(source.TryConnect("device"), Is.True);
+        second.Emit();
+        Assert.That(chunks[0].Session, Is.SameAs(initial));
+        Assert.That(chunks[1].Session, Is.SameAs(source.State));
+        Assert.That(chunks[0].Session, Is.Not.SameAs(chunks[1].Session));
+    }
+
     [TestCase(AudioCaptureStatus.Connecting)]
     [TestCase(AudioCaptureStatus.Failed)]
     public async Task StateObserversCanDisposeDuringConnect(AudioCaptureStatus observedStatus)
