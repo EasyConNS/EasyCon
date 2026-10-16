@@ -24,6 +24,19 @@ public sealed class MaaHostTests
         }));
     }
 
+    private static object FrameInfo(FrameLease frame) => new
+    {
+        frame.Metadata.SourceId,
+        frame.Metadata.SourceEpoch,
+        frame.Metadata.FrameId,
+        frame.Metadata.CapturedAtTicks,
+        frame.Metadata.ClockFrequency,
+        originalSize = new { frame.Metadata.OriginalSize.Width, frame.Metadata.OriginalSize.Height },
+        canonicalSize = new { frame.Metadata.CanonicalSize.Width, frame.Metadata.CanonicalSize.Height },
+        frame.Metadata.NormalizationId,
+        frame.Metadata.PixelFormat,
+    };
+
     private static void Snapshot(MaaControllerSession controller, FrameHub hub, FrameLease? frame = null,
         ControllerRunLease? run = null)
         => Trace(TestContext.Out, "module-snapshot", new
@@ -41,7 +54,7 @@ public sealed class MaaHostTests
             runId = run?.RunId,
             bindingInput = run?.Binding.RequiresInput,
             bindingCapture = run?.Binding.RequiresCapture,
-            frame = frame?.Metadata,
+            frame = frame == null ? null : FrameInfo(frame),
         });
 
     private sealed class Connection : IConnection
@@ -127,7 +140,7 @@ public sealed class MaaHostTests
         using FrameLease frame = await hub.WaitForFrameAfterAsync(0, 0, new CancellationTokenSource(3000).Token);
         Assert.That(source.ReaderUsesThreadPool, Is.False);
         Assert.That(await Task.Run(() => frame.Metadata.SourceId), Is.EqualTo("dedicated-reader"));
-        Trace(TestContext.Out, "dedicated-reader-frame", frame.Metadata);
+        Trace(TestContext.Out, "dedicated-reader-frame", FrameInfo(frame));
     }
 
     [Test]
@@ -191,9 +204,11 @@ public sealed class MaaHostTests
                 Assert.That(controller.InputEndpoint, Is.EqualTo(endpoint));
                 Assert.That(controller.InputEpoch, Is.EqualTo(inputEpoch));
                 int otherCount = connections.Where(p => p.Key != endpoint).Single().Value.Writes.Count;
+                int ownCount = connections[endpoint].Writes.Count;
                 controller.ApplyReport(new SwitchReport { Button = (ushort)SwitchButton.A });
-                await WaitForAsync(connections[endpoint], new SwitchReport { Button = (ushort)SwitchButton.A });
+                await WaitForAsync(connections[endpoint], new SwitchReport { Button = (ushort)SwitchButton.A }, ownCount);
                 Assert.That(connections.Where(p => p.Key != endpoint).Single().Value.Writes.Count, Is.EqualTo(otherCount));
+                Trace(TestContext.Out, "combination-hid-confirmed", new { endpoint, sourceId = name, afterWrite = ownCount, actualWrites = connections[endpoint].Writes.Count });
                 Snapshot(controller, hub, frame);
                 controller.Reset();
             }
@@ -428,7 +443,7 @@ public sealed class MaaHostTests
             "未收到实际出队 HID: " + Convert.ToHexString(expected));
     }
 
-    private static async Task WaitForAsync(Connection connection, SwitchReport report)
+    private static async Task WaitForAsync(Connection connection, SwitchReport report, int afterWrite = 0)
     {
         byte[] expected = report.GetBytes();
         TaskCompletionSource written = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -439,7 +454,7 @@ public sealed class MaaHostTests
         connection.BytesSent += OnWritten;
         try
         {
-            if (connection.Writes.Any(bytes => bytes.SequenceEqual(expected))) return;
+            if (connection.Writes.Skip(afterWrite).Any(bytes => bytes.SequenceEqual(expected))) return;
             await written.Task.WaitAsync(TimeSpan.FromSeconds(3));
         }
         finally { connection.BytesSent -= OnWritten; }
