@@ -1,4 +1,5 @@
 #nullable enable
+using EasyCon.Capture.mac;
 using EasyCon.Capture.win;
 using OpenCvSharp;
 using System.Security.Cryptography;
@@ -16,6 +17,15 @@ public sealed record CaptureSourceDescriptor(string Id, string Name, int Index, 
 public static class CaptureSourceCatalog
 {
     private static readonly string EnumerationSession = Guid.NewGuid().ToString("N");
+
+    public static IReadOnlyList<string> GetBackendOptions()
+        => OperatingSystem.IsMacOS() ? ["ANY", "AVFOUNDATION"]
+            : OperatingSystem.IsLinux() ? ["ANY", "V4L2"]
+            : ["ANY", "DSHOW", "MSMF", "DC1394"];
+
+    public static string NormalizeBackendName(string? name)
+        => GetBackendOptions().FirstOrDefault(option => string.Equals(option, name, StringComparison.OrdinalIgnoreCase)) ?? "ANY";
+
     public static VideoCaptureAPIs ResolveBackend(VideoCaptureAPIs requested)
         => requested != VideoCaptureAPIs.ANY ? requested
             : OperatingSystem.IsWindows() ? VideoCaptureAPIs.DSHOW
@@ -28,6 +38,10 @@ public static class CaptureSourceCatalog
         {
             IReadOnlyList<(string Name, string? DevicePath)> devices = DirectShow.GetDevices();
             return Describe(devices.Select((d, index) => (d.Name, d.DevicePath, index)).ToArray(), backend);
+        }
+        if (OperatingSystem.IsMacOS() && backend == VideoCaptureAPIs.AVFOUNDATION)
+        {
+            return Describe(AvFoundationDevices.Enumerate(), backend);
         }
         if (OperatingSystem.IsLinux() && backend == VideoCaptureAPIs.V4L2)
         {

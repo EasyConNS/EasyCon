@@ -103,6 +103,8 @@ public class CaptureService : ICaptureService, IDisposable
         "DSHOW" => VideoCaptureAPIs.DSHOW,
         "MSMF" => VideoCaptureAPIs.MSMF,
         "DC1394" => VideoCaptureAPIs.DC1394,
+        "AVFOUNDATION" => VideoCaptureAPIs.AVFOUNDATION,
+        "V4L2" => VideoCaptureAPIs.V4L2,
         _ => VideoCaptureAPIs.ANY,
     };
 

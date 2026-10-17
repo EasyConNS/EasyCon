@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using EasyCon.Capture;
 using EasyCon.Core.Services;
 using EasyCon2.Avalonia.Localization;
 using EasyCon2.Avalonia.Services;
@@ -49,14 +50,14 @@ public partial class CaptureConnectionViewModel : ObservableObject
     private string _captureSourceButtonText = L10nBridge.T("Text.Btn.ConnectCapture");
 
     [ObservableProperty]
-    private ObservableCollection<string> _captureTypeOptions = new() { "ANY", "DSHOW", "MSMF", "DC1394" };
+    private ObservableCollection<string> _captureTypeOptions = new(CaptureSourceCatalog.GetBackendOptions());
 
     [ObservableProperty]
     private string _selectedCaptureType = "ANY";
 
     partial void OnSelectedCaptureTypeChanged(string value)
     {
-        _captureService.CaptureType = NormalizeCaptureType(value);
+        _captureService.CaptureType = CaptureSourceCatalog.NormalizeBackendName(value);
         RefreshCaptureSources();
         CaptureTypeChanged?.Invoke();
     }
@@ -205,14 +206,5 @@ public partial class CaptureConnectionViewModel : ObservableObject
         if (oldSelected != null && !CaptureSourceOptions.Contains(oldSelected)) CaptureSourceOptions.Add(oldSelected);
         SelectedCaptureSource = oldSelected;
         OnSelectedCaptureSourceChanged(oldSelected);
-    }
-
-    private static string NormalizeCaptureType(string? captureType)
-    {
-        return captureType switch
-        {
-            "DSHOW" or "MSMF" or "DC1394" => captureType,
-            _ => "ANY"
-        };
     }
 }
