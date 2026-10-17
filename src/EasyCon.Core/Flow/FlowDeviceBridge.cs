@@ -1,5 +1,6 @@
 using EasyCon.Capture;
 using EasyCon.Core.Capabilities;
+using EasyCon.Core.Maa;
 
 namespace EasyCon.Core.Flow;
 
@@ -11,6 +12,10 @@ namespace EasyCon.Core.Flow;
 /// </summary>
 public class FlowDeviceBridge
 {
+    /// <summary>真实宿主的唯一控制器；旧测试桥可省略。</summary>
+    public IControllerSession? Controller { get; init; }
+    public FrameHub? Frames { get; init; }
+    public Func<IReadOnlyList<CaptureSourceDescriptor>>? GetVideoSources { get; init; }
     /// <summary>视频源当前是否已连接（读宿主侧实时状态）。</summary>
     public required Func<bool> IsVideoConnected { get; init; }
 

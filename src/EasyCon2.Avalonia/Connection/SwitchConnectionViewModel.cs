@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core.Services;
 using EasyCon2.Avalonia.Localization;
 using EasyCon2.Avalonia.Services;
-using EasyCon2.Avalonia.Services;
 using System;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
@@ -24,6 +23,15 @@ public partial class SwitchConnectionViewModel : ObservableObject
 
     [ObservableProperty]
     private string? _selectedSerialPort;
+    private HashSet<string> _availablePorts = [];
+    [ObservableProperty]
+    private bool _selectionUnavailable;
+    public string SelectionNotice => SelectionUnavailable ? "所选通信端口当前不可用，请刷新后重新选择" : "";
+    partial void OnSelectedSerialPortChanged(string? value)
+    {
+        SelectionUnavailable = value != null && !_availablePorts.Contains(value);
+        OnPropertyChanged(nameof(SelectionNotice));
+    }
 
     [ObservableProperty]
     private string _nintendoSwitchStatus = L10nBridge.T("Text.Status.NotConnected");
@@ -75,7 +83,7 @@ public partial class SwitchConnectionViewModel : ObservableObject
         _logService = logService;
         _ui = uiDispatcher;
 
-        ConnectNintendoSwitchCommand = new RelayCommand(ConnectNintendoSwitch);
+        ConnectNintendoSwitchCommand = new AsyncRelayCommand(ConnectNintendoSwitch);
         AutoConnectNintendoSwitchCommand = new RelayCommand(AutoConnectNintendoSwitch);
         RefreshSerialPortsCommand = new RelayCommand(RefreshSerialPorts);
         RemoteRunCommand = new AsyncRelayCommand(RemoteRunAsync);
@@ -102,15 +110,13 @@ public partial class SwitchConnectionViewModel : ObservableObject
     private void SyncFromService()
     {
         var connected = _deviceService.IsConnected;
-        if (IsNintendoSwitchConnected == connected)
-            return;
         IsNintendoSwitchConnected = connected;
         if (connected)
         {
-            if (string.IsNullOrEmpty(SelectedSerialPort))
+            if (string.IsNullOrEmpty(_deviceService.ActiveEndpoint))
                 SetSwitchStatus("Text.Status.Connected");
             else
-                SetSwitchStatus("Text.Status.ConnectedWithPort", SelectedSerialPort);
+                SetSwitchStatus("Text.Status.ConnectedWithPort", _deviceService.ActiveEndpoint);
         }
         else
         {
@@ -121,7 +127,7 @@ public partial class SwitchConnectionViewModel : ObservableObject
             : L10nBridge.T("Text.Btn.ConnectSwitch");
     }
 
-    private void ConnectNintendoSwitch()
+    private async Task ConnectNintendoSwitch()
     {
         // 连接在后台 Task.Run 执行，期间按钮仍可点击，必须挡住重入（防并发打开串口）
         if (IsConnectingNintendoSwitch)
@@ -131,7 +137,9 @@ public partial class SwitchConnectionViewModel : ObservableObject
         {
             if (IsNintendoSwitchConnected)
             {
-                _deviceService.Disconnect();
+                IsConnectingNintendoSwitch = true;
+                try { await Task.Run(_deviceService.Disconnect); }
+                finally { IsConnectingNintendoSwitch = false; }
                 IsNintendoSwitchConnected = false;
                 SetSwitchStatus("Text.Status.NotConnected");
                 NintendoSwitchButtonText = L10nBridge.T("Text.Btn.ConnectSwitch");
@@ -225,11 +233,12 @@ public partial class SwitchConnectionViewModel : ObservableObject
     private void RefreshSerialPorts()
     {
         var ports = _deviceService.GetAvailablePorts();
+        _availablePorts = [.. ports];
         var oldSelected = SelectedSerialPort;
         SerialPortOptions = new ObservableCollection<string>(ports);
-        SelectedSerialPort = oldSelected != null && SerialPortOptions.Contains(oldSelected)
-            ? oldSelected
-            : SerialPortOptions.FirstOrDefault();
+        if (oldSelected != null && !SerialPortOptions.Contains(oldSelected)) SerialPortOptions.Add(oldSelected);
+        SelectedSerialPort = oldSelected;
+        OnSelectedSerialPortChanged(oldSelected);
     }
 
     private async Task RemoteRunAsync()

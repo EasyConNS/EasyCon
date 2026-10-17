@@ -2,6 +2,7 @@ using EasyCon.Capture;
 using EasyCon.Core.Capabilities;
 using EasyCon.Core.Hosting;
 using EasyCon.Core.Logging;
+using EasyCon.Core.Maa;
 using EasyCon.Core.Script;
 using EasyDevice;
 using EasyScript;
@@ -21,20 +22,23 @@ namespace EasyCon.Core.Flow;
 public sealed class FlowServiceState : IDisposable
 {
     private readonly FlowDeviceBridge? _bridge;
-    private readonly NintendoSwitch _ns = new();
+    private readonly MaaHostSession? _localHost;
     private readonly object _gate = new();
-    private OpenCVCapture? _capture;
-    private FrameProducer? _producer;
     private IPadInput? _pad;
     private bool _mockMcu;
     private bool _mcuViaBridge;
-    private bool _localVideoConnected;
 
     /// <summary>桥接模式（GUI 宿主）下设备操作全部委托宿主实例；独立模式为 null。</summary>
-    public FlowServiceState(FlowDeviceBridge? bridge = null) => _bridge = bridge;
+    public FlowServiceState(FlowDeviceBridge? bridge = null)
+    {
+        _bridge = bridge;
+        if (bridge == null) _localHost = new MaaHostSession();
+    }
+    private IControllerSession? Controller => _bridge?.Controller ?? _localHost?.Controller;
     private readonly ConcurrentDictionary<string, FlowRunHandle> _runs = new();
     private int _runSeq;
     private int _disposed;
+    private int _activeContexts;
 
     /// <summary>服务侧 OCR 后端（none | tesseract | ppocr）；跨运行复用同一引擎实例。</summary>
     public string OcrBackend { get; private set; } = "none";
@@ -52,14 +56,21 @@ public sealed class FlowServiceState : IDisposable
 
     // ---- 视频源 ----
 
-    public bool VideoConnected => _bridge is not null ? _bridge.IsVideoConnected() : _localVideoConnected;
+    public bool VideoConnected => _bridge is not null ? _bridge.IsVideoConnected() : _localHost!.Frames.CaptureConnected;
 
-    public object VideoInfo() => new
+    public object VideoInfo()
     {
-        connected = VideoConnected,
-        sources = EasyCon.Capture.ECCapture.GetCaptureCamera()
-            .Select(c => new { index = c.index, name = c.name }).ToArray(),
-    };
+        IReadOnlyList<CaptureSourceDescriptor> sources = [];
+        string? error = null;
+        try { sources = _bridge?.GetVideoSources?.Invoke() ?? CaptureSourceCatalog.Enumerate(OpenCvSharp.VideoCaptureAPIs.ANY); }
+        catch (Exception ex) { error = ex.Message; }
+        return new
+        {
+            connected = VideoConnected,
+            sources = sources.Select(c => new { index = c.Index, name = c.Name, id = c.Id, backend = c.Backend.ToString(), temporary = !c.Persistent }).ToArray(),
+            error,
+        };
+    }
 
     /// <summary>连接视频源；返回错误消息（null = 成功）。桥接模式下 api 由宿主（GUI）配置决定，不透传。</summary>
     public string? ConnectVideo(int index, int api = 0)
@@ -69,15 +80,8 @@ public sealed class FlowServiceState : IDisposable
             if (_bridge is not null)
                 return _bridge.ConnectVideo(index);
 
-            if (_localVideoConnected) DisconnectVideo();
-            var cap = new OpenCVCapture(index, (OpenCvSharp.VideoCaptureAPIs)api);
-            if (!cap.Open(index, api))
+            if (!_localHost!.Frames.Connect(index, (OpenCvSharp.VideoCaptureAPIs)api))
                 return $"视频源打开失败: [{index}]";
-            cap.SetProperties(1920, 1080);
-            _capture = cap;
-            _producer = new FrameProducer(cap);
-            _producer.Start();
-            _localVideoConnected = true;
             return null;
         }
     }
@@ -91,18 +95,14 @@ public sealed class FlowServiceState : IDisposable
                 _bridge.DisconnectVideo();
                 return;
             }
-            _producer?.Dispose();
-            _producer = null;
-            _capture?.Dispose();
-            _capture = null;
-            _localVideoConnected = false;
+            if (!_localHost!.Frames.Disconnect()) throw new InvalidOperationException("视频源仍在停止中");
         }
     }
 
     // ---- 单片机 ----
 
     public bool McuConnected => _mockMcu
-        || (_bridge is not null ? _bridge.IsMcuConnected() : _ns.IsConnected());
+        || (_bridge is not null ? _bridge.IsMcuConnected() : Controller!.InputConnected);
 
     public object McuInfo() => new
     {
@@ -132,9 +132,12 @@ public sealed class FlowServiceState : IDisposable
                 _mcuViaBridge = true;
                 return null;
             }
-            if (_ns.TryConnect(port) != NintendoSwitch.ConnectResult.Success)
-                return $"单片机连接失败: {port}";
-            _pad = new PadInputAdapter(new GamePadAdapter(_ns));
+            try
+            {
+                if (Controller!.TryConnect(port) != ControllerConnectResult.Success) return $"单片机连接失败: {port}";
+            }
+            catch (Exception ex) { return $"单片机连接失败: {port}: {ex.Message}"; }
+            _pad = Controller.CreatePad(DelayType.LowCPU);
             _mockMcu = false;
             return null;
         }
@@ -154,7 +157,7 @@ public sealed class FlowServiceState : IDisposable
                 _mcuViaBridge = false;
                 return;
             }
-            _ns.Disconnect();
+            Controller!.Disconnect();
         }
     }
 
@@ -174,6 +177,7 @@ public sealed class FlowServiceState : IDisposable
 
         lock (_gate)
         {
+            if (Volatile.Read(ref _activeContexts) != 0) return "busy: OCR 后端仍由运行/试跑借用";
             _ocr?.Dispose();
             _ocr = null;
             _ocrError = null;
@@ -236,28 +240,32 @@ public sealed class FlowServiceState : IDisposable
     /// 能力集统一经 <see cref="ScriptHostAssembler"/> 组装（组合根唯一装配点）：
     /// 采集源/手柄以端口传入，OCR/推理按配置共享（借用语义，不得由单次运行释放）。
     /// </summary>
-    public (FlowHostContext Context, CapabilityLease? Lease) BuildRunContext()
+    public (FlowHostContext Context, CapabilityLease? Lease) BuildRunContext(HostRunScope? scope = null)
     {
         lock (_gate)
         {
             // 两种模式统一走 FrameStoreCaptureSource（保留帧号语义：等帧/慢感知依赖 FrameIndex）；
             // 桥接模式下帧存储就是 GUI 监控页的那一份——画布、agent 的 get_frame 与 GUI 共用同一帧管线
-            ICaptureSource? capture = _bridge is not null
+            FrameHub? hub = _bridge?.Frames ?? _localHost?.Frames;
+            ICaptureSource? capture = hub?.CaptureConnected == true ? new FrameHubCaptureSource(hub) : _bridge is not null
                 ? _bridge.GetFrameStore() is { } store ? new FrameStoreCaptureSource(store) : null
-                : _localVideoConnected && _producer != null
-                    ? new FrameStoreCaptureSource(_producer.Store)
+                : VideoConnected
+                    ? new FrameHubCaptureSource(_localHost!.Frames)
                     : null;
+            if (capture != null && scope != null) capture = scope.WrapCapture(capture);
             IOcrService? ocr = AcquireOcr();
 
             CapabilityLease lease = ScriptHostAssembler.Assemble(new ScriptHostContext
             {
                 CaptureSource = capture,
-                PadInput = _pad,
+                PadInput = !_mockMcu && scope != null ? scope.CreatePad() : _pad,
                 Ocr = ocr,
-                BorrowResources = true,      // 共享 OCR/推理：所有权在本状态，运行结束不释放
+                BorrowOcr = true,
                 EnableOcr = false,           // 服务侧后端由 SetOcrBackend 决定，装配器不造默认替身
                 AppDir = AppDomain.CurrentDomain.BaseDirectory,
             });
+            Interlocked.Increment(ref _activeContexts);
+            lease.Released += () => Interlocked.Decrement(ref _activeContexts);
 
             var context = new FlowHostContext
             {
@@ -282,10 +290,22 @@ public sealed class FlowServiceState : IDisposable
         _runs[runId] = handle;
         handle.Task = Task.Run(() =>
         {
-            var (context, lease) = BuildRunContext();
             try
             {
-                handle.Report = new FlowExecutor(graph, context).Run(handle.Cts.Token);
+                void Execute(HostRunScope? scope)
+                {
+                    var (context, lease) = BuildRunContext(scope);
+                    using (lease)
+                    {
+                        handle.Report = new FlowExecutor(graph, context).Run(scope?.Token ?? handle.Cts.Token);
+                        if (handle.Report.Error != null) scope?.MarkFailed("FlowError", handle.Report.ErrorNodeId);
+                        if (handle.Report.WatchdogTriggered) scope?.MarkFailed("Deadline", handle.Report.ErrorNodeId);
+                    }
+                }
+                if (!_mockMcu && Controller != null)
+                    new HostRunCoordinator(Controller, _bridge?.Frames ?? _localHost?.Frames)
+                        .Run("flow", graph.Name, false, handle.Cts.Token, scope => Execute(scope));
+                else Execute(null);
                 handle.Status = handle.Report.Error != null ? "error"
                     : handle.Report.WatchdogTriggered ? "watchdog" : "completed";
             }
@@ -297,11 +317,7 @@ public sealed class FlowServiceState : IDisposable
             {
                 handle.Status = "error";
                 handle.Error = ex.Message;
-                handle.Report.Events.Enqueue("fatal " + ex.Message);
-            }
-            finally
-            {
-                lease?.Dispose();
+                handle.Report?.Events.Enqueue("fatal " + ex.Message);
             }
         });
         return runId;
@@ -446,8 +462,8 @@ public sealed class FlowServiceState : IDisposable
             return;
         foreach (var handle in _runs.Values)
             handle.Cts.Cancel();
-        DisconnectVideo();
-        DisconnectMcu();
+        Task.WhenAll(_runs.Values.Select(h => h.Task ?? Task.CompletedTask)).GetAwaiter().GetResult();
+        _localHost?.Dispose();
         lock (_gate)
         {
             _ocr?.Dispose();

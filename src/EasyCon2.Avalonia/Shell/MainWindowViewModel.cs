@@ -358,8 +358,13 @@ public partial class MainWindowViewModel : ViewModelBase
         Switch.DeviceLost += () => IsRecording = false;
         Capture.CaptureConnected += ShowMonitor;
         Capture.CaptureTypeChanged += () => _settings.ScheduleSave(CollectUserSettings);
+        Switch.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SwitchConnectionViewModel.SelectedSerialPort)) _settings.ScheduleSave(CollectUserSettings);
+        };
         Capture.PropertyChanged += (_, e) =>
         {
+            if (e.PropertyName == nameof(CaptureConnectionViewModel.SelectedCaptureSource)) _settings.ScheduleSave(CollectUserSettings);
             if (e.PropertyName == nameof(CaptureConnectionViewModel.IsCaptureSourceConnected) && TagEditorViewModel != null)
                 TagEditorViewModel.IsCaptureConnected = Capture.IsCaptureSourceConnected;
         };
@@ -544,7 +549,12 @@ public partial class MainWindowViewModel : ViewModelBase
         _fileTreeViewModel.SelectSortModeCommand.Execute(
             FileTreeSortModeSettings.FromSettingValue(cfg.FileTreeSortMode));
 
-        Capture.SelectedCaptureType = UserSettingsService.NormalizeCaptureType(cfg.CaptureType);
+        Capture.SelectedCaptureType = UserSettingsService.NormalizeCaptureType(cfg.CaptureProfile?.Backend ?? cfg.CaptureType);
+        _captureService.Normalization = cfg.CaptureProfile?.Normalization;
+        Switch.SelectedSerialPort = cfg.ControllerProfile?.Endpoint;
+        Capture.SelectedCaptureSource = cfg.CaptureProfile?.DisplayKey;
+        if (Switch.SelectedSerialPort != null && !Switch.SerialPortOptions.Contains(Switch.SelectedSerialPort)) Switch.SerialPortOptions.Add(Switch.SelectedSerialPort);
+        if (Capture.SelectedCaptureSource != null && !Capture.CaptureSourceOptions.Contains(Capture.SelectedCaptureSource)) Capture.CaptureSourceOptions.Add(Capture.SelectedCaptureSource);
         IsAutoCompletionEnabled = cfg.EnableAutoCompletion;
         ShowFolding = cfg.ShowFolding;
         IsHighResolutionTimingEnabled = cfg.HighResolutionTiming;
@@ -579,6 +589,10 @@ public partial class MainWindowViewModel : ViewModelBase
     private void CollectUserSettings(ConfigState cfg)
     {
         cfg.CaptureType = Capture.SelectedCaptureType ?? "ANY";
+        cfg.ControllerProfile = new ControllerProfile(Switch.SelectedSerialPort);
+        CaptureSourceDescriptor? source = _captureService.DescribeSelection(Capture.SelectedCaptureSource);
+        if (source != null || cfg.CaptureProfile?.DisplayKey != Capture.SelectedCaptureSource || cfg.CaptureProfile?.Backend != cfg.CaptureType)
+            cfg.CaptureProfile = new CaptureProfile(source, source?.Index, cfg.CaptureType, _captureService.Normalization, Capture.SelectedCaptureSource);
         cfg.EnableAutoCompletion = IsAutoCompletionEnabled;
         cfg.ShowFolding = ShowFolding;
         cfg.HighResolutionTiming = IsHighResolutionTimingEnabled;

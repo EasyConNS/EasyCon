@@ -1,3 +1,4 @@
+using EasyCon.Core.Maa;
 using EasyDevice;
 
 namespace EasyCon2.Avalonia.Services;
@@ -5,6 +6,7 @@ namespace EasyCon2.Avalonia.Services;
 public interface IDeviceService
 {
     bool IsConnected { get; }
+    string? ActiveEndpoint => GetDevice()?.InputEndpoint;
     bool ShowDebugInfo { get; set; }
     event Action? ConnectionLost;
     /// <summary>
@@ -16,7 +18,7 @@ public interface IDeviceService
     bool TryConnect(string port);
     string? AutoConnect();
     void Disconnect();
-    NintendoSwitch GetDevice();
+    IControllerSession GetDevice();
 
     /// <summary>
     /// 释放所有按键并清空待发送队列，脚本终止时调用。

@@ -197,6 +197,21 @@ public class ScriptHostAssemblerTests
         });
     }
 
+    [Test]
+    public void Lease_PerResourceOwnership_BorrowsOcrAndDisposesOwnedInference()
+    {
+        FakeOcr ocr = new();
+        FakeInference inference = new();
+        using (CapabilityLease lease = ScriptHostAssembler.Assemble(new ScriptHostContext
+        {
+            Ocr = ocr,
+            BorrowOcr = true,
+            Inference = inference,
+        })) { }
+        Assert.That(ocr.Disposed, Is.False);
+        Assert.That(inference.Disposed, Is.True);
+    }
+
     sealed class FakeCapture : ICaptureSource
     {
         public long? FrameIndex => 42;

@@ -1,4 +1,4 @@
-﻿using EasyCon.Capture.win;
+using EasyCon.Capture.win;
 using FlashCap;
 using OpenCvSharp;
 using System.Diagnostics;
@@ -9,6 +9,10 @@ public sealed class ECCapture
 {
     public static IEnumerable<(string name, int index)> GetCaptureCamera()
     {
+        if (OperatingSystem.IsMacOS())
+        {
+            return CaptureSourceCatalog.Enumerate(VideoCaptureAPIs.AVFOUNDATION).Select(source => (source.DisplayKey, source.Index));
+        }
         if (OperatingSystem.IsWindows())
         {
             var filters = DirectShow.GetFiltes(DirectShow.DsGuid.CLSID_VideoInputDeviceCategory);

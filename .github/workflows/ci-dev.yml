@@ -55,7 +55,7 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: 检查代码格式
-        run: dotnet format --verbosity diagnostic
+        run: dotnet format --verify-no-changes --verbosity diagnostic
 
   # ========================================
   # 2. 构建 + 测试 (Debug)
@@ -90,8 +90,19 @@ jobs:
         run: dotnet build --no-restore --configuration Debug
 
       - name: 运行 EasyCon 测试
-        shell: cmd
-        run: ci\test.bat Debug
+        run: dotnet test EasyCon2.slnx --no-build -c Debug --logger trx --results-directory TestResults
+
+      - name: Maa 原生宿主无硬件自检
+        run: dotnet run --no-build -c Debug --project src/EasyCon2.CLI -- maa doctor | Tee-Object maa-runtime.json
+
+      - name: 上传宿主与测试验收记录
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: host-p1-tests
+          path: |
+            TestResults/*.trx
+            maa-runtime.json
 
       - name: 串行运行真实窗口保存快捷键回归
         run: >-
@@ -139,3 +150,47 @@ jobs:
           path: |
             vm-budget-*.txt
             TestResults/*.trx
+
+  build-macos:
+    if: github.event_name != 'workflow_run'
+    runs-on: macos-14
+    needs: format
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+      - name: 检查 AVFoundation 真实枚举入口（无设备可返回空列表，不请求权限）
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet run --project src/EasyCon2.CLI -c Release -- video --list | tee macos-video-sources.txt
+      - name: 打包 macOS .app
+        shell: bash
+        env:
+          CI: "true"
+        run: bash ci/macos-app.sh
+      - name: 检查发布包的枚举入口并打包
+        shell: bash
+        run: |
+          set -o pipefail
+          dist/publish/EasyCon.app/Contents/MacOS/ezcon video --list | tee macos-published-video-sources.txt
+          version="$(git rev-parse --short HEAD)"
+          ditto -c -k --sequesterRsrc --keepParent dist/publish/EasyCon.app "dist/EasyCon2-${version}-macos-arm64.zip"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: easycon2-macos-arm64
+          path: |
+            dist/*.zip
+            macos-video-sources.txt
+            macos-published-video-sources.txt
+          if-no-files-found: error
+          retention-days: 30

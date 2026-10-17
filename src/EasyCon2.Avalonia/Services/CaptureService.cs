@@ -1,8 +1,8 @@
-﻿using Avalonia.Threading;
+using Avalonia.Threading;
 using EasyCon.Capture;
 using EasyCon.Core;
+using EasyCon.Core.Maa;
 using EasyCon.Core.Services;
-using EasyCon2.Avalonia.Services;
 using OpenCvSharp;
 
 namespace EasyCon2.Avalonia.Services;
@@ -10,184 +10,146 @@ namespace EasyCon2.Avalonia.Services;
 public class CaptureService : ICaptureService, IDisposable
 {
     private readonly ILogService _logService;
-    private readonly object _captureLock = new();
-
-    /// <summary>串行化连接生命周期（Open/Dispose 可阻塞数秒，不能占用 _captureLock）。</summary>
-    private readonly object _connectLock = new();
+    private readonly FrameHub _frames;
+    private readonly bool _ownsFrames;
     private readonly System.Timers.Timer _monitorTimer = new(1000);
+    private readonly Dictionary<string, CaptureSourceDescriptor> _sourceIndexMap = new();
     private readonly object _sourceIndexLock = new();
-    private readonly Dictionary<string, int> _sourceIndexMap = new();
-    private FrameProducer? _producer;
 
-    private readonly Size resol = new(1920, 1080);
-    public string CaptureType { get; set; } = "ANY";
-
-    public bool IsConnected
+    public CaptureService(ILogService logService, FrameHub? frames = null)
     {
-        get
+        _logService = logService;
+        _frames = frames ?? new FrameHub();
+        _ownsFrames = frames == null;
+        _monitorTimer.Elapsed += (_, _) =>
         {
-            lock (_captureLock)
+            if (_frames.CaptureConnected) return;
+            _monitorTimer.Stop();
+            Dispatcher.UIThread.Post(() =>
             {
-                return _producer?.IsOpened ?? false;
-            }
-        }
+                ConnectionLost?.Invoke();
+                _logService.AddLog($"视频源不可用: {_frames.LastError ?? "已断开或等待有效帧超时"}");
+            });
+        };
     }
 
+    public string CaptureType { get; set; } = "ANY";
+    public FrameHub FrameHub => _frames;
+    public string? ActiveSource => _frames.Selection?.DisplayKey ?? (_frames.DeviceIndex is { } index ? $"视频源 {index}" : _frames.SourceId);
+    public FrameNormalization? Normalization { get; set; }
+    public string? ActiveBackend => _frames.Backend?.ToString();
+    public CaptureSourceDescriptor? DescribeSelection(string? displayKey)
+    {
+        lock (_sourceIndexLock)
+            return displayKey != null && _sourceIndexMap.TryGetValue(displayKey, out CaptureSourceDescriptor? source) ? source : null;
+    }
+    public bool IsConnected => _frames.CaptureConnected;
     public event Action? ConnectionLost;
 #pragma warning disable CS0067
     public event Action? ConnectionRestored;
 #pragma warning restore CS0067
-
-    /// <summary>连接状态可能已变化（连接/断开成功后触发，含 Flow 桥接的外部连接）。非 UI 线程。</summary>
     public event Action? ConnectionStateChanged;
-
-    public CaptureService(ILogService logService)
-    {
-        _logService = logService;
-
-        _monitorTimer.Elapsed += (s, e) =>
-        {
-            lock (_captureLock)
-            {
-                var producer = Volatile.Read(ref _producer);
-                if (producer == null || !producer.IsOpened)
-                {
-                    _monitorTimer.Stop();
-                    Dispatcher.UIThread.Post(() =>
-                    {
-                        ConnectionLost?.Invoke();
-                        _logService.AddLog("视频源已从外部断开");
-                    });
-                }
-            }
-        };
-    }
 
     public string[] GetAvailableSources()
     {
-        var sources = ECCore.GetCaptureSources().ToList();
+        IReadOnlyList<CaptureSourceDescriptor> sources;
+        try { sources = CaptureSourceCatalog.Enumerate(GetCaptureApi()); }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"无法枚举所选采集后端: {ex.Message}");
+            lock (_sourceIndexLock) _sourceIndexMap.Clear();
+            return [];
+        }
         lock (_sourceIndexLock)
         {
             _sourceIndexMap.Clear();
-            foreach (var (name, index) in sources)
-                _sourceIndexMap[name] = index;
+            foreach (CaptureSourceDescriptor source in sources) _sourceIndexMap[source.DisplayKey] = source;
         }
-        return sources.Select(x => x.name).ToArray();
+        return sources.Select(x => x.DisplayKey).ToArray();
     }
 
     public bool TryConnect(string sourceName)
     {
-        lock (_sourceIndexLock)
+        CaptureSourceDescriptor? source;
+        lock (_sourceIndexLock) _sourceIndexMap.TryGetValue(sourceName, out source);
+        if (source == null || source.Backend != CaptureSourceCatalog.ResolveBackend(GetCaptureApi()))
         {
-            return TryConnect(_sourceIndexMap.TryGetValue(sourceName, out var idx) ? idx : 0);
+            _logService.AddLog($"视频来源不可用，请刷新并重新选择: {sourceName}");
+            return false;
         }
+        return Connect(() => _frames.Connect(source, Normalization));
     }
 
-    /// <summary>按设备索引连接（Flow 服务桥接用：画布/agent 报告的是枚举索引）。</summary>
     public bool TryConnect(int deviceId)
     {
-        // capture.Open 可阻塞数秒（native 打开采集卡）、旧 producer.Dispose 最长 5 秒，
-        // 都放在 _captureLock 之外执行：锁内只做引用替换，避免拖住并发的
-        // IsConnected / SetCaptureProperties / AcquireLatestFrame 调用方。
-        // 并发的多次 TryConnect/Disconnect 由 _connectLock 串行化。
-        var ok = false;
-        lock (_connectLock)
+        CaptureSourceDescriptor? source;
+        lock (_sourceIndexLock) source = _sourceIndexMap.Values.SingleOrDefault(s => s.Index == deviceId && s.Backend == CaptureSourceCatalog.ResolveBackend(GetCaptureApi()));
+        if (source == null)
         {
-            // 转换期内不许监视定时器评价新旧 producer 之间的过渡态，
-            // 否则它会读到“已断开”误发 ConnectionLost（重连误报的根源）
-            _monitorTimer.Stop();
-
-            // 先摘引用再 Dispose：AcquireLatestFrame 等热路径立刻看到未连接，
-            // 不会摸到已释放的 Store
-            var oldProducer = Volatile.Read(ref _producer);
-            Volatile.Write(ref _producer, null);
-            oldProducer?.Dispose();
-
-            var capture = new OpenCVCapture();
-            if (capture.Open(deviceId, (int)GetCaptureApi()))
-            {
-                capture.SetResolution(resol.Width, resol.Height);
-                capture.SetProperties();
-                capture.GetProperties();
-
-                var producer = new FrameProducer(capture);
-                producer.Start();
-                Volatile.Write(ref _producer, producer);
-                ok = true;
-            }
-            else
-            {
-                capture.Dispose();
-                // 失败留在干净的无连接状态；监视定时器保持停止，由调用方决定重试
-            }
+            _logService.AddLog($"视频序号不属于当前后端的枚举，请刷新来源: {deviceId}");
+            return false;
         }
-
-        if (ok)
-            _monitorTimer.Start();
-        // 失败也广播：旧 producer 已被摘除，连接状态确实发生了变化
-        ConnectionStateChanged?.Invoke();
-        return ok;
+        return Connect(() => _frames.Connect(source, Normalization));
     }
 
-    /// <summary>
-    /// 异步断开：FrameProducer.Dispose 会同步等待采集循环退出（采集卡阻塞在
-    /// Read 上时最长 5 秒），放线程池执行以免冻结调用方（UI 线程）。
-    /// </summary>
+    public IReadOnlyList<CaptureSourceDescriptor> GetSourceDescriptors()
+    {
+        GetAvailableSources();
+        lock (_sourceIndexLock) return _sourceIndexMap.Values.ToArray();
+    }
+
+    private VideoCaptureAPIs GetCaptureApi() => CaptureType switch
+    {
+        "DSHOW" => VideoCaptureAPIs.DSHOW,
+        "MSMF" => VideoCaptureAPIs.MSMF,
+        "DC1394" => VideoCaptureAPIs.DC1394,
+        "AVFOUNDATION" => VideoCaptureAPIs.AVFOUNDATION,
+        "V4L2" => VideoCaptureAPIs.V4L2,
+        _ => VideoCaptureAPIs.ANY,
+    };
+
+    private bool Connect(Func<bool> open)
+    {
+        _monitorTimer.Stop();
+        try
+        {
+            return open();
+        }
+        catch (Exception ex)
+        {
+            _logService.AddLog($"视频源连接失败: {ex.Message}");
+            return false;
+        }
+        finally
+        {
+            if (IsConnected) _monitorTimer.Start();
+            ConnectionStateChanged?.Invoke();
+        }
+    }
+
     public Task DisconnectAsync()
     {
         _monitorTimer.Stop();
         return Task.Run(() =>
         {
-            lock (_connectLock)
-            {
-                var producer = Volatile.Read(ref _producer);
-                Volatile.Write(ref _producer, null);
-                producer?.Dispose();
-            }
+            bool stopped = _frames.Disconnect();
             ConnectionStateChanged?.Invoke();
+            if (!stopped) throw new InvalidOperationException("视频源正在停止，等待旧 Read 退出");
         });
+    }
+
+    public FrameLease? AcquireLatestFrame() => _frames.AcquireLatest();
+    public FrameStore? GetFrameStore() => _frames.CaptureConnected ? _frames.Store : null;
+
+    public void SetCaptureProperties(int width, int height)
+    {
+        if (width != FrameNormalization.Width || height != FrameNormalization.Height)
+            throw new ArgumentException("统一帧源固定为 1920×1080；变换请配置 FrameNormalization");
     }
 
     public void Dispose()
     {
         _monitorTimer.Dispose();
-        // 退出时仍在连接：释放采集线程与 OpenCV 原生句柄（Dispose 最长等采集循环 5 秒）
-        Volatile.Read(ref _producer)?.Dispose();
-    }
-
-    /// <summary>
-    /// 获取最新一帧的租约。热路径无锁，仅对 _producer 引用做易失读取。
-    /// 未连接或尚无帧时返回 null；调用者须持有租约直至不再使用 Mat。
-    /// </summary>
-    public FrameLease? AcquireLatestFrame()
-    {
-        var producer = Volatile.Read(ref _producer);
-        return producer?.Store.AcquireLatest();
-    }
-
-    /// <summary>当前帧存储（未连接为 null）。Flow 服务桥接用：复用 GUI 的采集管线而非二次打开采集卡。</summary>
-    public FrameStore? GetFrameStore()
-    {
-        var producer = Volatile.Read(ref _producer);
-        return producer?.Store;
-    }
-
-    public void SetCaptureProperties(int width, int height)
-    {
-        lock (_captureLock)
-        {
-            _producer?.SetProperties(width, height);
-        }
-    }
-
-    private VideoCaptureAPIs GetCaptureApi()
-    {
-        return CaptureType switch
-        {
-            "DSHOW" => VideoCaptureAPIs.DSHOW,
-            "MSMF" => VideoCaptureAPIs.MSMF,
-            "DC1394" => VideoCaptureAPIs.DC1394,
-            _ => VideoCaptureAPIs.ANY
-        };
+        if (_ownsFrames) _frames.Dispose();
     }
 }

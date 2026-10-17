@@ -1,5 +1,6 @@
 using Avalonia.Threading;
 using EasyCon.Core;
+using EasyCon.Core.Maa;
 using EasyCon.Core.Services;
 using EasyDevice;
 using IDeviceService = EasyCon2.Avalonia.Services.IDeviceService;
@@ -9,11 +10,11 @@ namespace EasyCon2.Avalonia.Services;
 public class DeviceService : IDeviceService, IDisposable
 {
     private readonly ILogService _logService;
-    private readonly NintendoSwitch _nintendoSwitch = new();
+    private readonly IControllerSession _nintendoSwitch;
     private bool _isConnected;
     private bool _showDebugInfo;
 
-    public bool IsConnected => _isConnected;
+    public bool IsConnected => _nintendoSwitch.InputConnected;
     public bool ShowDebugInfo
     {
         get => _showDebugInfo;
@@ -43,9 +44,10 @@ public class DeviceService : IDeviceService, IDisposable
     /// <summary>连接状态可能已变化（连接/断开尝试后触发，含 Flow 桥接的外部连接）。非 UI 线程。</summary>
     public event Action? ConnectionStateChanged;
 
-    public DeviceService(ILogService logService)
+    public DeviceService(ILogService logService, IControllerSession controller)
     {
         _logService = logService;
+        _nintendoSwitch = controller;
         _nintendoSwitch.StatusChanged += OnStatusChanged;
     }
 
@@ -54,7 +56,7 @@ public class DeviceService : IDeviceService, IDisposable
     public bool TryConnect(string port)
     {
         var result = _nintendoSwitch.TryConnect(port);
-        if (result == NintendoSwitch.ConnectResult.Success)
+        if (result == ControllerConnectResult.Success)
         {
             _isConnected = true;
             ConnectionStateChanged?.Invoke();
@@ -78,11 +80,7 @@ public class DeviceService : IDeviceService, IDisposable
     {
         try
         {
-            if (_isConnected)
-            {
-                _nintendoSwitch.Reset();
-                _nintendoSwitch.Disconnect();
-            }
+            _nintendoSwitch.Dispose();
         }
         catch
         {
@@ -90,7 +88,7 @@ public class DeviceService : IDeviceService, IDisposable
         }
     }
 
-    public NintendoSwitch GetDevice() => _nintendoSwitch;
+    public IControllerSession GetDevice() => _nintendoSwitch;
 
     public void Reset() => _nintendoSwitch.Reset();
 

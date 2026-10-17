@@ -14,6 +14,7 @@ public partial class NintendoSwitch
         lock (this)
         {
             _keystrokes.Clear();
+            _reset = false;
             _report.Button = report.Button;
             _report.HAT = report.HAT;
             _report.LX = report.LX;
@@ -66,6 +67,7 @@ public partial class NintendoSwitch
             sleep = int.MaxValue;
             lock (this)
             {
+                if (token.IsCancellationRequested) return;
                 if (_reset)
                 {
                     _report.Reset();
