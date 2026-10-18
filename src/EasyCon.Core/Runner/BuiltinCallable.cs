@@ -89,7 +89,7 @@ internal static class BuiltinCallable
         return Value.FromString(result ?? "ERR!!FRAME NOT SUPPORT");
     }
 
-    /// <summary>__TESSERACT__ 洞：脚本 OCR 能力面对接的唯一引擎（Tesseract）。
+    /// <summary>__TESSERACT__ 洞：保持旧名字，OCR 后端由宿主装配。
     /// ppocr 不经此面——走 NET 族张量原语 + std 配方（StdLib PP_OCR_DIGITS）。</summary>
     public static Value ImplTesseractHole(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
     {
@@ -100,7 +100,7 @@ internal static class BuiltinCallable
             // 旧委托直通：OcrDelegate 自带采集（P3 随洞改造退役）
             DelegateOcrService legacy => legacy.Ocr?.Invoke(
                 args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsString()),
-            // 通用服务：区域帧在采集侧裁好，识别服务收整图（query 缺省区域）
+            // 通用服务持有 ROI 规则；不能用 FRAME 的零尺寸规则提前裁掉 OCR 输入。
             _ => OcrRecognize(ocr, capabilities.Capture,
                 args[0].AsInt(), args[1].AsInt(), args[2].AsInt(), args[3].AsInt(), args[4].AsString()),
         };
@@ -109,10 +109,10 @@ internal static class BuiltinCallable
 
     static string OcrRecognize(IOcrService ocr, ICaptureSource? capture, int x, int y, int w, int h, string lang)
     {
-        var frame = capture?.CaptureFrame(x, y, w, h);
+        var frame = capture?.CaptureFullFrame();
         return frame == null
             ? "ERR!!OCR NOT SUPPORT"
-            : ocr.Recognize(ImageRef.FromBase64(frame), new OcrQuery { Language = lang });
+            : ocr.Recognize(ImageRef.FromBase64(frame), new OcrQuery { X = x, Y = y, Width = w, Height = h, Language = lang });
     }
 
     /// <summary>Vision 能力缺省回落桌面参考实现（同 Files → DesktopFileSystem 先例）：

@@ -213,7 +213,7 @@ public static class FlowNodeCatalog
         [.. Enum.GetNames<GamePadKey>().Where(n => n != nameof(GamePadKey.None))];
 
     /// <summary>OCR 后端选项（服务侧装配开关的取值）。</summary>
-    public static IReadOnlyList<string> OcrBackends { get; } = ["none", "tesseract", "ppocr"];
+    public static IReadOnlyList<string> OcrBackends { get; } = ["none", "tesseract", "ppocr", "maa"];
 
     /// <summary>按类型查目录项。</summary>
     public static FlowNodeSpec? Find(string type) => Nodes.FirstOrDefault(n => n.Type == type);

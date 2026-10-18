@@ -50,7 +50,13 @@ public sealed class UserSettingsService : IUserSettingsService
     {
         try
         {
-            return _load();
+            ConfigState state = _load();
+            new HostProfiles
+            {
+                Controller = state.ControllerProfile,
+                Capture = state.CaptureProfile ?? new CaptureProfile(Backend: state.CaptureType),
+            }.Validate();
+            return state;
         }
         catch (Exception ex)
         {

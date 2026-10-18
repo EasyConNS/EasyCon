@@ -5,7 +5,7 @@ namespace EasyCon.Core.Maa;
 public sealed record MaaRecognitionRequest(string Type, string Parameters, ReadOnlyMemory<byte> Png,
     string RequestId, string? RunId, string? ResourceGeneration);
 
-public sealed record MaaRecognitionResult(string RequestId, string NativeStatus, string? Detail, string? ErrorCode);
+public sealed record MaaRecognitionResult(string RequestId, string NativeStatus, string? Detail, string? ErrorCode, bool? Hit = null);
 
 public interface IMaaRecognitionSession : IAsyncDisposable
 {

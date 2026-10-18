@@ -2,6 +2,7 @@
 using EasyCon.Capture;
 using EasyCon.Core.Capabilities;
 using EasyCon.Core.Logging;
+using EasyCon.Core.Maa;
 using EasyScript;
 
 namespace EasyCon.Core.Hosting;
@@ -46,6 +47,9 @@ public sealed class ScriptHostContext
 
     /// <summary>OCR 后端（所有权移交装配结果）；null 且 <see cref="EnableOcr"/> 时装配默认 Tesseract。</summary>
     public IOcrService? Ocr { get; init; }
+    /// <summary>显式 Maa OCR 模型/旧参数映射；未指定时保留已验证的旧默认后端。</summary>
+    public string? MaaOcrProfilePath { get; init; }
+    public CancellationToken CancellationToken { get; init; }
 
     /// <summary>推理后端（所有权移交装配结果）；null 且 <see cref="EnableInference"/> 时装配默认 DNN。</summary>
     public IInference? Inference { get; init; }
@@ -152,9 +156,11 @@ public static class ScriptHostAssembler
         IOcrService? ocr = context.Ocr;
         if (ocr is null && context.EnableOcr)
         {
+            string? maaProfile = context.MaaOcrProfilePath ?? Environment.GetEnvironmentVariable("EASYCON_MAA_OCR_PROFILE");
+            if (!string.IsNullOrWhiteSpace(maaProfile)) ocr = new MaaOcrService(MaaOcrProfile.Load(maaProfile), context.CancellationToken);
             // OCR 无条件装配（与历史行为一致）：tessdata 缺失时识别给出明确错误，
             // 而非让脚本看到「能力不存在」这种无从排查的语义。
-            ocr = new TesseractOcrService(new OcrEngineCache
+            ocr ??= new TesseractOcrService(new OcrEngineCache
             {
                 DefaultDataPath = string.IsNullOrWhiteSpace(context.TessdataPath)
                     ? Path.Combine(appDir, "Tessdata")

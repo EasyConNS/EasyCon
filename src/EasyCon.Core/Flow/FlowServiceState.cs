@@ -174,6 +174,12 @@ public sealed class FlowServiceState : IDisposable
             return $"未知 OCR 后端: {backend}（可选 {string.Join(" | ", FlowNodeCatalog.OcrBackends)}）";
         if (normalized == "ppocr" && string.IsNullOrWhiteSpace(modelDir))
             return "ppocr 后端需要 modelDir（PP-OCR ONNX 模型与字典目录）";
+        if (normalized == "maa")
+        {
+            if (string.IsNullOrWhiteSpace(modelDir)) return "maa 后端需要 modelDir 指向 OCR profile JSON";
+            try { _ = MaaOcrProfile.Load(modelDir); }
+            catch (Exception ex) { return $"OCR profile 无效: {ex.Message}"; }
+        }
 
         lock (_gate)
         {
@@ -220,6 +226,7 @@ public sealed class FlowServiceState : IDisposable
                 _ocr = OcrBackend switch
                 {
                     "ppocr" => new PaddleOnnxOcr(OcrModelDir!),
+                    "maa" => new MaaOcrService(MaaOcrProfile.Load(OcrModelDir!)),
                     _ => new TesseractOcrService(new OcrEngineCache
                     {
                         DefaultDataPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Tessdata"),

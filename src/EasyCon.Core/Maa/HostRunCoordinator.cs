@@ -26,7 +26,7 @@ public sealed class HostRunCoordinator(IControllerSession controller, FrameHub? 
     public event Action<HostRunResult>? Completed;
 
     public void Run(string entryKind, string? source, bool requiresInput, CancellationToken token,
-        Action<HostRunScope> execute, bool requiresCapture = false, string compatibilityProfile = "EasyCon.Legacy")
+        Action<HostRunScope> execute, bool requiresCapture = false, string compatibilityProfile = "EasyCon.Legacy", string? resourceGeneration = null)
     {
         using HostRunScope scope = new(controller, frames, token, requiresInput, requiresCapture);
         Stopwatch elapsed = Stopwatch.StartNew();
@@ -60,7 +60,7 @@ public sealed class HostRunCoordinator(IControllerSession controller, FrameHub? 
             if (cleanup == CleanupStatus.ReleaseUnconfirmed) { status = "Failed"; error ??= "ReleaseUnconfirmed"; }
             HostRunResult result = new(scope.RunId, entryKind, source, status, scope.NativeStatus, error,
                 elapsed.Elapsed, cleanup, scope.EffectiveConfig, CompatibilityProfile: compatibilityProfile,
-                InvocationId: entryKind == "ecs" ? scope.RunId + ":ecs" : null, ErrorNode: scope.ErrorNode);
+                ResourceGeneration: resourceGeneration, InvocationId: entryKind == "ecs" ? scope.RunId + ":ecs" : null, ErrorNode: scope.ErrorNode);
             try
             {
                 Directory.CreateDirectory(DiagnosticDirectory);

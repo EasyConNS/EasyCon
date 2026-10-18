@@ -16,7 +16,7 @@ namespace EasyCon2.Avalonia.Core.Tests;
 /// 设备/采集/日志依赖均以 fake 就地实现，不触达真实硬件。
 /// </summary>
 [TestFixture]
-public class ScriptServiceTests
+public partial class ScriptServiceTests
 {
     private List<string> _scriptDirectories = [];
     private readonly List<FakeDeviceService> _devices = [];

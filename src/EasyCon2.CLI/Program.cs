@@ -26,6 +26,8 @@ Console.OutputEncoding = Encoding.UTF8;
 bool isFormatCommand = args.Length > 0 && args[0] == "format";
 bool isLspCommand = args.Length > 0 && args[0] == "lsp";
 bool isMcpCommand = args.Length > 0 && args[0] == "--mcp";
+bool isLabelCommand = args.Length > 0 && args[0] == "labels";
+bool isMaaCommand = args.Length > 0 && args[0] == "maa";
 
 string defaultCOMPort = "COM22";
 
@@ -40,7 +42,7 @@ EasyCon.Core.Config.ConfigManager.ConfigErrorReported += (path, msg) =>
 // 库层诊断转发（CoreLog 默认仅 Debug.WriteLine，Release 下会丢失）
 EasyCon.Core.Logging.CoreLog.Sink = msg => Console.Error.WriteLine(msg);
 
-if (!isFormatCommand && !isLspCommand && !isMcpCommand)
+if (!isFormatCommand && !isLspCommand && !isMcpCommand && !isLabelCommand && !isMaaCommand)
 {
     Console.WriteLine("------------------------------------------");
     Console.WriteLine("----    EasyCon CLI Runner v0.0.1     ----");
@@ -107,6 +109,14 @@ runScriptCommand.Options.Add(portOption);
 runScriptCommand.Options.Add(verboseOption);
 var profilesOption = new Option<string?>("--profiles") { Description = "GUI/CLI 共用的 JSON 配置（controller_profile 与 capture_profile）；显式命令行参数只覆盖对应一侧" };
 runScriptCommand.Options.Add(profilesOption);
+var compatibilityOption = new Option<LegacyCompatibilityProfile>("--compatibility")
+{
+    Description = "旧标签整数评分契约：LegacyGui 截断，LegacyCli 向上取整",
+    DefaultValueFactory = _ => LegacyCompatibilityProfile.LegacyCli,
+};
+runScriptCommand.Options.Add(compatibilityOption);
+var ocrProfileOption = new Option<string?>("--ocr-profile") { Description = "显式 Maa OCR 模型与旧参数映射 JSON；不隐式替换未验收的旧 OCR 配置" };
+runScriptCommand.Options.Add(ocrProfileOption);
 #endregion
 
 runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
@@ -148,14 +158,14 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     scriptBasePath = Path.GetFullPath(scriptBasePath);
     Console.WriteLine("准备加载搜图标签...");
     Console.WriteLine($"标签（脚本）路径：{scriptBasePath}({ECCore.ImgDir}所在目录)");
-    var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppDomain.CurrentDomain.BaseDirectory);
-    Console.WriteLine($"已加载标签：{label.Count()}/{total}, {(repeat > 0 ? $"重复标签：{repeat}" : "")}");
+    LabelDiscovery labels = LegacyLabelCatalog.FromParents(scriptBasePath, AppDomain.CurrentDomain.BaseDirectory);
+    Console.WriteLine($"已加载标签：{labels.Selected.Count}/{labels.TotalFiles}");
 
 
     outdap.Log("正在解析脚本...");
     session = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
     {
-        Compile = ScriptCompileProfiles.Interactive(label.Select(il => il.name)),
+        Compile = ScriptCompileProfiles.Interactive(labels.Selected.Select(label => label.Name)),
     });
     Console.WriteLine(session.Info.Timing?.ToReport());
     var diag = session.Info.Diagnostics;
@@ -171,6 +181,19 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         return 1;
     }
 
+    LegacyCompatibilityProfile compatibility = parseResult.GetValue(compatibilityOption);
+    LabelGeneration? generation = null;
+    IReadOnlyList<string> requiredLabels = ScriptHardwareRequirements.ReferencedLabels(session.Info);
+    if (requiredLabels.Count != 0)
+    {
+        string? ocrPath = parseResult.GetValue(ocrProfileOption) ?? Environment.GetEnvironmentVariable("EASYCON_MAA_OCR_PROFILE");
+        LabelConversionResult conversion = MaaLabelConverter.Build(labels, MaaLabelConverter.CacheRoot(scriptBasePath), compatibility,
+            ocrProfile: string.IsNullOrWhiteSpace(ocrPath) ? null : MaaOcrProfile.Load(ocrPath));
+        foreach (LabelDiagnostic diagnostic in conversion.Report.Diagnostics)
+            outdap.Log($"标签 {diagnostic.Code}: {diagnostic.Label}: {diagnostic.Message}");
+        generation = conversion.Generation ?? throw new InvalidDataException("标签资源转换未发布");
+        generation.Preflight(requiredLabels);
+    }
     bool isMock = COM.Equals("mock", StringComparison.OrdinalIgnoreCase);
 
     if (session.Info.KeyAction)
@@ -206,7 +229,8 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         }
     }
 
-    if (session.Info.NeedIL)
+    bool requiresCapture = ScriptHardwareRequirements.RequiresLiveCapture(session.Info);
+    if (requiresCapture)
     {
         outdap.Log("准备打开采集源...");
         bool opened = profiles?.Capture is { } captureProfile
@@ -236,27 +260,12 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     // OCR/推理/宿主环境/文件能力的默认值与释放统一由租约承担。
 
 
-    LabelMatchDelegate? labelMatchDelegate = null;
-    if (maaHost.Frames.CaptureConnected && label.Count() > 0)
-    {
-        var labelDict = label.ToDictionary(il => il.name);
-        labelMatchDelegate = lblName =>
-        {
-            if (!labelDict.TryGetValue(lblName, out var il)) return 0;
-            using var lease = maaHost.Frames.AcquireLatest();
-            if (lease == null || lease.Mat.Empty()) return 0;
-            il.Search(lease.Mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
-            return (int)Math.Ceiling(md);
-        };
-    }
-
-    // 有采集源即装配帧与 ROI：标签数量只决定 Vision 的匹配委托，不再决定 FRAME 能力有无。
+    // 已有图像的 ROI 始终可用，只有 FRAME 与标签匹配借用实时采集。
     FrameDelegate? frameDelegate = null;
-    RoiDelegate? roiDelegate = null;
+    RoiDelegate roiDelegate = MatExtensions.CropBase64;
     if (maaHost.Frames.CaptureConnected)
     {
         frameDelegate = FrameDelegateFactory.CreateFrame(() => maaHost.Frames.AcquireLatest());
-        roiDelegate = MatExtensions.CropBase64;
     }
 
     outdap.Info($"==>开始执行脚本：{file}\n");
@@ -265,17 +274,21 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
     {
         maaHost.Runs.Run("ecs", Path.GetFullPath(file), !isMock && session.Info.KeyAction, cancellationToken, scope =>
         {
+            using MaaVisionService? vision = generation == null ? null : new(generation,
+                () => scope.AcquireFrame(maaHost.Frames.AcquireLatest), scope.Token);
             using CapabilityLease capabilityLease = ScriptHostAssembler.Assemble(new ScriptHostContext
             {
                 PadInput = session.Info.KeyAction ? isMock ? new PadInputAdapter(new MockGamePad()) : scope.CreatePad() : null,
                 Console = new EasyCon.Core.Capabilities.ConsoleIoAdapter(outdap),
                 Frame = frameDelegate == null ? null : FrameDelegateFactory.CreateFrame(() => scope.AcquireFrame(maaHost.Frames.AcquireLatest)),
                 Roi = roiDelegate,
-                LabelMatch = labelMatchDelegate == null ? null : name => { scope.RequireCapture(); return labelMatchDelegate(name); },
+                VisionService = vision,
+                MaaOcrProfilePath = parseResult.GetValue(ocrProfileOption),
+                CancellationToken = scope.Token,
                 AppDir = AppDomain.CurrentDomain.BaseDirectory,
             });
             session.Run(scope.Token, capabilityLease.Capabilities);
-        }, requiresCapture: session.Info.NeedIL, compatibilityProfile: "EasyCon.Legacy.CLI.Ceiling");
+        }, requiresCapture: requiresCapture, compatibilityProfile: compatibility.ToString(), resourceGeneration: generation?.Id);
         outdap.Info("脚本运行完成");
     }
     catch (OperationCanceledException)
@@ -600,6 +613,7 @@ rootCommand.Subcommands.Add(lspCommand);
 rootCommand.Subcommands.Add(AgentCommand.Create());
 rootCommand.Subcommands.Add(FlowCommand.Create(maaHost));
 rootCommand.Subcommands.Add(MaaHostCommand.Create());
+rootCommand.Subcommands.Add(LabelsCommand.Create());
 rootCommand.Subcommands.Add(ServeCommand.Create());
 
 // --mcp：stdio 模式的 MCP Server（任意外部 agent 经标准 MCP 协议驱动工作区工具）

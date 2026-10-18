@@ -1,4 +1,5 @@
 #nullable enable
+using EasyCon.Core.Capabilities;
 using MaaFramework.Binding;
 using MaaFramework.Binding.Buffers;
 using OpenCvSharp;
@@ -8,10 +9,24 @@ namespace EasyCon.Core.Maa;
 
 public sealed record MaaRuntimeCheck(string Runtime, string? Binding, bool ResourceLoaded,
     bool TaskerInitialized, string RecognitionStatus, bool PixelRoundTrip, IReadOnlyDictionary<string, string> NativeLibraries);
+public sealed record MaaOcrRuntimeCheck(string ModelGeneration, string Expected, string Actual, double RawConfidence,
+    int LegacyConfidence, string Compatibility);
 
 /// <summary>无硬件的发行目录自检。加载真实原生资源、显式图像识别与两套 OpenCV 的 PNG 桥接。</summary>
 public static class MaaHostDiagnostics
 {
+    public static MaaOcrRuntimeCheck CheckOcr(string profilePath)
+    {
+        MaaOcrProfile profile = MaaOcrProfile.Load(profilePath);
+        using MaaOcrService ocr = new(profile);
+        if (!ocr.Init(new OcrConfig { Language = "eng" })) throw new InvalidOperationException("中英试点 OCR 模型初始化失败");
+        using Mat image = new(64, 256, MatType.CV_8UC3, Scalar.All(255));
+        Cv2.PutText(image, "12345", new Point(12, 46), HersheyFonts.HersheySimplex, 1.3, Scalar.Black, 2, LineTypes.AntiAlias);
+        string actual = ocr.Recognize(ImageRef.FromBase64(Convert.ToBase64String(image.ToBytes(".png"))), new OcrQuery { Language = "eng" });
+        if (actual != "12345" || ocr.LastConfidence <= 0) throw new InvalidOperationException($"OCR 显式图片自检失败: [{actual}], confidence={ocr.LastConfidence}");
+        return new(profile.Digest, "12345", actual, ocr.LastRawConfidence, ocr.LastConfidence, profile.Compatibility);
+    }
+
     public static MaaRuntimeCheck CheckRuntime()
     {
         string version = MaaEnvironment.RuntimeVersion;

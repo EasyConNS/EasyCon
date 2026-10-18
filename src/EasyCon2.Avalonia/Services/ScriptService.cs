@@ -42,7 +42,7 @@ public class ScriptService : IScriptService
     {
         return new ScriptRequirements(
             HasKeyAction: HasKeyAction,
-            NeedImageRecognition: _session?.Info.NeedIL ?? false,
+            NeedImageRecognition: ScriptHardwareRequirements.RequiresLiveCapture(_session?.Info),
             DeviceConnected: _deviceService.IsConnected,
             CaptureConnected: _captureService.IsConnected
         );
@@ -103,10 +103,10 @@ public class ScriptService : IScriptService
         ExecuteScript(() =>
         {
             string fullPath = Path.GetFullPath(scriptPath);
-            Dictionary<string, ImgLabel> labelDict = LoadScriptLabels(fullPath);
+            LabelDiscovery labels = LoadScriptLabels(fullPath);
             IScriptSession? session = CompileCore(
-                () => _engine.LoadFile(fullPath, Options([.. labelDict.Keys])), fullPath);
-            return (session, BuildLabelMatchDelegate(labelDict));
+                () => _engine.LoadFile(fullPath, Options([.. labels.Selected.Select(label => label.Name)])), fullPath);
+            return (session, labels);
         }, args, scriptPath);
     }
 
@@ -163,7 +163,7 @@ public class ScriptService : IScriptService
         return session;
     }
 
-    (IScriptSession? Session, LabelMatchDelegate? LabelMatch) CompileContent(string content, string? fileName)
+    (IScriptSession? Session, LabelDiscovery? Labels) CompileContent(string content, string? fileName)
     {
         if (string.IsNullOrWhiteSpace(fileName))
         {
@@ -172,17 +172,16 @@ public class ScriptService : IScriptService
         }
 
         string fullPath = Path.GetFullPath(fileName);
-        Dictionary<string, ImgLabel> labelDict = LoadScriptLabels(fullPath);
+        LabelDiscovery labels = LoadScriptLabels(fullPath);
         IScriptSession? session = CompileCore(
-            () => _engine.FromSource(content, fullPath, Options([.. labelDict.Keys])), fullPath);
-        return (session, BuildLabelMatchDelegate(labelDict));
+            () => _engine.FromSource(content, fullPath, Options([.. labels.Selected.Select(label => label.Name)])), fullPath);
+        return (session, labels);
     }
 
-    static Dictionary<string, ImgLabel> LoadScriptLabels(string scriptPath)
+    static LabelDiscovery LoadScriptLabels(string scriptPath)
     {
         string scriptBasePath = Path.GetDirectoryName(Path.GetFullPath(scriptPath)) ?? "";
-        var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppPaths.DataDir);
-        return label.ToDictionary(il => il.name);
+        return LegacyLabelCatalog.FromParents(scriptBasePath, AppPaths.DataDir);
     }
 
     static string FormatDiagnosticLocation(Diagnostic diagnostic, string? sourcePath)
@@ -201,23 +200,11 @@ public class ScriptService : IScriptService
         return $"{fileName.Replace('\\', '/')}:{line}";
     }
 
-    private LabelMatchDelegate? BuildLabelMatchDelegate(Dictionary<string, ImgLabel> labelDict)
-    {
-        if (labelDict.Count == 0) return null;
-        return lblName =>
-        {
-            if (!labelDict.TryGetValue(lblName, out var il)) return 0;
-            using var lease = _captureService.AcquireLatestFrame() ?? throw new Exception("采集卡未连接");
-            il.Search(lease.Mat, out var md, AppDomain.CurrentDomain.BaseDirectory + "Tessdata");
-            return (int)md;
-        };
-    }
-
     /// <summary>
     /// 脚本执行主流程：编译 → 检查需求 → 连接设备 → 能力装配 → 运行。
     /// </summary>
     /// <param name="compile">编译回调，返回 (会话（null=编译失败）, 标签匹配委托)</param>
-    private void ExecuteScript(Func<(IScriptSession? Session, LabelMatchDelegate? LabelMatch)> compile, string[]? args, string? sourcePath = null)
+    private void ExecuteScript(Func<(IScriptSession? Session, LabelDiscovery? Labels)> compile, string[]? args, string? sourcePath = null)
     {
         CancellationToken token;
         lock (_runGate)
@@ -242,16 +229,30 @@ public class ScriptService : IScriptService
         {
             try
             {
-                var (session, labelMatch) = compile();
+                var (session, labels) = compile();
                 _session = session;
                 if (session == null)
                     return;
 
                 token.ThrowIfCancellationRequested();
 
+                LabelGeneration? generation = null;
+                IReadOnlyList<string> requiredLabels = ScriptHardwareRequirements.ReferencedLabels(session.Info);
+                if (requiredLabels.Count != 0)
+                {
+                    string project = sourcePath == null ? AppPaths.DataDir : Path.GetDirectoryName(Path.GetFullPath(sourcePath))!;
+                    string? ocrPath = Environment.GetEnvironmentVariable("EASYCON_MAA_OCR_PROFILE");
+                    LabelConversionResult conversion = MaaLabelConverter.Build(labels!, MaaLabelConverter.CacheRoot(project), LegacyCompatibilityProfile.LegacyGui,
+                        ocrProfile: string.IsNullOrWhiteSpace(ocrPath) ? null : MaaOcrProfile.Load(ocrPath));
+                    foreach (LabelDiagnostic diagnostic in conversion.Report.Diagnostics)
+                        _logService.AddLog($"标签 {diagnostic.Code}: {diagnostic.Label}: {diagnostic.Message}");
+                    generation = conversion.Generation ?? throw new InvalidDataException("标签资源转换未发布");
+                    generation.Preflight(requiredLabels);
+                }
+
                 // 运行所需能力必须来自本次编译结果；CompileAsync 可能并发更新公开的编辑器会话。
                 bool hasKeyAction = session.Info.KeyAction;
-                bool needImageRecognition = session.Info.NeedIL;
+                bool needImageRecognition = ScriptHardwareRequirements.RequiresLiveCapture(session.Info);
                 ScriptRequirements requirements = new(
                     HasKeyAction: hasKeyAction,
                     NeedImageRecognition: needImageRecognition,
@@ -278,10 +279,12 @@ public class ScriptService : IScriptService
                     _logService.AddLog($"自动连接成功: {port}");
                 }
 
-                _captureService.SetCaptureProperties(1920, 1080);
+                if (needImageRecognition) _captureService.SetCaptureProperties(1920, 1080);
                 _runs.Run("ecs", sourcePath, hasKeyAction, token, scope =>
                 {
                     var frameDelegate = FrameDelegateFactory.CreateFrame(() => scope.AcquireFrame(_captureService.AcquireLatestFrame));
+                    using MaaVisionService? vision = generation == null ? null : new(generation,
+                        () => scope.AcquireFrame(_captureService.AcquireLatestFrame), scope.Token);
 
                     // 能力装配：唯一装配点（ScriptHostAssembler）。宿主只提供原料（pad/帧/标签委托/日志），
                     // OCR、推理、宿主环境、文件能力的默认值与释放统一由租约承担。
@@ -292,7 +295,8 @@ public class ScriptService : IScriptService
                         Console = new ConsoleIoAdapter(_logService, _alertService),
                         Frame = frameDelegate,
                         Roi = MatExtensions.CropBase64,
-                        LabelMatch = labelMatch == null ? null : name => { scope.RequireCapture(); return labelMatch(name); },
+                        VisionService = vision,
+                        CancellationToken = scope.Token,
                         Args = args,
                         AppDir = AppDomain.CurrentDomain.BaseDirectory,
                     });
@@ -301,7 +305,7 @@ public class ScriptService : IScriptService
                         throw new InvalidOperationException("脚本包含按键操作，但运行能力中未装配输入设备");
 
                     session.Run(scope.Token, lease.Capabilities);
-                }, requiresCapture: needImageRecognition, compatibilityProfile: "EasyCon.Legacy.GUI.Truncate");
+                }, requiresCapture: needImageRecognition, compatibilityProfile: nameof(LegacyCompatibilityProfile.LegacyGui), resourceGeneration: generation?.Id);
                 _logService.AddLog("脚本运行完成");
             }
             catch (OperationCanceledException)

@@ -1,10 +1,15 @@
 using Avalonia.Platform.Storage;
 using EasyCon.Capture;
 using EasyCon.Core;
+using EasyCon.Core.Config;
+using EasyCon.Core.Maa;
 using EasyCon2.Avalonia.Markup;
 using EasyCon2.Avalonia.Models;
 using EasyCon2.Avalonia.Services;
 using OpenCvSharp;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using ILogService = EasyCon.Core.Services.ILogService;
 
@@ -128,30 +133,40 @@ public sealed class TagEditorCoordinator : IDisposable
             byte[]? resultPng = null;
             double matchDegree = 0;
             string labelName = "";
+            string content = JsonSerializer.Serialize(ViewModel.Label);
+            ImgLabel label = JsonSerializer.Deserialize<ImgLabel>(content)!;
+            label.name = ViewModel.Label.name;
 
             // 帧租约与 OpenCV 模板匹配都在线程池完成，避免大图匹配冻结 UI
             await Task.Run(() =>
             {
-                using var lease = _captureService.AcquireLatestFrame();
+                using FrameLease? lease = _captureService.AcquireLatestFrame();
                 if (lease == null || lease.Mat.Empty())
                     throw new InvalidOperationException(L10n.T("Text.Msg.TagTestNoFrame"));
 
-                var mat = lease.Mat;
-                var label = ViewModel.Label;
-                var result = label.Search(mat, out matchDegree, "");
+                Mat mat = lease.Mat;
+                LegacyLabelSource source = new(label.name, Path.Combine(AppPaths.DataDir, "preview.IL"), content,
+                    Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(content))), 0);
+                string? ocrPath = Environment.GetEnvironmentVariable("EASYCON_MAA_OCR_PROFILE");
+                LabelGeneration generation = MaaLabelConverter.Build(new([source], [], 1),
+                    MaaLabelConverter.CacheRoot(Path.Combine(AppPaths.DataDir, "preview")), LegacyCompatibilityProfile.LegacyGui,
+                    ocrProfile: string.IsNullOrWhiteSpace(ocrPath) ? null : MaaOcrProfile.Load(ocrPath)).Generation!;
+                generation.Preflight([label.name]);
+                using MaaVisionService vision = new(generation);
+                LegacyRecognitionTrace match = vision.MatchImage(label.name, lease.EncodedPng, lease.Metadata.FrameId, lease.Metadata.SourceEpoch);
+                matchDegree = match.LegacyFloat;
 
                 byte[]? png = null;
-                if (result.Count > 0)
+                if (match.Box.Length == 4)
                 {
-                    var pt = result[0];
-                    int roiX = Math.Clamp(label.RangeX + pt.X, 0, mat.Width);
-                    int roiY = Math.Clamp(label.RangeY + pt.Y, 0, mat.Height);
+                    int roiX = Math.Clamp(match.Box[0], 0, mat.Width);
+                    int roiY = Math.Clamp(match.Box[1], 0, mat.Height);
                     int roiW = Math.Clamp(label.TargetWidth, 0, mat.Width - roiX);
                     int roiH = Math.Clamp(label.TargetHeight, 0, mat.Height - roiY);
 
                     if (roiW > 0 && roiH > 0)
                     {
-                        using var roi = new Mat(mat, new Rect(roiX, roiY, roiW, roiH));
+                        using Mat roi = new(mat, new Rect(roiX, roiY, roiW, roiH));
                         png = roi.ToBytes(".png");
                     }
                 }

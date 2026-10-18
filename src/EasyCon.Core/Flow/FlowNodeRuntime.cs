@@ -240,14 +240,16 @@ public sealed class FlowNodeRuntime(FlowGraph graph, FlowHostContext context)
                         ?? throw new InvalidOperationException("OCR 服务未装配");
                     var image = StrInput(node, "image", token)
                         ?? throw new InvalidOperationException("ocr.text 缺少 image 输入");
-                    var text = ocr.Recognize(ImageRef.FromBase64(image), new OcrQuery
+                    OcrQuery query = new()
                     {
                         Language = StrParam(node, "lang"),
                         X = IntInputOrParam(node, "x", token),
                         Y = IntInputOrParam(node, "y", token),
                         Width = IntInputOrParam(node, "w", token),
                         Height = IntInputOrParam(node, "h", token),
-                    });
+                    };
+                    string text = ocr is Maa.MaaOcrService maa ? maa.Recognize(ImageRef.FromBase64(image), query, token)
+                        : ocr.Recognize(ImageRef.FromBase64(image), query);
                     outputs["text"] = text;
                     outputs["conf"] = ocr.LastConfidence;
                     return null;
@@ -344,13 +346,15 @@ public sealed class FlowNodeRuntime(FlowGraph graph, FlowHostContext context)
         var session = string.IsNullOrWhiteSpace(inline)
             ? LoadScriptFile(engine, file!, compile)
             : engine.FromSource(inline, new ScriptHostOptions { Compile = compile });
+        using Maa.MaaOcrService? invocationOcr = (context.Ocr as Maa.MaaOcrService)?.CreateInvocation(token);
         using var lease = ScriptHostAssembler.Assemble(new ScriptHostContext
         {
             Console = new FlowConsole(lines),
             CaptureSource = context.Capture,
             VisionService = context.Vision,
             PadInput = context.Pad,
-            Ocr = context.Ocr,
+            Ocr = invocationOcr ?? context.Ocr,
+            CancellationToken = token,
             Inference = context.Inference,
             BorrowResources = true,
             Args = scriptArgs,
