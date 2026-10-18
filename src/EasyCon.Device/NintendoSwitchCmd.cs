@@ -17,7 +17,11 @@ public partial class NintendoSwitch
     protected virtual IConnection CreateConnection(string connStr, int baudrate)
         => new TTLSerialClient(connStr, baudrate);
 
-    private ConnectResult _TryConnect(string connStr, int baudrate = 115200)
+    /// <summary>创建 pokeldn 手柄固件连接（921600，A5 5A 帧协议）；测试可覆写注入假连接。</summary>
+    protected virtual IConnection CreatePokeldnConnection(string connStr)
+        => new PokeldnSerialClient(connStr, PokeldnSerialClient.DefaultBaudRate);
+
+    private ConnectResult _TryConnect(string connStr, int baudrate = 115200, bool pokeldn = false)
     {
         if (connStr == "")
             return ConnectResult.InvalidArgument;
@@ -45,7 +49,7 @@ public partial class NintendoSwitch
         }
 
         Disconnect();
-        IConnection connection = CreateConnection(connStr, baudrate);
+        IConnection connection = pokeldn ? CreatePokeldnConnection(connStr) : CreateConnection(connStr, baudrate);
         clientCon = connection;
         connection.BytesSent += (port, bytes) => { if (ReferenceEquals(clientCon, connection)) BytesSent?.Invoke(port, bytes); };
         connection.BytesReceived += (port, bytes) => { if (ReferenceEquals(clientCon, connection)) BytesReceived?.Invoke(port, bytes); };

@@ -49,9 +49,7 @@ public partial class NintendoSwitch : IReporter
 
     public ConnectResult TryConnect(string constr)
     {
-        var result = _TryConnect(constr);
-
-        if (result == ConnectResult.Success)
+        void StartRunLoop()
         {
             CancelStaleLoop();
             source = new();
@@ -62,20 +60,27 @@ public partial class NintendoSwitch : IReporter
                 Loop(token);
             }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
-        else
+
+        var result = _TryConnect(constr);
+
+        if (result != ConnectResult.Success)
         {
             Thread.Sleep(100);
             result = _TryConnect(constr, 9600);
+        }
+
+        if (result != ConnectResult.Success)
+        {
+            // 第三档：按公开协议独立实现的 pokeldn 手柄固件探测（921600，STATUS 查询握手）。
+            // EasyCon 握手在其固件上无应答， pokeldn STATUS 查询在 EasyCon 固件上亦无应答，可安全互探。
+            result = _TryConnect(constr, PokeldnSerialClient.DefaultBaudRate, pokeldn: true);
             if (result == ConnectResult.Success)
-            {
-                CancelStaleLoop();
-                source = new();
-                CancellationToken token = source.Token;
-                _writeLoop = Task.Factory.StartNew(() =>
-                {
-                    Loop(token);
-                }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
-            }
+                Log?.Invoke("已识别 pokeldn 手柄固件（921600）");
+        }
+
+        if (result == ConnectResult.Success)
+        {
+            StartRunLoop();
         }
 
         return result;

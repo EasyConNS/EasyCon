@@ -158,6 +158,7 @@ The Avalonia GUI (`EasyCon2.Avalonia`) follows MVVM:
 Device logic (queue, throttle, report building, serialization) can be exercised without an MCU by injecting a fake connection:
 
 - `EasyCon.Device` exposes the seam: `IConnection` is `public`, and `NintendoSwitch.CreateConnection(connStr, baudrate)` is `protected virtual` (its default returns `TTLSerialClient`). The production enqueue/dequeue path is unchanged.
+- A second seam `NintendoSwitch.CreatePokeldnConnection(connStr)` (default returns `PokeldnSerialClient`) backs the third fallback stage of `TryConnect` (115200 → 9600 → pokeldn 921600). Override it the same way to test the fallback order without hardware; see `PokeldnSerialClientTests`.
 - Subclass `NintendoSwitch` in a test project and override `CreateConnection` to return a fake whose `Write(params byte[])` records the payload — that payload is exactly the HID packet sent to the MCU (`SwitchReport.GetBytes()`). Assert on this **dequeue output**, not on internal state.
 - The fake must raise `StatusChanged(Status.Connected)` inside `Connect()` so `TryConnect` succeeds and the background device write loop starts.
 - The write loop is asynchronous (30 ms `MINIMAL_INTERVAL`); wait for recorded bytes with a timeout instead of asserting immediately.
