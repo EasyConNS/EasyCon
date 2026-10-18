@@ -1,4 +1,5 @@
 using Avalonia.Threading;
+using EasyCon.Capture;
 using EasyCon.Core.Config;
 using EasyCon.Core.Services;
 
@@ -49,7 +50,13 @@ public sealed class UserSettingsService : IUserSettingsService
     {
         try
         {
-            return _load();
+            ConfigState state = _load();
+            new HostProfiles
+            {
+                Controller = state.ControllerProfile,
+                Capture = state.CaptureProfile ?? new CaptureProfile(Backend: state.CaptureType),
+            }.Validate();
+            return state;
         }
         catch (Exception ex)
         {
@@ -118,13 +125,7 @@ public sealed class UserSettingsService : IUserSettingsService
     }
 
     internal static string NormalizeCaptureType(string? captureType)
-    {
-        return captureType switch
-        {
-            "DSHOW" or "MSMF" or "DC1394" => captureType,
-            _ => "ANY"
-        };
-    }
+        => CaptureSourceCatalog.NormalizeBackendName(captureType);
 
     internal static string NormalizeColorSchemeName(string? colorSchemeName, bool legacyDarkMode)
     {

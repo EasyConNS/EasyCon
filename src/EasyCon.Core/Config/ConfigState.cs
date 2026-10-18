@@ -5,6 +5,10 @@ public record ConfigState
     public const string DefaultWelcomeText = "欢迎使用 easycon";
 
     public string CaptureType { get; set; } = "ANY";
+    [System.Text.Json.Serialization.JsonPropertyName("controller_profile")]
+    public ControllerProfile? ControllerProfile { get; set; }
+    [System.Text.Json.Serialization.JsonPropertyName("capture_profile")]
+    public CaptureProfile? CaptureProfile { get; set; }
     public bool ShowControllerHelp { get; set; } = true;
     public bool EnableAutoCompletion { get; set; } = false;
     public bool AutoRunAfterFlash { get; set; } = false;

@@ -1,5 +1,6 @@
 using EasyCon.Core.Config;
 using EasyCon.Core.Input;
+using EasyCon.Core.Maa;
 using EasyDevice;
 using SDL;
 
@@ -8,15 +9,15 @@ namespace EasyCon.SDLInput;
 public sealed class SdlKeyboardInputBinder : IInputBinder, IDisposable
 {
     private readonly SdlEventLoop _eventLoop;
-    private readonly NintendoSwitch _switch;
+    private readonly IControllerSession _switch;
     private bool _enabled;
     private bool _started;
     private Func<bool>? _escapeKeydown;
     private Func<bool>? _escapeKeyup;
 
-    private Dictionary<int, Action<NintendoSwitch, bool>> _keyMap = [];
+    private Dictionary<int, Action<IControllerSession, bool>> _keyMap = [];
 
-    public SdlKeyboardInputBinder(SdlEventLoop eventLoop, NintendoSwitch @switch)
+    public SdlKeyboardInputBinder(SdlEventLoop eventLoop, IControllerSession @switch)
     {
         _eventLoop = eventLoop;
         _switch = @switch;
@@ -44,7 +45,7 @@ public sealed class SdlKeyboardInputBinder : IInputBinder, IDisposable
 
     public void UpdateKeyMapping(KeyMappingConfig mapping)
     {
-        Dictionary<int, Action<NintendoSwitch, bool>> map = new();
+        Dictionary<int, Action<IControllerSession, bool>> map = new();
 
         void AddButton(int scancode, SwitchButton button)
         {
@@ -150,7 +151,9 @@ public sealed class SdlKeyboardInputBinder : IInputBinder, IDisposable
 
         if (_keyMap.TryGetValue(scancode, out var action))
         {
-            action(_switch, down);
+            if (!_switch.CanAcceptManualInput) return;
+            try { action(_switch, down); }
+            catch (ControllerOperationException ex) when (ex.ErrorCode is "Busy" or "InputDisconnected") { }
         }
     }
 

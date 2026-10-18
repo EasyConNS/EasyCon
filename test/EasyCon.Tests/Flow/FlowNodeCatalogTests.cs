@@ -90,7 +90,7 @@ public class FlowNodeCatalogTests
             Assert.That(root.GetProperty("slow").GetArrayLength(), Is.EqualTo(3));
             Assert.That(root.GetProperty("keys").EnumerateArray().Select(k => k.GetString()), Does.Contain("A"));
             Assert.That(root.GetProperty("ocrBackends").EnumerateArray().Select(k => k.GetString()),
-                Is.EquivalentTo(new[] { "none", "tesseract", "ppocr" }));
+                Is.EquivalentTo(new[] { "none", "tesseract", "ppocr", "maa" }));
         });
     }
 

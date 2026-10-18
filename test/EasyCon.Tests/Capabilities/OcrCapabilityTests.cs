@@ -96,12 +96,12 @@ public class OcrCapabilityTests
         Assert.That(cfg.Options["tess:engineMode"], Is.EqualTo("DEFAULT"));
         Assert.That(cfg.Options["tess:psmode"], Is.EqualTo("SINGLE_LINE"));
 
-        // __TESSERACT__：区域采集一次，识别服务收整图（query 缺省区域）+ 语言
-        Assert.That(capture.Regions, Is.EqualTo(new[] { new[] { 1, 2, 30, 8 } }));
+        // __TESSERACT__：整帧只采集一次；原始 OCR 区域参数交给 OCR 服务。
+        Assert.That(capture.Regions, Is.EqualTo(new[] { new[] { -1, -1, -1, -1 } }));
         Assert.That(ocr.Recognitions.Count, Is.EqualTo(1));
         var (image, x, y, w, h, lang) = ocr.Recognitions[0];
         Assert.That(image, Is.EqualTo("RlJBTUU="));
-        Assert.That((x, y, w, h, lang), Is.EqualTo((0, 0, 0, 0, "eng")));
+        Assert.That((x, y, w, h, lang), Is.EqualTo((1, 2, 30, 8, "eng")));
 
         // PRINT 文本 + OCR_CONF 置信度
         Assert.That(io.Lines, Is.EqualTo(new[] { "HELLO", "77" }));

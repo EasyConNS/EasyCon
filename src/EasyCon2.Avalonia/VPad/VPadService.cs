@@ -11,7 +11,7 @@ public sealed class VPadService : IVirtualPadService
 {
     private VPadOverlay? _overlay;
     private IInputBinder? _binder;
-    private readonly NintendoSwitch _gamepad;
+    private readonly IReporter _gamepad;
     private readonly IControllerAdapter _adapter;
     private bool _active;
     private Func<bool>? _escKeyDown;
@@ -20,7 +20,7 @@ public sealed class VPadService : IVirtualPadService
     /// <summary>覆盖层会话号：Show/Exit 各自递增，使在途的创建 Post 失效（跨线程调用，需 Interlocked）。</summary>
     private int _session;
 
-    public VPadService(NintendoSwitch gamepad, IControllerAdapter adapter)
+    public VPadService(IReporter gamepad, IControllerAdapter adapter)
     {
         _gamepad = gamepad;
         _adapter = adapter;

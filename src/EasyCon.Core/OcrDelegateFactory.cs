@@ -17,6 +17,8 @@ public static class FrameDelegateFactory
         return (x, y, w, h) =>
         {
             using var lease = frameProvider?.Invoke();
+            if (lease != null && (x < 0 || y < 0 || w < 0 || h < 0))
+                return Convert.ToBase64String(lease.EncodedPng.Span);
             return CropToBase64(lease?.Mat, x, y, w, h) ?? NoFrameError;
         };
     }

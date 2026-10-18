@@ -1,5 +1,7 @@
 using EasyCon.Capture;
+using EasyCon.Core.Maa;
 using EasyCon.Core.Services;
+using EasyCon2.Avalonia.Connection;
 using EasyCon2.Avalonia.Services;
 using EasyDevice;
 using EasyDevice.Connection;
@@ -14,9 +16,10 @@ namespace EasyCon2.Avalonia.Core.Tests;
 /// 设备/采集/日志依赖均以 fake 就地实现，不触达真实硬件。
 /// </summary>
 [TestFixture]
-public class ScriptServiceTests
+public partial class ScriptServiceTests
 {
     private List<string> _scriptDirectories = [];
+    private readonly List<FakeDeviceService> _devices = [];
 
     [SetUp]
     public void Setup()
@@ -27,6 +30,8 @@ public class ScriptServiceTests
     [TearDown]
     public void TearDown()
     {
+        foreach (FakeDeviceService device in _devices) device.GetDevice().Dispose();
+        _devices.Clear();
         foreach (string directory in _scriptDirectories)
         {
             if (Directory.Exists(directory))
@@ -86,7 +91,7 @@ public class ScriptServiceTests
 
     private sealed class FakeDeviceService : IDeviceService
     {
-        private readonly NintendoSwitch _device;
+        private readonly MaaControllerSession _device;
         private readonly object _lock = new();
         private readonly List<bool> _runningEvents = [];
 
@@ -94,10 +99,13 @@ public class ScriptServiceTests
         public bool ShowDebugInfo { get; set; }
         public int AutoConnectCalls { get; private set; }
         public int ResetCalls { get; private set; }
+        public string[] AvailablePorts { get; set; } = [];
 
         public FakeDeviceService(NintendoSwitch? device = null)
         {
-            _device = device ?? new NintendoSwitch();
+            _device = new MaaControllerSession(device ?? new NintendoSwitch());
+            if (device?.IsConnected() == true)
+                Assert.That(_device.TryConnect("fake://script-service"), Is.EqualTo(ControllerConnectResult.Success));
         }
 
         public event Action? ConnectionLost
@@ -106,11 +114,8 @@ public class ScriptServiceTests
             remove { }
         }
 
-        public event Action? ConnectionStateChanged
-        {
-            add { }
-            remove { }
-        }
+        public event Action? ConnectionStateChanged;
+        public void NotifyConnectionState() => ConnectionStateChanged?.Invoke();
 
         public void RecordRunningEvent(bool running)
         {
@@ -128,9 +133,9 @@ public class ScriptServiceTests
             }
         }
 
-        public string[] GetAvailablePorts() => [];
+        public string[] GetAvailablePorts() => AvailablePorts;
 
-        public bool TryConnect(string port) => _device.TryConnect(port) == NintendoSwitch.ConnectResult.Success;
+        public bool TryConnect(string port) => _device.TryConnect(port) == ControllerConnectResult.Success;
 
         public string? AutoConnect()
         {
@@ -143,7 +148,7 @@ public class ScriptServiceTests
             _device.Disconnect();
         }
 
-        public NintendoSwitch GetDevice() => _device;
+        public IControllerSession GetDevice() => _device;
 
         public void Reset()
         {
@@ -220,7 +225,10 @@ public class ScriptServiceTests
         private readonly object _lock = new();
         private readonly List<(int Width, int Height)> _setPropertiesCalls = [];
 
-        public bool IsConnected => false;
+        public bool IsConnected { get; set; }
+        public string? ActiveSource { get; set; }
+        public string? ActiveBackend => "DSHOW";
+        public string[] AvailableSources { get; set; } = [];
         public string CaptureType { get; set; } = "ANY";
 
         public event Action? ConnectionLost
@@ -229,11 +237,8 @@ public class ScriptServiceTests
             remove { }
         }
 
-        public event Action? ConnectionStateChanged
-        {
-            add { }
-            remove { }
-        }
+        public event Action? ConnectionStateChanged;
+        public void NotifyConnectionState() => ConnectionStateChanged?.Invoke();
 
         public event Action? ConnectionRestored
         {
@@ -249,7 +254,7 @@ public class ScriptServiceTests
             }
         }
 
-        public string[] GetAvailableSources() => [];
+        public string[] GetAvailableSources() => AvailableSources;
 
         public bool TryConnect(string sourceName) => false;
 
@@ -270,8 +275,9 @@ public class ScriptServiceTests
         }
     }
 
-    private static ScriptService CreateService(FakeLogService log, FakeDeviceService device, FakeCaptureService capture)
+    private ScriptService CreateService(FakeLogService log, FakeDeviceService device, FakeCaptureService capture)
     {
+        _devices.Add(device);
         return new ScriptService(device, capture, log);
     }
 
@@ -299,6 +305,49 @@ public class ScriptServiceTests
     }
 
     // ── 测试 ────────────────────────────────
+
+    [Test]
+    public void PendingSelectionsAndRefresh_DoNotRetargetConnectedModules_OrSelectFallback()
+    {
+        RecordingConnection connection = new();
+        TestNintendoSwitch switchDevice = new(connection);
+        Assert.That(switchDevice.TryConnect("fake://script-service"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
+        FakeDeviceService device = new(switchDevice) { AvailablePorts = ["fake://script-service", "fake://other"] };
+        _devices.Add(device);
+        FakeCaptureService capture = new()
+        {
+            IsConnected = true,
+            ActiveSource = "source-A",
+            AvailableSources = ["source-A", "source-B"],
+        };
+        FakeLogService log = new();
+        SwitchConnectionViewModel input = new(device, log, SynchronousUiDispatcher.Instance);
+        CaptureConnectionViewModel video = new(capture, log, SynchronousUiDispatcher.Instance);
+        Assert.That(input.SelectedSerialPort, Is.Null);
+        Assert.That(video.SelectedCaptureSource, Is.Null);
+        device.NotifyConnectionState();
+        capture.NotifyConnectionState();
+        string connectedInputStatus = input.NintendoSwitchStatus;
+        long inputEpoch = device.GetDevice().InputEpoch;
+        input.SelectedSerialPort = "fake://other";
+        video.SelectedCaptureSource = "source-B";
+        device.AvailablePorts = [];
+        capture.AvailableSources = [];
+        input.RefreshSerialPortsCommand.Execute(null);
+        video.RefreshCaptureSourcesCommand.Execute(null);
+        Assert.Multiple(() =>
+        {
+            Assert.That(input.SelectedSerialPort, Is.EqualTo("fake://other"));
+            Assert.That(video.SelectedCaptureSource, Is.EqualTo("source-B"));
+            Assert.That(input.SelectionUnavailable, Is.True);
+            Assert.That(video.SelectionUnavailable, Is.True);
+            Assert.That(device.GetDevice().InputEndpoint, Is.EqualTo("fake://script-service"));
+            Assert.That(device.GetDevice().InputEpoch, Is.EqualTo(inputEpoch));
+            Assert.That(capture.ActiveSource, Is.EqualTo("source-A"));
+            Assert.That(input.NintendoSwitchStatus, Is.EqualTo(connectedInputStatus));
+            Assert.That(video.CaptureSourceStatus, Does.Contain("source-A"));
+        });
+    }
 
     private sealed class RecordingAlert : IAlertService
     {
@@ -389,7 +438,7 @@ public class ScriptServiceTests
             Assert.That(service.HasKeyAction, Is.True, "文件会话的按键需求必须反映在服务状态中");
             Assert.That(messages, Does.Contain("❌ 脚本包含按键操作，需要连接单片机"));
             Assert.That(messages, Does.Not.Contain("脚本运行完成"));
-            Assert.That(device.ResetCalls, Is.GreaterThanOrEqualTo(1));
+            Assert.That(device.ResetCalls, Is.Zero, "未取得输入租约的运行不能复位其他所有者");
         });
     }
 
@@ -638,7 +687,7 @@ public class ScriptServiceTests
         {
             Assert.That(device.SnapshotRunningEvents(), Does.Contain(false), "终止时应触发 IsRunningChanged(false)");
             Assert.That(messages, Does.Contain("脚本已终止"));
-            Assert.That(device.ResetCalls, Is.GreaterThanOrEqualTo(1), "终止时应释放按键");
+            Assert.That(device.ResetCalls, Is.Zero, "纯计算取消不发送手柄输入");
         });
     }
 
@@ -668,7 +717,7 @@ public class ScriptServiceTests
         service.Stop();
 
         await WaitUntilAsync(() => !service.IsRunning, "启动后立即停止，IsRunning 也必须复位", detail: () => string.Join(" | ", log.Snapshot()));
-        Assert.That(device.ResetCalls, Is.GreaterThanOrEqualTo(1), "停止路径必须触发设备 Reset");
+        Assert.That(device.ResetCalls, Is.Zero, "尚未取得输入租约的取消不复位设备");
     }
 
     [Test]

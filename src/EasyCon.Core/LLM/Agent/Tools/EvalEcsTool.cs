@@ -1,4 +1,5 @@
 using EasyCon.Core.Capabilities;
+using EasyCon.Core.Hosting;
 using EasyCon.Core.LLM.Tools;
 using EasyCon.Core.Runner;
 using EasyCon.Core.Script;
@@ -72,7 +73,7 @@ public class EvalEcsTool : IAiTool
             var engine = new EasyScriptEngine();
             var session = engine.FromSource(code, new ScriptHostOptions
             {
-                Compile = new CompileOptions { ExtVars = ImmutableHashSet<string>.Empty, UseDiskCache = false }
+                Compile = ScriptCompileProfiles.Interactive([])
             });
 
             if (session.Info.Image is not { } image)
@@ -85,19 +86,19 @@ public class EvalEcsTool : IAiTool
             }
 
             var lines = new List<string>();
-            var caps = new CapabilitySet
+            using CapabilityLease lease = ScriptHostAssembler.Assemble(new ScriptHostContext
             {
                 Console = new ConsoleRecorder(lines),
-                Capture = _captureProvider(),
-                Inference = new DnnInference(),
+                CaptureSource = _captureProvider(),
                 Ocr = _ocrProvider(),
-            };
+                BorrowOcr = true,
+            });
 
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeoutCts.CancelAfter(TimeSpan.FromSeconds(TimeoutSeconds));
             try
             {
-                EcxVm.Run(image, caps, timeoutCts.Token, null, session.Info.NativeSymbols);
+                EcxVm.Run(image, lease.Capabilities, timeoutCts.Token, null, session.Info.NativeSymbols);
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {

@@ -48,6 +48,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
 
       - name: 安装 .NET SDK
         uses: actions/setup-dotnet@v5
@@ -55,7 +57,7 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: 检查代码格式
-        run: dotnet format --verbosity diagnostic
+        run: dotnet format --verify-no-changes --verbosity diagnostic
 
   # ========================================
   # 2. 构建 + 测试 (Debug)
@@ -65,12 +67,13 @@ jobs:
     needs: format
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
 
       - name: 安装 .NET SDK
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-          ref: ${{ github.event.workflow_run.head_branch }}
 
       - name: 缓存 NuGet 包
         uses: actions/cache@v4
@@ -89,15 +92,49 @@ jobs:
       - name: Build (Debug)
         run: dotnet build --no-restore --configuration Debug
 
+      - name: 安装并强制执行真实 Maa OCR 试点测试
+        shell: pwsh
+        run: ./ci/prepare-maa-ocr.ps1 -Configuration Debug
+
       - name: 运行 EasyCon 测试
-        shell: cmd
-        run: ci\test.bat Debug
+        run: dotnet test EasyCon2.slnx --no-build -c Debug --logger trx --results-directory TestResults
+
+      - name: Maa 原生宿主无硬件自检
+        run: dotnet run --no-build -c Debug --project src/EasyCon2.CLI -- maa doctor | Tee-Object maa-runtime.json
+
+      - name: 上传宿主与测试验收记录
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: host-p1-tests
+          path: |
+            TestResults/*.trx
+            maa-runtime.json
 
       - name: 串行运行真实窗口保存快捷键回归
         run: >-
           dotnet test test/EasyCon2.Avalonia.UiTests/EasyCon2.Avalonia.UiTests.csproj
           --configuration Debug --no-build
           --filter "FullyQualifiedName~MainWindowSaveTests.CtrlS_SavesLatestEditorTextFromTheFocusedEditor"
+
+      - name: 发布 Windows 验收包
+        shell: pwsh
+        run: |
+          dotnet publish src/EasyCon2.CLI -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o dist/p2-win-x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet publish src/EasyCon2.Avalonia -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o dist/p2-win-x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item .ci-maa-ocr dist/p2-win-x64/maa-ocr-pilot -Recurse
+          if (Test-Path assets/fw) { Copy-Item assets/fw dist/p2-win-x64/Firmware -Recurse }
+          & dist/p2-win-x64/EasyCon2.CLI.exe maa doctor --ocr-profile dist/p2-win-x64/maa-ocr-pilot/ocr-profile.json | Tee-Object dist/p2-win-x64/maa-runtime.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git rev-parse HEAD | Set-Content dist/p2-win-x64/COMMIT.txt
+          Compress-Archive dist/p2-win-x64/* dist/EasyCon2-p2-win-x64.zip
+      - uses: actions/upload-artifact@v6
+        with:
+          name: easycon2-p2-win-x64
+          path: dist/EasyCon2-p2-win-x64.zip
+          retention-days: 30
 
   native-abi:
     runs-on: ubuntu-latest
@@ -108,6 +145,8 @@ jobs:
         bits: [64, 32]
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
@@ -139,3 +178,59 @@ jobs:
           path: |
             vm-budget-*.txt
             TestResults/*.trx
+
+  build-macos:
+    if: github.event_name != 'workflow_run'
+    runs-on: macos-14
+    needs: format
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+      - name: 检查 AVFoundation 真实枚举入口（无设备可返回空列表，不请求权限）
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet run --project src/EasyCon2.CLI -c Release -- video --list | tee macos-video-sources.txt
+      - name: 安装并强制执行真实 Maa OCR 试点测试
+        shell: pwsh
+        run: ./ci/prepare-maa-ocr.ps1
+      - name: 运行 P1 选源和 P2 原生识别回归
+        shell: bash
+        run: |
+          dotnet test test/EasyCon.Tests -c Release --filter "FullyQualifiedName~MaaVisionTests|FullyQualifiedName~MaaOcrTests|FullyQualifiedName~HostProfileRegressionTests" --logger trx --results-directory TestResults
+      - name: 打包 macOS .app
+        shell: bash
+        env:
+          CI: "true"
+        run: bash ci/macos-app.sh
+      - name: 检查发布包的枚举入口并打包
+        shell: bash
+        run: |
+          set -o pipefail
+          dist/publish/EasyCon.app/Contents/MacOS/ezcon video --list | tee macos-published-video-sources.txt
+          cp -R .ci-maa-ocr dist/publish/EasyCon.app/Contents/MacOS/maa-ocr-pilot
+          dist/publish/EasyCon.app/Contents/MacOS/ezcon maa doctor --ocr-profile dist/publish/EasyCon.app/Contents/MacOS/maa-ocr-pilot/ocr-profile.json | tee macos-published-maa-runtime.json
+          git rev-parse HEAD > dist/publish/EasyCon.app/Contents/MacOS/COMMIT.txt
+          version="$(git rev-parse --short HEAD)"
+          ditto -c -k --sequesterRsrc --keepParent dist/publish/EasyCon.app "dist/EasyCon2-${version}-macos-arm64.zip"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: easycon2-macos-arm64
+          path: |
+            dist/*.zip
+            macos-video-sources.txt
+            macos-published-video-sources.txt
+            macos-published-maa-runtime.json
+            TestResults/*.trx
+          if-no-files-found: error
+          retention-days: 30

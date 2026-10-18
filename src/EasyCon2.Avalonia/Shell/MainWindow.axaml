@@ -644,6 +644,7 @@
                                   SelectedItem="{Binding Switch.SelectedSerialPort}"
                                   HorizontalAlignment="Stretch"
                                   behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Switch.RefreshSerialPortsCommand}"/>
+                        <TextBlock Grid.Row="2" VerticalAlignment="Bottom" Text="{Binding Switch.SelectionNotice}" IsVisible="{Binding Switch.SelectionUnavailable}" FontSize="11" TextWrapping="Wrap"/>
                         <Grid ColumnDefinitions="*,*">
                             <Button Grid.Column="0"
                                     Content="{Binding Switch.NintendoSwitchButtonText}"
@@ -686,6 +687,7 @@
                                   SelectedItem="{Binding Capture.SelectedCaptureSource}"
                                   HorizontalAlignment="Stretch"
                                   behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Capture.RefreshCaptureSourcesCommand}"/>
+                        <TextBlock Grid.Row="2" VerticalAlignment="Bottom" Text="{Binding Capture.SelectionNotice}" IsVisible="{Binding Capture.SelectionUnavailable}" FontSize="11" TextWrapping="Wrap"/>
                         <Button Content="{Binding Capture.CaptureSourceButtonText}"
                                 Command="{Binding Capture.ConnectCaptureSourceCommand}"
                                 IsEnabled="{Binding !Capture.IsConnectingCaptureSource}"
@@ -1119,6 +1121,7 @@
                                   HorizontalAlignment="Stretch"
                                   VerticalAlignment="Center"
                                   behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Switch.RefreshSerialPortsCommand}"/>
+                        <TextBlock Grid.Row="2" VerticalAlignment="Bottom" Text="{Binding Switch.SelectionNotice}" IsVisible="{Binding Switch.SelectionUnavailable}" FontSize="11" TextWrapping="Wrap"/>
                         <Grid Grid.Row="3"
                               ColumnDefinitions="*,*"
                               ColumnSpacing="10"
@@ -1171,6 +1174,7 @@
                                   HorizontalAlignment="Stretch"
                                   VerticalAlignment="Center"
                                   behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Capture.RefreshCaptureSourcesCommand}"/>
+                        <TextBlock Grid.Row="2" VerticalAlignment="Bottom" Text="{Binding Capture.SelectionNotice}" IsVisible="{Binding Capture.SelectionUnavailable}" FontSize="11" TextWrapping="Wrap"/>
                         <Button Grid.Row="3"
                                 Content="{Binding Capture.CaptureSourceButtonText}"
                                 Command="{Binding Capture.ConnectCaptureSourceCommand}"

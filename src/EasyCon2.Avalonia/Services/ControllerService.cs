@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using EasyCon.Core.Config;
 using EasyCon.Core.Input;
+using EasyCon.Core.Maa;
 using EasyCon.SDLInput;
 using EasyCon2.Avalonia.Services;
 using EasyDevice;
@@ -12,7 +13,7 @@ public sealed class ControllerService : IControllerService
 {
     private readonly SdlEventLoop _eventLoop;
     private readonly SdlGamepadDetector _detector;
-    private readonly NintendoSwitch _gamepad;
+    private readonly IControllerSession _gamepad;
     private readonly IVirtualPadService _vpadService;
     private bool _isConnected;
     private SdlKeyboardInputBinder? _keyboardBinder;
@@ -28,7 +29,7 @@ public sealed class ControllerService : IControllerService
     /// <paramref name="vpadService"/> 由组合根构造后注入（其 ControllerAdapter 依赖
     /// IScriptService，装配留在 App 侧），本类不再反向引用 VPad 实现。
     /// </summary>
-    public ControllerService(NintendoSwitch gamepad, IVirtualPadService vpadService)
+    public ControllerService(IControllerSession gamepad, IVirtualPadService vpadService)
     {
         _gamepad = gamepad;
         _eventLoop = new SdlEventLoop();

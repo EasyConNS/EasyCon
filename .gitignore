@@ -391,3 +391,6 @@ test/assets/*
 
 # ecs-vm 构建产物（native/）
 src/EasyCon.Vm/native/ecs-vm*
+
+# Fixed Maa OCR assets downloaded explicitly for native regression tests
+.ci-maa-ocr/

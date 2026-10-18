@@ -2,6 +2,7 @@
 using EasyCon.Capture;
 using EasyCon.Core.Capabilities;
 using EasyCon.Core.Logging;
+using EasyCon.Core.Maa;
 using EasyScript;
 
 namespace EasyCon.Core.Hosting;
@@ -46,6 +47,9 @@ public sealed class ScriptHostContext
 
     /// <summary>OCR 后端（所有权移交装配结果）；null 且 <see cref="EnableOcr"/> 时装配默认 Tesseract。</summary>
     public IOcrService? Ocr { get; init; }
+    /// <summary>显式 Maa OCR 模型/旧参数映射；未指定时保留已验证的旧默认后端。</summary>
+    public string? MaaOcrProfilePath { get; init; }
+    public CancellationToken CancellationToken { get; init; }
 
     /// <summary>推理后端（所有权移交装配结果）；null 且 <see cref="EnableInference"/> 时装配默认 DNN。</summary>
     public IInference? Inference { get; init; }
@@ -74,6 +78,8 @@ public sealed class ScriptHostContext
     /// 否则内层脚本运行结束时释放掉外层运行还在用的 OCR/推理服务。
     /// </summary>
     public bool BorrowResources { get; init; }
+    public bool BorrowOcr { get; init; }
+    public bool BorrowInference { get; init; }
 }
 
 /// <summary>
@@ -82,9 +88,10 @@ public sealed class ScriptHostContext
 /// 装配器**接管**传入的 <see cref="ScriptHostContext.Ocr"/>/<see cref="ScriptHostContext.Inference"/> 所有权。
 /// </summary>
 public sealed class CapabilityLease(CapabilitySet capabilities, IOcrService? ocr, IInference? inference,
-    bool ownsResources = true) : IDisposable
+    bool ownsOcr = true, bool ownsInference = true) : IDisposable
 {
     private int _disposed;
+    internal event Action? Released;
 
     /// <summary>本次运行的能力集。</summary>
     public CapabilitySet Capabilities { get; } = capabilities;
@@ -95,11 +102,9 @@ public sealed class CapabilityLease(CapabilitySet capabilities, IOcrService? ocr
             return;
 
         // 借用语义：资源所有权在调用方（嵌套装配的外层），内层释放不得拆掉共享服务
-        if (!ownsResources)
-            return;
-
-        DisposeQuietly(ocr, nameof(IOcrService));
-        DisposeQuietly(inference, nameof(IInference));
+        if (ownsOcr) DisposeQuietly(ocr, nameof(IOcrService));
+        if (ownsInference) DisposeQuietly(inference, nameof(IInference));
+        Released?.Invoke();
     }
 
     /// <summary>释放失败不能反噬调用方（本方法通常在 finally 中执行）。</summary>
@@ -151,9 +156,11 @@ public static class ScriptHostAssembler
         IOcrService? ocr = context.Ocr;
         if (ocr is null && context.EnableOcr)
         {
+            string? maaProfile = context.MaaOcrProfilePath ?? Environment.GetEnvironmentVariable("EASYCON_MAA_OCR_PROFILE");
+            if (!string.IsNullOrWhiteSpace(maaProfile)) ocr = new MaaOcrService(MaaOcrProfile.Load(maaProfile), context.CancellationToken);
             // OCR 无条件装配（与历史行为一致）：tessdata 缺失时识别给出明确错误，
             // 而非让脚本看到「能力不存在」这种无从排查的语义。
-            ocr = new TesseractOcrService(new OcrEngineCache
+            ocr ??= new TesseractOcrService(new OcrEngineCache
             {
                 DefaultDataPath = string.IsNullOrWhiteSpace(context.TessdataPath)
                     ? Path.Combine(appDir, "Tessdata")
@@ -177,6 +184,8 @@ public static class ScriptHostAssembler
             Inference = inference,
         };
 
-        return new CapabilityLease(capabilities, ocr, inference, ownsResources: !context.BorrowResources);
+        return new CapabilityLease(capabilities, ocr, inference,
+            ownsOcr: context.Ocr == null || !(context.BorrowOcr || context.BorrowResources),
+            ownsInference: context.Inference == null || !(context.BorrowInference || context.BorrowResources));
     }
 }

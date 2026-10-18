@@ -79,7 +79,11 @@ jobs:
         shell: bash
         run: sh ci/build-vm.sh budget
 
-      - name: 运行 EasyCon 测试
+      - name: 安装并强制执行真实 Maa OCR 试点测试
+        shell: pwsh
+        run: ./ci/prepare-maa-ocr.ps1
+
+      - name: 运行 EasyCon 全量测试
         shell: cmd
         run: ci\test.bat
 
@@ -131,6 +135,10 @@ jobs:
       # macOS 自带 /usr/bin/clang：CvmRunner 能现场编译 ecs-vm，
       # 使托管解释器 ↔ C VM 的差分对拍（Cvm/Corpus/Fuzz/FullChain/Abi）真正执行。
       # 这是双端语义漂移的唯一机械防线，勿移除。
+      - name: 安装并强制执行真实 Maa OCR 试点测试
+        shell: pwsh
+        run: ./ci/prepare-maa-ocr.ps1
+
       - name: 运行 EasyCon 测试（含 C VM 差分对拍）
         run: dotnet test EasyCon2.slnx -c Release
 

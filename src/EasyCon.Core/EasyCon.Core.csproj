@@ -6,9 +6,14 @@
   <ItemGroup>
     <InternalsVisibleTo Include="EasyCon.Tests" />
     <InternalsVisibleTo Include="EasyCon2.Avalonia.Core.Tests" />
+    <InternalsVisibleTo Include="EasyCon.SDLInput.Tests" />
   </ItemGroup>
   <ItemGroup>
 	  <PackageReference Include="YamlDotNet" />
+	  <PackageReference Include="Maa.Framework.Binding.Native" />
+	  <PackageReference Include="Maa.Framework.Runtime.win-x64" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+	  <PackageReference Include="Maa.Framework.Runtime.linux-x64" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
+	  <PackageReference Include="Maa.Framework.Runtime.osx-arm64" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
 	  <PackageReference Include="ModelContextProtocol.Core" />
 	  <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
 

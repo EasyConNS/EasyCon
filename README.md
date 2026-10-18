@@ -54,6 +54,7 @@
 - **[快速开始](./docs/GETTING_STARTED.md)** - 新手友好的安装教程
 - **[系统架构](./docs/Framework.md)** - 技术栈与系统架构设计
 - **[脚本语法](./docs/Script.md)** - ECS脚本语言完整语法说明
+- **[Maa 接入与旧标签兼容](./docs/maa/P2.md)** - 标签转换、评分适配、OCR 试点与验收范围
 - **[文档中心](./docs/README.md)** - 完整的技术文档导航
 
 ## 🤝 参与贡献
