@@ -128,7 +128,8 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
 
     Console.WriteLine($"准备执行脚本...  环境信息=>采集设备：{vId}[{refs}]  单片机端口：{COM}");
 
-    var scriptBasePath = Path.GetDirectoryName(file) ?? "";
+    var scriptBasePath = Path.GetDirectoryName(file);
+    if (string.IsNullOrEmpty(scriptBasePath)) scriptBasePath = ".";   // 裸文件名（run main.ecs）相对 CWD
     scriptBasePath = Path.GetFullPath(scriptBasePath);
     Console.WriteLine("准备加载搜图标签...");
     Console.WriteLine($"标签（脚本）路径：{scriptBasePath}({ECCore.ImgDir}所在目录)");
@@ -368,7 +369,8 @@ formatCommand.SetAction(async (parseResult, cancellationToken) =>
     string file = parseResult.GetValue(scriptOption)!;
     string? outputFile = parseResult.GetValue(formatOutputOption);
 
-    var scriptBasePath = Path.GetDirectoryName(file) ?? "";
+    var scriptBasePath = Path.GetDirectoryName(file);
+    if (string.IsNullOrEmpty(scriptBasePath)) scriptBasePath = ".";   // 裸文件名（run main.ecs）相对 CWD
     scriptBasePath = Path.GetFullPath(scriptBasePath);
     var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppDomain.CurrentDomain.BaseDirectory);
 
@@ -410,7 +412,8 @@ irCommand.SetAction(async (parseResult, cancellationToken) =>
     string file = parseResult.GetValue(scriptOption)!;
     bool raw = parseResult.GetValue(irOptimizeOption);
 
-    var scriptBasePath = Path.GetDirectoryName(file) ?? "";
+    var scriptBasePath = Path.GetDirectoryName(file);
+    if (string.IsNullOrEmpty(scriptBasePath)) scriptBasePath = ".";   // 裸文件名（run main.ecs）相对 CWD
     scriptBasePath = Path.GetFullPath(scriptBasePath);
     var (label, total, repeat) = ECCore.LoadImgLabels(scriptBasePath, AppDomain.CurrentDomain.BaseDirectory);
 
@@ -447,7 +450,7 @@ static string DumpIr(EasyCon.Core.Script.IScriptEngine engine, EasyCon.Core.Scri
 
     // 优化前：关闭优化重新编译（同一脚本文件与标签扩展名）
     var (label, _, _) = ECCore.LoadImgLabels(
-        Path.GetFullPath(Path.GetDirectoryName(file) ?? ""), AppDomain.CurrentDomain.BaseDirectory);
+        Path.GetFullPath(Path.GetDirectoryName(file) ?? "."), AppDomain.CurrentDomain.BaseDirectory);
     var rerun = engine.LoadFile(file, new EasyCon.Core.Script.ScriptHostOptions
     {
         Compile = ScriptCompileProfiles.Interactive(label.Select(il => il.name), optimize: false),

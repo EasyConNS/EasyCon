@@ -137,9 +137,12 @@ internal static class StdLib
         ENDFUNC
 
         # ---- PP-OCR rec 行识别配方（ppocr 不走 OCR 面，经 NET 族 + 本配方；宿主打洞 CTC 折叠）----
-        # rec 输入行高约定 32px，宽度按宽高比换算并 8 对齐（PP-OCR rec 配方常数）。
-        FUNC PP_REC_WIDTH($w: INT, $h: INT): INT
-            RETURN ($w * 32 / $h + 7) / 8 * 8
+        # rec 输入尺寸 = 行高 x 等比宽度（8 对齐）。行高是模型代际常数，由调用方按所用
+        # 资产显式传入，std 不钉常数：PP-OCRv6 资产 48（输入固定 3x48xW；onnxruntime 对
+        # H!=48 报 INVALID_ARGUMENT，OpenCV DNN 不校验形状会静默产出劣化结果），
+        # PP-OCRv5 旧资产按其导出配置（32）。
+        FUNC PP_REC_WIDTH($w: INT, $h: INT, $recH: INT): INT
+            RETURN ($w * $recH / $h + 7) / 8 * 8
         ENDFUNC
 
         # CTC 贪心折叠最近一次 NET_RUNH 输出 [1,T,C]：连续同类别去重、blank 帧重置、
@@ -149,11 +152,12 @@ internal static class StdLib
             RETURN __CTC_FOLD__($blank, $charset, $base)
         ENDFUNC
 
-        # rec 推理通用步骤：采集 ROI → rec 宽度换算（PP_REC_WIDTH）→ 归一化（PPOCR_NORM）
-        # → 推理。输出驻留宿主线程槽，由任意解码原语消费（CTC_FOLD / NET_ARGMAX+NET_LABEL /
-        # NET_OUT 自实现策略）。返回输出元素个数（0 = 失败）。
-        FUNC PP_OCR_INFER($net: PTR, $x: INT, $y: INT, $w: INT, $h: INT): INT
-            $img = NET_IMAGE($x, $y, $w, $h, PP_REC_WIDTH($w, $h), 32, "rgb")
+        # rec 推理通用步骤：采集 ROI → 按调用方行高换算输入宽度（PP_REC_WIDTH）→ 归一化
+        # （PPOCR_NORM）→ 推理。$recH = 模型代际行高（调用方显式给）。输出驻留宿主线程槽，
+        # 由任意解码原语消费（CTC_FOLD / NET_ARGMAX+NET_LABEL / NET_OUT 自实现策略）。
+        # 返回输出元素个数（0 = 失败）。
+        FUNC PP_OCR_INFER($net: PTR, $x: INT, $y: INT, $w: INT, $h: INT, $recH: INT): INT
+            $img = NET_IMAGE($x, $y, $w, $h, PP_REC_WIDTH($w, $h, $recH), $recH, "rgb")
             $t = PPOCR_NORM($img, "rec")
             $n = NET_RUNH($net, $t)
             NET_FREE $t
@@ -164,9 +168,9 @@ internal static class StdLib
         # ---- 共享采集形态：同帧多区域只采集一次。$frame 为整帧 base64（如 FRAME() 全屏），
         #      区域坐标相对该帧，逐区域 ROI 裁剪在宿主内完成（省 N-1 次采集 + base64 编解码）。
         #      命名与采集形态同名重载（第二参 STRING = 帧），约定同 NET_IMAGE 的 base64 形态。
-        FUNC PP_OCR_INFER($net: PTR, $frame: STRING, $x: INT, $y: INT, $w: INT, $h: INT): INT
+        FUNC PP_OCR_INFER($net: PTR, $frame: STRING, $x: INT, $y: INT, $w: INT, $h: INT, $recH: INT): INT
             $roi = ROI($frame, $x, $y, $w, $h)
-            $img = NET_IMAGE($roi, PP_REC_WIDTH($w, $h), 32, "rgb")
+            $img = NET_IMAGE($roi, PP_REC_WIDTH($w, $h, $recH), $recH, "rgb")
             $t = PPOCR_NORM($img, "rec")
             $n = NET_RUNH($net, $t)
             NET_FREE $t
@@ -174,25 +178,27 @@ internal static class StdLib
             RETURN $n
         ENDFUNC
 
-        # PP-OCR rec：固定 ROI → 数字串。$base 由脚本按所用模型代际指定（'0' 的 class 下标：
-        # v5 字典 16163 / v6 字典 33，std 不硬编码任何代际常数；blank=0，'0'-'9' 需在字典中连续）。
+        # PP-OCR rec：固定 ROI → 数字串。$base / $recH 由脚本按所用模型代际指定（'0' 的 class
+        # 下标：v5 字典 16163 / v6 字典 33；行高 v5 旧资产 32 / v6 资产 48——std 不硬编码任何
+        # 代际常数；blank=0，'0'-'9' 需在字典中连续）。
         # 忠实输出折叠结果（含模型伪影的前导零）；数值化/去前导零属游戏策略，调用方 INT() 自理。
-        FUNC PP_OCR_DIGITS($net: PTR, $base: INT, $x: INT, $y: INT, $w: INT, $h: INT): STRING
-            $n = PP_OCR_INFER($net, $x, $y, $w, $h)
+        FUNC PP_OCR_DIGITS($net: PTR, $base: INT, $x: INT, $y: INT, $w: INT, $h: INT, $recH: INT): STRING
+            $n = PP_OCR_INFER($net, $x, $y, $w, $h, $recH)
             RETURN CTC_FOLD(0, "0123456789", $base)
         ENDFUNC
 
-        FUNC PP_OCR_DIGITS($net: PTR, $frame: STRING, $base: INT, $x: INT, $y: INT, $w: INT, $h: INT): STRING
-            $n = PP_OCR_INFER($net, $frame, $x, $y, $w, $h)
+        FUNC PP_OCR_DIGITS($net: PTR, $frame: STRING, $base: INT, $x: INT, $y: INT, $w: INT, $h: INT, $recH: INT): STRING
+            $n = PP_OCR_INFER($net, $frame, $x, $y, $w, $h, $recH)
             RETURN CTC_FOLD(0, "0123456789", $base)
         ENDFUNC
 
-        # PP-OCR rec 通用文本：PP_OCR_INFER + 标签表层整字典折叠（NET_LABELS 行号即索引，
-        # class c → NET_LABEL(c-1)）。去重/blank 重置与 CTC_FOLD 洞同语义，无窗口过滤
+        # PP-OCR rec 通用文本：PP_OCR_INFER（$recH = 模型代际行高，调用方显式给）+ 标签表层
+        # 整字典折叠（NET_LABELS 行号即索引，class c → NET_LABEL(c-1)）。去重/blank 重置与
+        # CTC_FOLD 洞同语义，无窗口过滤
         # （数字子集场景用 PP_OCR_DIGITS）。加载字典会整体替换 NET_LABELS 全局表；
         # 解码策略需定制时可在脚本侧经 NET_ROWS + NET_ARGMAX 自实现。
-        FUNC PP_OCR_TEXT($net: PTR, $x: INT, $y: INT, $w: INT, $h: INT, $dictPath: STRING): STRING
-            $n = PP_OCR_INFER($net, $x, $y, $w, $h)
+        FUNC PP_OCR_TEXT($net: PTR, $x: INT, $y: INT, $w: INT, $h: INT, $dictPath: STRING, $recH: INT): STRING
+            $n = PP_OCR_INFER($net, $x, $y, $w, $h, $recH)
             NET_LABELS $dictPath
             $text = ""
             $prev = -1
@@ -212,8 +218,8 @@ internal static class StdLib
             RETURN $text
         ENDFUNC
 
-        FUNC PP_OCR_TEXT($net: PTR, $frame: STRING, $x: INT, $y: INT, $w: INT, $h: INT, $dictPath: STRING): STRING
-            $n = PP_OCR_INFER($net, $frame, $x, $y, $w, $h)
+        FUNC PP_OCR_TEXT($net: PTR, $frame: STRING, $x: INT, $y: INT, $w: INT, $h: INT, $dictPath: STRING, $recH: INT): STRING
+            $n = PP_OCR_INFER($net, $frame, $x, $y, $w, $h, $recH)
             NET_LABELS $dictPath
             $text = ""
             $prev = -1

@@ -524,7 +524,7 @@ $det = NET_LOAD("det.onnx")                        # 部署约定名（代码不
 $c = PP_DET_FIND($det, $frame, 0, 0, 1920, 1080)   # 返回框数（帧形态重载同 rec 配方）
 $i = 0
 WHILE $i < DET_COUNT()
-    $n = PP_OCR_INFER($rec, $frame, DET_X($i), DET_Y($i), DET_W($i), DET_H($i))
+    $n = PP_OCR_INFER($rec, $frame, DET_X($i), DET_Y($i), DET_W($i), DET_H($i), _REC_H)
     $t = CTC_FOLD(0, "0123456789", _DIGITS_BASE)   # 窗口起点随模型代际指定（见下）
     PRINT $t
     $i = $i + 1
@@ -540,12 +540,14 @@ END
   `examples/ppocr-det-find.ecs`（全页 det → 逐框 rec，收集页面数字与文本行）。
 
 std 侧已备好的 PP-OCR rec 配方（模型/字典为外部资产，命名约定见 `test/assets/README.md`；
-代码不绑定模型代际）：`PP_OCR_INFER(net, x, y, w, h): INT`——通用推理步骤（采集 → rec
-宽度换算 → 归一化 → 推理，输出驻留宿主，解码自由组合）；`PP_OCR_DIGITS(net, base, x, y, w, h):
+代码不绑定模型代际）：`PP_OCR_INFER(net, x, y, w, h, recH): INT`——通用推理步骤（采集 → rec
+宽度换算 → 归一化 → 推理，输出驻留宿主，解码自由组合）；`PP_OCR_DIGITS(net, base, x, y, w, h, recH):
 STRING`（数字子集窗口，宿主 CTC_FOLD 加速；`base` = '0' 的 class 下标，由脚本按模型代际
 指定——PP-OCRv6 字典数字在表头（33 起）、v5 在表尾（16163 起），std 不钉任何代际常数）；
-`PP_OCR_TEXT(net, x, y, w, h, dictPath): STRING`（整字典文本，标签表层逐帧解码，
+`PP_OCR_TEXT(net, x, y, w, h, dictPath, recH): STRING`（整字典文本，标签表层逐帧解码，
 如宝可梦状态页名称识别；加载字典会整体替换 NET_LABELS 全局表）。
+`recH` = rec 模型的输入行高，同为代际常数由调用方显式传（PP-OCRv6 资产 48、v5 旧资产 32；
+喂错行高 onnxruntime 直接 INVALID_ARGUMENT，OpenCV DNN 不校验形状会静默产出劣化结果）。
 三者均有**共享采集重载**（第二参传 `STRING` 整帧 base64，如 `FRAME()` 结果）：
 同帧多区域只采集一次，逐区域 `__ROI__` 裁剪在宿主内完成（ROI 走桌面参考回落
 `DesktopVisionService`，与采集路径共享裁剪核，零装配可用）——宝可梦状态页示例

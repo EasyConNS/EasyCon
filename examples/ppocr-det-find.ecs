@@ -14,6 +14,7 @@
 
 # ---- 主流程 ----
 _DIGITS_BASE = 33
+_REC_H = 48
 
 $det = NET_LOAD(__APP__ + "/models/ppocr/PP-OCRv6_medium_det.onnx")
 $rec = NET_LOAD(__APP__ + "/models/ppocr/PP-OCRv6_medium_rec.onnx")
@@ -31,12 +32,12 @@ IF $det > 0 AND $rec > 0
     $lines = ""
     $i = 0
     WHILE $i < DET_COUNT()
-        $n = PP_OCR_INFER($rec, $frame, DET_X($i), DET_Y($i), DET_W($i), DET_H($i))
+        $n = PP_OCR_INFER($rec, $frame, DET_X($i), DET_Y($i), DET_W($i), DET_H($i), _REC_H)
         $num = CTC_FOLD(0, "0123456789", _DIGITS_BASE)
         IF LEN($num) > 0
             $digits = $digits + $num + ","
         ENDIF
-        $text = PP_OCR_TEXT($rec, $frame, DET_X($i), DET_Y($i), DET_W($i), DET_H($i), $dict)
+        $text = PP_OCR_TEXT($rec, $frame, DET_X($i), DET_Y($i), DET_W($i), DET_H($i), $dict, _REC_H)
         IF LEN($text) > 0
             $lines = $lines + $text + ","
         ENDIF

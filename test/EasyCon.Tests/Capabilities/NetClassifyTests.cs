@@ -335,7 +335,7 @@ public class NetClassifyTests
         {
             var lines = Run($$"""
                 $n = NET_LOAD("stub")
-                $s = PP_OCR_TEXT($n, 0, 0, 64, 32, "{{dictPath}}")
+                $s = PP_OCR_TEXT($n, 0, 0, 64, 32, "{{dictPath}}", 32)
                 PRINT $s
                 $l1 = NET_LABEL(1)
                 PRINT $l1

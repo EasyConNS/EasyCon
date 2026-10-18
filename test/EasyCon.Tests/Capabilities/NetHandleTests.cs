@@ -228,10 +228,10 @@ public class NetPpocrRealModelTests
     /// ③ 同一 EXP 行真模型输出上，脚本侧自实现折叠（NET_ARGMAX × NET_LABEL，策略层
     /// 可替换性的实机演示）与宿主 CTC_FOLD 洞结果一致（"19531"）。
     /// </summary>
-    [TestCase("PP-OCRv5_mobile_rec.onnx", "ppocr_keys_v5.txt", 18383, 16163)]
-    [TestCase("PP-OCRv6_medium_rec.onnx", "ppocrv6_dict.txt", 18708, 33)]
+    [TestCase("PP-OCRv5_mobile_rec.onnx", "ppocr_keys_v5.txt", 18383, 16163, 32)]
+    [TestCase("PP-OCRv6_medium_rec.onnx", "ppocrv6_dict.txt", 18708, 33, 48)]
     public void PpocrDictionary_Labels_CrossValidate_ScriptSideFold(
-        string recModelName, string dictName, int dictLines, int digitsBase)
+        string recModelName, string dictName, int dictLines, int digitsBase, int recHeight)
     {
         var assets = AssetsDir;
         var modelPath = Path.Combine(assets, "ppocr", recModelName);
@@ -258,18 +258,19 @@ public class NetPpocrRealModelTests
         // PP_OCR_DIGITS 跑洞折叠后，_lastNetOutput 仍驻留 EXP 行 [1,T,C] 输出——
         // 脚本侧 NET_ROWS + NET_ARGMAX + NET_LABEL(cls-1) 对同一输出自实现同语义折叠
         // （blank 重置、连续去重、数字窗口 [base, base+9] 过滤，与洞逐条对应）。
-        // 数字窗口由脚本按模型代际显式指定（std 不钉常数）；字典路径经 ARG 注入
-        // （路径含空格，不内插进脚本字面量）。
+        // 数字窗口与 rec 行高均由脚本按模型代际显式指定（std 不钉常数）；
+        // 字典路径经 ARG 注入（路径含空格，不内插进脚本字面量）。
         const string source = """
             $n = NET_LOAD(__APP__ + "/models/ppocr/" + ARG(2))
             $dict = NET_LABELS(ARG(0))
             PRINT $dict
             $base = INT(ARG(1))
+            $recH = INT(ARG(3))
             $c0 = NET_LABEL($base - 1)
             PRINT $c0
             $c5 = NET_LABEL($base + 4)
             PRINT $c5
-            $hole = PP_OCR_DIGITS($n, $base, 355, 680, 1370, 85)
+            $hole = PP_OCR_DIGITS($n, $base, 355, 680, 1370, 85, $recH)
             PRINT $hole
             $out = ""
             $prev = -1
@@ -306,7 +307,7 @@ public class NetPpocrRealModelTests
         var caps = new CapabilitySet
         {
             Console = new ConsoleIoAdapter(io),
-            Environment = new HostEnvironment([dictPath, digitsBase.ToString(), recModelName], appDir),
+            Environment = new HostEnvironment([dictPath, digitsBase.ToString(), recModelName, recHeight.ToString()], appDir),
             Inference = inference,
             Capture = new DelegateCaptureSource(FrameDelegateFactory.CreateFrame(() => frame.Clone())),
         };
@@ -359,7 +360,7 @@ public class NetPpocrRealModelTests
             PRINT $n
             $i = 0
             WHILE $i < DET_COUNT()
-                $txt = PP_OCR_DIGITS($rec, $frame, 33, DET_X($i), DET_Y($i), DET_W($i), DET_H($i))
+                $txt = PP_OCR_DIGITS($rec, $frame, 33, DET_X($i), DET_Y($i), DET_W($i), DET_H($i), 48)
                 PRINT $txt
                 $i = $i + 1
             END

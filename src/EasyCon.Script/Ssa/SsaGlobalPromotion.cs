@@ -121,7 +121,8 @@ internal static class SsaGlobalPromotion
             var bc = b.BranchCondition != null ? $" bc=v{b.BranchCondition.Id}:{b.BranchCondition.Op}(u{b.BranchCondition.Uses})" : "";
             var phis = b.Phis.Count > 0
                 ? " phis=[" + string.Join(",", b.Phis.Select(p => $"v{p.Id}<-[{string.Join(",", p.ExtraArgs?.Select(a => $"v{a.Id}:{a.Op}") ?? [])}]")) + "]" : "";
-            Console.Error.WriteLine($"[gp {tag}] fn={fn.Symbol.Name} b{b.Id} preds=[{string.Join(",", b.Predecessors.Select(p => p.Id))}]{bc}{phis} insts=[{string.Join(", ", b.Instructions.Select(i => $"v{i.Id}:{i.Op}(u{i.Uses})"))}]");
+            static string AuxOf(SsaValue i) => i.Aux is Symbols.GlobalVariableSymbol gs ? $":{gs.Name}" : "";
+            Console.Error.WriteLine($"[gp {tag}] fn={fn.Symbol.Name} b{b.Id} preds=[{string.Join(",", b.Predecessors.Select(p => p.Id))}]{bc}{phis} insts=[{string.Join(", ", b.Instructions.Select(i => $"v{i.Id}:{i.Op}{AuxOf(i)}(u{i.Uses})"))}]");
         }
     }
 
@@ -213,12 +214,16 @@ internal static class SsaGlobalPromotion
             return;
         }
 
-        var exitDef = new Dictionary<(SsaBlock, GlobalVariableSymbol), SsaValue>();   // 块出口定值
+        // 块出口定值：存 store 指令本身，Arg0 惰性解引用——
+        // 后续 LoadGlobal→提升值替换会就地改写 store.Arg0，预快照值会变悬挂引用
+        //（实证：$i = $N 生成的 StoreGlobal($i, LoadGlobal($N))，$N 的 load 被提升删除后
+        //  合流 φ 臂仍引用已删除的 LoadGlobal → "phi input references missing"）
+        var exitDef = new Dictionary<(SsaBlock, GlobalVariableSymbol), SsaValue>();   // 块出口 store 指令
         var entryDef = new Dictionary<(SsaBlock, GlobalVariableSymbol), SsaValue>();  // 块入口到达值（φ 断环缓存）
         foreach (var (g, inst) in stores)
         {
             var block = FindBlock(fn, inst)!;
-            exitDef[(block, g)] = inst.Arg0!;
+            exitDef[(block, g)] = inst;
         }
 
         // 块入口到达值：多前驱 → 占位 φ 先登记断环（回边自引用臂由此产生），再填臂；
@@ -256,8 +261,8 @@ internal static class SsaGlobalPromotion
         // 块出口值：块内最后一次 store 的值；块内无 store → 入口值
         SsaValue ExitValue(GlobalVariableSymbol g, SsaBlock block)
         {
-            if (exitDef.TryGetValue((block, g), out var def))
-                return def;
+            if (exitDef.TryGetValue((block, g), out var storeInst))
+                return storeInst.Arg0!;   // 惰性解引用，取替换后的最新值
             return EntryValue(g, block);
         }
 
