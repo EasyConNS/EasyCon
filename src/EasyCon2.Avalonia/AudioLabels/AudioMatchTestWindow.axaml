@@ -30,11 +30,11 @@
                 <StackPanel Spacing="6">
                     <TextBlock Text="{loc:Translate Text.AudioMatch.Threshold}"/>
                     <NumericUpDown x:Name="ThresholdInput" Value="{Binding Threshold, Mode=TwoWay}" Minimum="10" Maximum="100"
-                                   Increment="1" FormatString="F2" AutomationProperties.Name="{loc:Translate Text.AudioMatch.Threshold}"/>
+                                   Increment="1" FormatString="F0" ParsingNumberStyle="Integer" AutomationProperties.Name="{loc:Translate Text.AudioMatch.Threshold}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Spacing="6">
                     <TextBlock Text="{loc:Translate Text.AudioMatch.Cooldown}"/>
-                    <NumericUpDown Value="{Binding CooldownSeconds, Mode=TwoWay}" Minimum="0" Maximum="30"
+                    <NumericUpDown x:Name="CooldownInput" Value="{Binding CooldownSeconds, Mode=TwoWay}" Minimum="0" Maximum="30"
                                    Increment="0.1" FormatString="F1" AutomationProperties.Name="{loc:Translate Text.AudioMatch.Cooldown}"/>
                 </StackPanel>
             </Grid>
@@ -44,7 +44,7 @@
                     <TextBlock Grid.Column="1" Text="{loc:Translate Text.AudioMatch.PeakScore}"/>
                     <TextBlock Grid.Row="1" x:Name="CurrentScoreText" Text="{Binding ScoreText}" FontSize="32" FontWeight="SemiBold"
                                Foreground="{DynamicResource WorkbenchAccentBrush}"/>
-                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding PeakScoreText}" FontSize="32" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="PeakScoreText" Text="{Binding PeakScoreText}" FontSize="32" FontWeight="SemiBold"/>
                     <ProgressBar Grid.Row="2" Grid.ColumnSpan="2" Minimum="0" Maximum="100" Value="{Binding ScoreValue}" Height="8"/>
                 </Grid>
             </Border>

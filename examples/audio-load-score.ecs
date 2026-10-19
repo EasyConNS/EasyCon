@@ -1,3 +1,4 @@
+# AUDIO_SCORE 返回 0～100 的整数峰值，百分制向下取整。
 # 在桌面 GUI 连接游戏音频和手柄后运行。
 # 将本脚本保存在自己的脚本目录；标签应为同级的
 # audiolabel/医疗.audiolabel/label.json 和 audio.wav。

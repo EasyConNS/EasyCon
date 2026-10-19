@@ -43,8 +43,13 @@ public class AudioMatchTestViewModelTests
         {
             Assert.That(vm.OpenCommand.CanExecute(null), Is.False);
             source.Emit(_sound.Pcm.ToArray());
-            await UntilAsync(() => vm.HitCount == 1);
+            await UntilAsync(() => vm.Hits.Count == 1);
             Assert.That(vm.PeakScore, Is.GreaterThan(98).And.LessThanOrEqualTo(100));
+            Assert.That(vm.ScoreText, Is.EqualTo(vm.Score!.Value.ToString()));
+            Assert.That(vm.PeakScoreText, Is.EqualTo(vm.PeakScore.ToString()));
+            Assert.That(vm.Hits[0].Score, Is.InRange(85, vm.PeakScore));
+            Assert.That(vm.Hits[0].Threshold, Is.EqualTo(85));
+            Assert.That(vm.Hits[0].Time, Does.Match(@"^\d{2}:\d{2}:\d{2}\.\d{3}$"));
             vm.Threshold = 91;
             vm.CooldownSeconds = 2;
             vm.StopCommand.Execute(null);
@@ -121,9 +126,12 @@ public class AudioMatchTestViewModelTests
         await vm.OpenCommand.ExecuteAsync(null);
         Assert.That(vm.HasTemplate, Is.True);
         Assert.That(vm.StartCommand.CanExecute(null), Is.False);
-        vm.Threshold = double.NaN;
-        vm.CooldownSeconds = double.PositiveInfinity;
         Assert.That(vm.Threshold, Is.EqualTo(85));
+        vm.Threshold = int.MinValue;
+        Assert.That(vm.Threshold, Is.EqualTo(10));
+        vm.Threshold = int.MaxValue;
+        Assert.That(vm.Threshold, Is.EqualTo(100));
+        vm.CooldownSeconds = double.PositiveInfinity;
         Assert.That(vm.CooldownSeconds, Is.EqualTo(1));
     }
 

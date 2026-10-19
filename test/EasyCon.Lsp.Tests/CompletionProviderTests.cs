@@ -57,6 +57,8 @@ public class CompletionProviderTests
         });
 
         var waitItem = completions.Items.First(i => i.Label == "WAIT");
+        Assert.That(Constants.BuiltinFunctions.Single(item => item.Name == "AUDIO_SCORE").Doc,
+            Does.Contain("INT").And.Contain("向下取整").And.Not.Contain("DOUBLE"));
         Assert.Multiple(() =>
         {
             Assert.That(waitItem.Kind, Is.EqualTo(CompletionItemKind.Function));

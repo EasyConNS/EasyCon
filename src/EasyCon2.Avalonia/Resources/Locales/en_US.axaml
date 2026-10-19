@@ -278,5 +278,5 @@
     <x:String x:Key="Text.AudioMatch.Disconnected">Audio input is disconnected. Matching will warm up again after reconnection.</x:String>
     <x:String x:Key="Text.AudioMatch.InvalidAudio">Invalid audio received. Old data was cleared. Check the input device and format.</x:String>
     <x:String x:Key="Text.AudioMatch.Stopped">Listening stopped; hit records are kept. Starting again clears the session results.</x:String>
-    <x:String x:Key="Text.AudioMatch.Hint">Similarity scores range from 0 to 100, matching ECS AUDIO_SCORE. Start at 85, test both target and ordinary game sounds, then use your calibrated threshold in the script's IF.</x:String>
+    <x:String x:Key="Text.AudioMatch.Hint">Similarity scores are integers from 0 to 100, rounded down, matching ECS AUDIO_SCORE. Start at 85, test both target and ordinary game sounds, then use your calibrated threshold in the script's IF.</x:String>
 </ResourceDictionary>

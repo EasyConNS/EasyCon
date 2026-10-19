@@ -80,7 +80,8 @@ public class AudioCapabilityTests
         {
             CompileResult script = Compile($"AUDIO_LOAD \"医疗\"\n{operation}\n$first = AUDIO_SCORE(\"医疗\")\n$second = AUDIO_SCORE(\"医疗\")\nAUDIO_UNLOAD \"医疗\"\nRETURN $first + $second");
             Value value = await Task.Run(() => Run(script, lease, stop.Token));
-            Assert.That(value.AsDouble(), Is.InRange(196, 200));
+            Assert.That(value.Type, Is.EqualTo(ScriptType.Int));
+            Assert.That(value.AsInt(), Is.InRange(196, 200));
             Assert.That(_source.Subscribers, Is.Zero);
             Assert.That(_source.StateSubscribers, Is.Zero);
             Assert.That(_source.Disposed, Is.False);
@@ -90,6 +91,29 @@ public class AudioCapabilityTests
             await stop.CancelAsync();
             await playback;
         }
+    }
+
+    [TestCase(0, 0)]
+    [TestCase(0.849, 84)]
+    [TestCase(0.85, 85)]
+    [TestCase(1, 100)]
+    public void AudioScoreReturnsIntAndUsesTheIntegerThreshold(double normalized, int expected)
+    {
+        ExampleAudio audio = new();
+        TestPad pad = new((_, _, _) => audio.Peak = AudioMatchMonitor.ToPercentage(normalized));
+        using CapabilityLease lease = Assemble(audio, pad);
+        CompileResult script = Compile("""
+            AUDIO_LOAD "医疗"
+            A
+            $score = AUDIO_SCORE("医疗")
+            IF $score >= 85
+                RETURN $score + 1000
+            ENDIF
+            RETURN $score
+            """);
+        Value result = Run(script, lease);
+        Assert.That(result.Type, Is.EqualTo(ScriptType.Int));
+        Assert.That(result.AsInt(), Is.EqualTo(expected >= 85 ? expected + 1000 : expected));
     }
 
     [Test]
@@ -272,10 +296,10 @@ public class AudioCapabilityTests
         public bool Loaded { get; private set; }
         public bool Disposed { get; private set; }
         public int Loads { get; private set; }
-        public double Peak { get; set; }
+        public int Peak { get; set; }
         public IAudioSession BeginRun(CancellationToken token) => this;
         public void Load(string labelName, CancellationToken token) { Assert.That(Loaded, Is.False); Loaded = true; Loads++; Peak = 0; }
-        public double Score(string labelName, CancellationToken token) { Assert.That(Loaded, Is.True); return Peak; }
+        public int Score(string labelName, CancellationToken token) { Assert.That(Loaded, Is.True); return Peak; }
         public void Unload(string labelName, CancellationToken token) { Assert.That(Loaded, Is.True); Loaded = false; }
         public void CheckHealth(CancellationToken token) { }
         public void Dispose() { Loaded = false; Disposed = true; }

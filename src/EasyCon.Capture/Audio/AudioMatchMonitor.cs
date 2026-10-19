@@ -14,9 +14,9 @@ public enum AudioMatchStatus
 
 public sealed record AudioMatchSettings
 {
-    public AudioMatchSettings(double threshold = 85, double cooldownSeconds = 1)
+    public AudioMatchSettings(int threshold = 85, double cooldownSeconds = 1)
     {
-        if (!double.IsFinite(threshold) || threshold is < 10 or > 100)
+        if (threshold is < 10 or > 100)
             throw new ArgumentOutOfRangeException(nameof(threshold));
         if (!double.IsFinite(cooldownSeconds) || cooldownSeconds is < 0 or > 30)
             throw new ArgumentOutOfRangeException(nameof(cooldownSeconds));
@@ -24,12 +24,12 @@ public sealed record AudioMatchSettings
         CooldownSeconds = cooldownSeconds;
     }
 
-    public double Threshold { get; }
+    public int Threshold { get; }
     public double CooldownSeconds { get; }
 }
 
-public sealed record AudioMatchHit(DateTimeOffset DetectedAt, double Score, double Threshold);
-public sealed record AudioMatchUpdate(AudioMatchStatus Status, double? Score, IReadOnlyList<AudioMatchHit> Hits)
+public sealed record AudioMatchHit(DateTimeOffset DetectedAt, int Score, int Threshold);
+public sealed record AudioMatchUpdate(AudioMatchStatus Status, int? Score, IReadOnlyList<AudioMatchHit> Hits)
 {
     internal long Generation { get; init; } = -1;
 }
@@ -63,7 +63,7 @@ public sealed class AudioMatchMonitor : IDisposable
     private bool _disposed;
     private AudioMatchSettings _settings = new();
     private AudioTemplateMatcher? _matcher;
-    private double? _lastScore;
+    private int? _lastScore;
     private readonly AudioMatchTrigger _trigger = new();
 
     public AudioMatchMonitor(IAudioCaptureSource source, AudioMatchTemplate template)
@@ -237,7 +237,7 @@ public sealed class AudioMatchMonitor : IDisposable
             _trigger.Reset();
         }
         List<AudioMatchHit> hits = [];
-        double? score = null;
+        int? score = null;
         AudioMatchSettings settings = Settings;
         try
         {
@@ -247,9 +247,9 @@ public sealed class AudioMatchMonitor : IDisposable
                 _matcher ??= new AudioTemplateMatcher(_template, state.Format!);
                 _matcher.Append(packet, match =>
                 {
-                    double similarity = match.Score * 100;
+                    int similarity = ToPercentage(match.Score);
                     score = Math.Max(score ?? 0, similarity);
-                    if (_trigger.Observe(match, settings))
+                    if (_trigger.Observe(similarity, match.EndSeconds, settings))
                         hits.Add(new AudioMatchHit(DateTimeOffset.Now, similarity, settings.Threshold));
                 }, cancellationToken);
             }
@@ -280,6 +280,9 @@ public sealed class AudioMatchMonitor : IDisposable
             status = resetStatus;
         return new AudioMatchUpdate(status, _lastScore, hits) { Generation = epoch };
     }
+
+    /// <summary>Quantize normalized matcher output once for scores, peaks and hit decisions.</summary>
+    internal static int ToPercentage(double score) => (int)Math.Floor(score * 100);
 
     /// <summary>Reject a result if its source changed while the consumer was dispatching it.</summary>
     public bool IsCurrent(AudioMatchUpdate update)
@@ -323,16 +326,15 @@ internal sealed class AudioMatchTrigger
     private bool _armed = true;
     private double _lastHit = double.NegativeInfinity;
 
-    public bool Observe(AudioMatchScore match, AudioMatchSettings settings)
+    public bool Observe(int score, double endSeconds, AudioMatchSettings settings)
     {
         // Rearm only after the signal falls. Cooldown alone would repeatedly report one long sound.
-        double similarity = match.Score * 100;
-        if (similarity < Math.Max(0, settings.Threshold - 5))
+        if (score < Math.Max(0, settings.Threshold - 5))
             _armed = true;
-        if (!_armed || similarity < settings.Threshold || match.EndSeconds - _lastHit < settings.CooldownSeconds)
+        if (!_armed || score < settings.Threshold || endSeconds - _lastHit < settings.CooldownSeconds)
             return false;
         _armed = false;
-        _lastHit = match.EndSeconds;
+        _lastHit = endSeconds;
         return true;
     }
 

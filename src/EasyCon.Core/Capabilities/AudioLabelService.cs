@@ -43,7 +43,7 @@ public sealed class AudioLabelService(IAudioCaptureSource source, string? script
             }
         }
 
-        public double Score(string labelName, CancellationToken token)
+        public int Score(string labelName, CancellationToken token)
         {
             CheckHealth(token);
             return GetLoaded(labelName).Score;

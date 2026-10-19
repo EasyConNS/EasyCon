@@ -28,7 +28,7 @@ internal static class BuiltinCallable
                 session.Load(args[0].AsString(), token);
                 return Value.Void;
             case "AUDIO_SCORE":
-                return Value.FromDouble(session.Score(args[0].AsString(), token));
+                return Value.FromInt(session.Score(args[0].AsString(), token));
             case "AUDIO_UNLOAD":
                 session.Unload(args[0].AsString(), token);
                 return Value.Void;

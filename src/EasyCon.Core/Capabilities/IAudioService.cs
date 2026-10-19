@@ -10,8 +10,8 @@ public interface IAudioService
 public interface IAudioSession : IDisposable
 {
     void Load(string labelName, CancellationToken token);
-    /// <summary>Cumulative highest completed score, 0–100; initially zero. Reading never consumes it.</summary>
-    double Score(string labelName, CancellationToken token);
+    /// <summary>Cumulative highest completed integer score, 0–100, rounded down; initially zero. Reading never consumes it.</summary>
+    int Score(string labelName, CancellationToken token);
     void Unload(string labelName, CancellationToken token);
     /// <summary>Surface background failures even when a script finishes without reading again.</summary>
     void CheckHealth(CancellationToken token);

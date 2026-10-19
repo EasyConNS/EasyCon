@@ -1,3 +1,4 @@
+# AUDIO_SCORE 返回 0～100 的整数峰值，百分制向下取整。
 # 桌面 GUI：保存脚本、连接游戏音频，标签放在脚本旁
 # audiolabel/医疗.audiolabel/{label.json,audio.wav}。无需手柄。
 AUDIO_LOAD "医疗"

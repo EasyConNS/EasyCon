@@ -14,10 +14,10 @@ public class AudioRecognitionTests
         Assert.That(recognition.Score, Is.Zero);
         rig.Feed(AudioTestRig.MakeSound(frequencyShift: 30));
         await AudioTestRig.UntilAsync(() => recognition.Score > 0);
-        double first = recognition.Score;
+        int first = recognition.Score;
         rig.Feed(rig.Sound, eraseAfterDelivery: true);
-        await AudioTestRig.UntilAsync(() => recognition.Score >= rig.ReferenceScore() - 1e-8);
-        double peak = recognition.Score;
+        await AudioTestRig.UntilAsync(() => recognition.Score == (int)Math.Floor(rig.ReferenceScore()));
+        int peak = recognition.Score;
         Assert.That(peak, Is.GreaterThan(first));
         Assert.That(recognition.Score, Is.EqualTo(peak));
         for (int second = 0; second < 16; second++)
@@ -28,6 +28,28 @@ public class AudioRecognitionTests
             Assert.That(recognition.Score, Is.EqualTo(peak));
         }
         Assert.That(rig.Time, Is.GreaterThan(AudioTestRig.Epoch + 15_000_000_000L));
+    }
+
+    [Test]
+    public async Task ScriptAndDiagnosticMonitorShareTheSameIntegerScore()
+    {
+        AudioTestRig rig = new();
+        using AudioRecognition recognition = rig.Open();
+        using AudioMatchMonitor diagnostic = new(rig.Source, rig.Template, () => rig.ClockTicks);
+        byte[] sound = AudioTestRig.MakeSound(frequencyShift: 30);
+        AudioTemplateMatcher matcher = new(rig.Template, rig.Source.State.Format!);
+        double rawPeak = 0;
+        matcher.Append(sound, match => rawPeak = Math.Max(rawPeak, match.Score * 100));
+        int expected = (int)Math.Floor(rawPeak);
+        Assert.That(rawPeak, Is.GreaterThan(expected).And.LessThan(expected + 1));
+
+        rig.Feed(sound);
+        AudioMatchUpdate update = diagnostic.Poll();
+        await AudioTestRig.UntilAsync(() => recognition.Score == expected);
+        Assert.That(update.Score, Is.EqualTo(expected));
+        Assert.That(recognition.Score, Is.EqualTo(update.Score));
+        foreach (AudioMatchHit hit in update.Hits)
+            Assert.That(hit.Score, Is.LessThanOrEqualTo(expected).And.GreaterThanOrEqualTo(hit.Threshold));
     }
 
     [Test]

@@ -8,7 +8,7 @@ using System.Collections.ObjectModel;
 
 namespace EasyCon2.Avalonia.AudioLabels;
 
-public sealed record AudioMatchHitRow(string Time, string Score, string Threshold);
+public sealed record AudioMatchHitRow(string Time, int Score, int Threshold);
 
 public partial class AudioMatchTestViewModel : ObservableObject, IDisposable
 {
@@ -31,13 +31,13 @@ public partial class AudioMatchTestViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _labelName = "";
     [ObservableProperty]
-    private double _threshold = 85;
+    private int _threshold = 85;
     [ObservableProperty]
     private double _cooldownSeconds = 1;
     [ObservableProperty]
-    private double? _score;
+    private int? _score;
     [ObservableProperty]
-    private double _peakScore;
+    private int _peakScore;
     [ObservableProperty]
     private int _hitCount;
 
@@ -65,24 +65,24 @@ public partial class AudioMatchTestViewModel : ObservableObject, IDisposable
     public bool HasTemplate => _template != null;
     public string TemplateSummary => _template == null ? L10nBridge.T("Text.AudioMatch.NoTemplate")
         : string.Format(L10nBridge.T("Text.AudioMatch.TemplateSummary"), LabelName, _template.DurationSeconds);
-    public string ScoreText => Score?.ToString("F2") ?? "—";
-    public double ScoreValue => Score ?? 0;
-    public string PeakScoreText => PeakScore.ToString("F2");
+    public string ScoreText => Score?.ToString() ?? "—";
+    public int ScoreValue => Score ?? 0;
+    public string PeakScoreText => PeakScore.ToString();
     public string HitSummary => string.Format(L10nBridge.T("Text.AudioMatch.HitSummary"), HitCount);
     public string Status => string.Format(L10nBridge.T(_statusKey), _statusArguments);
 
     partial void OnIsBusyChanged(bool value) => NotifyCommands();
     partial void OnIsListeningChanged(bool value) => NotifyCommands();
-    partial void OnScoreChanged(double? value)
+    partial void OnScoreChanged(int? value)
     {
         OnPropertyChanged(nameof(ScoreText));
         OnPropertyChanged(nameof(ScoreValue));
     }
-    partial void OnPeakScoreChanged(double value) => OnPropertyChanged(nameof(PeakScoreText));
+    partial void OnPeakScoreChanged(int value) => OnPropertyChanged(nameof(PeakScoreText));
     partial void OnHitCountChanged(int value) => OnPropertyChanged(nameof(HitSummary));
-    partial void OnThresholdChanged(double value)
+    partial void OnThresholdChanged(int value)
     {
-        double bounded = double.IsFinite(value) ? Math.Clamp(value, 10, 100) : 85;
+        int bounded = Math.Clamp(value, 10, 100);
         if (bounded != value)
             Threshold = bounded;
         UpdateSettings();
@@ -219,7 +219,7 @@ public partial class AudioMatchTestViewModel : ObservableObject, IDisposable
         {
             HitCount++;
             Hits.Insert(0, new AudioMatchHitRow(hit.DetectedAt.ToLocalTime().ToString("HH:mm:ss.fff"),
-                hit.Score.ToString("F2"), hit.Threshold.ToString("F2")));
+                hit.Score, hit.Threshold));
             if (Hits.Count > 100)
                 Hits.RemoveAt(Hits.Count - 1);
         }

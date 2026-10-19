@@ -278,5 +278,5 @@
     <x:String x:Key="Text.AudioMatch.Disconnected">音频输入未连接。连接后会自动重新积累音频。</x:String>
     <x:String x:Key="Text.AudioMatch.InvalidAudio">收到无效音频，已清空旧数据。请检查输入设备和格式。</x:String>
     <x:String x:Key="Text.AudioMatch.Stopped">监听已停止，命中记录保留。再次开始会清空本次结果。</x:String>
-    <x:String x:Key="Text.AudioMatch.Hint">分数为 0～100 的相似度，与 ECS 的 AUDIO_SCORE 一致。初始阈值 85；请同时测试目标音效和普通游戏声音，并在脚本 IF 中填写校准后的阈值。</x:String>
+    <x:String x:Key="Text.AudioMatch.Hint">分数为 0～100 的整数相似度，向下取整，与 ECS 的 AUDIO_SCORE 一致。初始阈值 85；请同时测试目标音效和普通游戏声音，并在脚本 IF 中填写校准后的阈值。</x:String>
 </ResourceDictionary>

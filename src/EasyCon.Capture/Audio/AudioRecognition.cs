@@ -3,14 +3,14 @@ using System.Runtime.ExceptionServices;
 
 namespace EasyCon.Capture.Audio;
 
-/// <summary>One loaded label: bounded background matching and a cumulative 0–100 peak.</summary>
+/// <summary>One loaded label: bounded background matching and a cumulative integer 0–100 peak.</summary>
 public sealed class AudioRecognition : IDisposable
 {
     private readonly AudioMatchMonitor _monitor;
     private readonly CancellationTokenSource _cancellation;
     private readonly Task _worker;
     private ExceptionDispatchInfo? _failure;
-    private double _peak;
+    private int _peak;
     private int _disposed;
 
     public AudioRecognition(IAudioCaptureSource source, AudioMatchTemplate template, CancellationToken token)
@@ -27,7 +27,7 @@ public sealed class AudioRecognition : IDisposable
         _worker = Task.Run(RecognizeAsync);
     }
 
-    public double Score
+    public int Score
     {
         get
         {

@@ -51,12 +51,23 @@ public class AudioMatchTestRenderTests
             Assert.That(input.Value, Is.EqualTo(85m));
             Assert.That(input.Minimum, Is.EqualTo(10m));
             Assert.That(input.Maximum, Is.EqualTo(100m));
+            Assert.That(input.Increment, Is.EqualTo(1m));
+            Assert.That(input.Text, Is.EqualTo("85"));
+            Assert.That(input.ParsingNumberStyle, Is.EqualTo(System.Globalization.NumberStyles.Integer));
             input.Value = 92m;
             Dispatcher.UIThread.RunJobs();
             Assert.That(vm.Threshold, Is.EqualTo(92));
-            vm.Score = 95.1;
+            Assert.That(input.Text, Is.EqualTo("92"));
+            vm.Score = 95;
+            vm.PeakScore = 98;
+            vm.CooldownSeconds = 1.3;
             Dispatcher.UIThread.RunJobs();
-            Assert.That(window.FindControl<TextBlock>("CurrentScoreText")!.Text, Is.EqualTo(vm.ScoreText));
+            Assert.That(window.FindControl<TextBlock>("CurrentScoreText")!.Text, Is.EqualTo("95"));
+            Assert.That(window.FindControl<TextBlock>("PeakScoreText")!.Text, Is.EqualTo("98"));
+            NumericUpDown cooldown = window.FindControl<NumericUpDown>("CooldownInput")!;
+            Assert.That(cooldown.Value, Is.EqualTo(1.3m));
+            Assert.That(cooldown.Increment, Is.EqualTo(0.1m));
+            Assert.That(cooldown.FormatString, Is.EqualTo("F1"));
             Assert.That(window.FindControl<TextBlock>("TemplateSummary")!.Text, Does.Contain("0.500"));
             Assert.That(vm.Status, Does.Not.StartWith("Text."));
             Assert.That(input.Bounds.Width, Is.GreaterThan(250));
@@ -77,11 +88,12 @@ public class AudioMatchTestRenderTests
         {
             WithWindow(locale, scheme, (window, vm) =>
             {
-                vm.Score = 92.7;
-                vm.PeakScore = 96.2;
+                vm.Score = 92;
+                vm.PeakScore = 96;
+                vm.CooldownSeconds = 1.3;
                 vm.HitCount = 2;
-                vm.Hits.Add(new AudioMatchHitRow("14:32:08.120", "91.40", "85.00"));
-                vm.Hits.Add(new AudioMatchHitRow("14:31:56.480", "88.70", "85.00"));
+                vm.Hits.Add(new AudioMatchHitRow("14:32:08.120", 91, 85));
+                vm.Hits.Add(new AudioMatchHitRow("14:31:56.480", 88, 85));
                 using WriteableBitmap frame = window.CaptureRenderedFrame()!;
                 string output = Path.Combine(Path.GetTempPath(), "easycon-audio-match-qa");
                 Directory.CreateDirectory(output);

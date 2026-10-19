@@ -69,15 +69,31 @@ public class AudioMatchingTests
     {
         AudioMatchTrigger trigger = new();
         AudioMatchSettings settings = new(85, 1);
-        Assert.That(trigger.Observe(new AudioMatchScore(0.9, 1), settings), Is.True);
-        Assert.That(trigger.Observe(new AudioMatchScore(0.99, 3), settings), Is.False);
-        Assert.That(trigger.Observe(new AudioMatchScore(0.82, 3.1), settings), Is.False);
-        Assert.That(trigger.Observe(new AudioMatchScore(0.9, 3.2), settings), Is.False);
-        Assert.That(trigger.Observe(new AudioMatchScore(0.2, 3.3), settings), Is.False);
-        Assert.That(trigger.Observe(new AudioMatchScore(0.9, 3.4), settings), Is.True);
-        Assert.That(trigger.Observe(new AudioMatchScore(0.2, 3.5), settings), Is.False);
-        Assert.That(trigger.Observe(new AudioMatchScore(0.9, 3.6), settings), Is.False);
-        Assert.That(trigger.Observe(new AudioMatchScore(0.9, 4.5), settings), Is.True);
+        Assert.That(trigger.Observe(90, 1, settings), Is.True);
+        Assert.That(trigger.Observe(99, 3, settings), Is.False);
+        Assert.That(trigger.Observe(82, 3.1, settings), Is.False);
+        Assert.That(trigger.Observe(90, 3.2, settings), Is.False);
+        Assert.That(trigger.Observe(20, 3.3, settings), Is.False);
+        Assert.That(trigger.Observe(90, 3.4, settings), Is.True);
+        Assert.That(trigger.Observe(20, 3.5, settings), Is.False);
+        Assert.That(trigger.Observe(90, 3.6, settings), Is.False);
+        Assert.That(trigger.Observe(90, 4.5, settings), Is.True);
+    }
+
+    [TestCase(0, 0, false)]
+    [TestCase(0.84, 84, false)]
+    [TestCase(0.849, 84, false)]
+    [TestCase(0.84999999, 84, false)]
+    [TestCase(0.85, 85, true)]
+    [TestCase(0.859, 85, true)]
+    [TestCase(0.99999999, 99, true)]
+    [TestCase(1, 100, true)]
+    public void PercentageScoresRoundDownBeforeHitDecisions(double normalized, int expected, bool hit)
+    {
+        int score = AudioMatchMonitor.ToPercentage(normalized);
+        Assert.That(score, Is.EqualTo(expected));
+        AudioMatchTrigger trigger = new();
+        Assert.That(trigger.Observe(score, 1.25, new AudioMatchSettings(85)), Is.EqualTo(hit));
     }
 
     [Test]

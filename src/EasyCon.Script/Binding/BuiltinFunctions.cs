@@ -66,7 +66,7 @@ public static class BuiltinFunctions
     public static readonly FunctionSymbol OcrConf = new("OCR_CONF", [], ScriptType.Int);
 
     public static readonly FunctionSymbol AudioLoad = new("AUDIO_LOAD", [new("labelName", ScriptType.String)], ScriptType.Void);
-    public static readonly FunctionSymbol AudioScore = new("AUDIO_SCORE", [new("labelName", ScriptType.String)], ScriptType.Double);
+    public static readonly FunctionSymbol AudioScore = new("AUDIO_SCORE", [new("labelName", ScriptType.String)], ScriptType.Int);
     public static readonly FunctionSymbol AudioUnload = new("AUDIO_UNLOAD", [new("labelName", ScriptType.String)], ScriptType.Void);
 
     // --- ONNX 推理函数（L3 名表，宿主能力 IInference；Vision 特征位）。

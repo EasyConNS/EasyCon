@@ -338,7 +338,7 @@ CLI：ecs-vm run image.ecx [--io] [--trace] [--print] [--strict-caps] [-- arg0..
 
 ### 6.3 特征元信息与能力降级（S-21）
 
-声音识别使用 `AUDIO = 0x20` 特征位，`AUDIO_LOAD` / `AUDIO_SCORE` / `AUDIO_UNLOAD` 通过 L3 名表路由。LOAD/UNLOAD 返回 VOID，SCORE 返回 0～100 的 DOUBLE 累计峰值；缺少能力不能降级为 0 分。桌面执行桥在执行任何脚本操作前要求 `IAudioService` 并建立独立运行会话，只有 LOAD 才启动对应标签的后台识别；会话负责正常结束、出错和取消时的清理。C VM 即使没有启用 `strict_caps`，缺少 `ECS_FEAT_AUDIO` 仍在加载期返回 `ECS_ERR_FEAT`（14）。没有原生实现的直接解释器调用保持 `ERR_NOSUCHNATIVE`，不进入缺省值表。具体函数语义见 `docs/Functions.md`。
+声音识别使用 `AUDIO = 0x20` 特征位，`AUDIO_LOAD` / `AUDIO_SCORE` / `AUDIO_UNLOAD` 通过 L3 名表路由。LOAD/UNLOAD 返回 VOID，SCORE 返回 0～100 的 INT 累计峰值（百分制向下取整）；缺少能力不能降级为 0 分。桌面执行桥在执行任何脚本操作前要求 `IAudioService` 并建立独立运行会话，只有 LOAD 才启动对应标签的后台识别；会话负责正常结束、出错和取消时的清理。C VM 即使没有启用 `strict_caps`，缺少 `ECS_FEAT_AUDIO` 仍在加载期返回 `ECS_ERR_FEAT`（14）。没有原生实现的直接解释器调用保持 `ERR_NOSUCHNATIVE`，不进入缺省值表。具体函数语义见 `docs/Functions.md`。
 
 ```text
 feats = 头部掩码 | (flags.I ? FEAT_IL : 0)     ← 元信息：缺省不拒载
