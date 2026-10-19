@@ -14,9 +14,9 @@ public enum AudioMatchStatus
 
 public sealed record AudioMatchSettings
 {
-    public AudioMatchSettings(double threshold = 0.85, double cooldownSeconds = 1)
+    public AudioMatchSettings(double threshold = 85, double cooldownSeconds = 1)
     {
-        if (!double.IsFinite(threshold) || threshold is < 0.1 or > 1)
+        if (!double.IsFinite(threshold) || threshold is < 10 or > 100)
             throw new ArgumentOutOfRangeException(nameof(threshold));
         if (!double.IsFinite(cooldownSeconds) || cooldownSeconds is < 0 or > 30)
             throw new ArgumentOutOfRangeException(nameof(cooldownSeconds));
@@ -46,6 +46,11 @@ public sealed class AudioMatchMonitor : IDisposable
     private readonly IAudioCaptureSource _source;
     private readonly AudioMatchTemplate _template;
     private readonly Func<long> _clock;
+    private readonly bool _requireContinuousSession;
+    private readonly long _start;
+    private readonly AudioCaptureState? _loadedSession;
+    private string? _failure;
+    private long _lastTimestampNs;
     private readonly object _gate = new();
     private readonly Queue<byte[]> _pending = new();
     private AudioCaptureState? _session;
@@ -66,13 +71,29 @@ public sealed class AudioMatchMonitor : IDisposable
     {
     }
 
-    internal AudioMatchMonitor(IAudioCaptureSource source, AudioMatchTemplate template, Func<long> clock)
+    internal AudioMatchMonitor(IAudioCaptureSource source, AudioMatchTemplate template, Func<long> clock,
+        bool requireContinuousSession = false)
     {
         _source = source;
         _template = template;
         _clock = clock;
+        _requireContinuousSession = requireContinuousSession;
+        _start = clock();
+        if (requireContinuousSession)
+        {
+            _loadedSession = source.State;
+            if (!source.IsSupported || _loadedSession.Status != AudioCaptureStatus.Connected || _loadedSession.Format == null)
+                throw new InvalidOperationException("请先连接游戏音频，再使用 AUDIO_LOAD。");
+            _session = _loadedSession;
+        }
         _source.DataAvailable += OnDataAvailable;
         _source.StateChanged += OnStateChanged;
+        try { CheckHealth(); }
+        catch
+        {
+            Dispose();
+            throw;
+        }
     }
 
     public AudioMatchSettings Settings
@@ -85,12 +106,30 @@ public sealed class AudioMatchMonitor : IDisposable
     {
         lock (_gate)
         {
-            if (_disposed)
+            if (_disposed || _failure != null)
                 return;
             AudioCaptureState state = _source.State;
+            if (_requireContinuousSession && !ReferenceEquals(state, _loadedSession))
+            {
+                ResetLocked(AudioMatchStatus.Disconnected, state);
+                return;
+            }
             // Check identity before validation: even a malformed old packet must leave new audio intact.
             if (chunk.Session != null && !ReferenceEquals(chunk.Session, state))
                 return;
+            long now = _clock();
+            if (_requireContinuousSession)
+            {
+                if (chunk.TimestampNs <= AudioClock.ToNanoseconds(_start))
+                    return;
+                if (chunk.Session == null || chunk.TimestampNs <= _lastTimestampNs
+                    || chunk.TimestampNs > AudioClock.ToNanoseconds(now)
+                    || AudioClock.ToNanoseconds(now) - chunk.TimestampNs > 1_000_000_000L)
+                {
+                    ResetLocked(AudioMatchStatus.InvalidAudio, state);
+                    return;
+                }
+            }
             if (state.Status != AudioCaptureStatus.Connected || state.Format != chunk.Format)
             {
                 ResetLocked(AudioMatchStatus.Interrupted, state);
@@ -110,17 +149,28 @@ public sealed class AudioMatchMonitor : IDisposable
                 ResetLocked(AudioMatchStatus.InvalidAudio, state);
                 return;
             }
-            long now = _clock();
             if (!ReferenceEquals(_session, state))
                 ResetLocked(AudioMatchStatus.WarmingUp, state);
             else if ((_lastPacket != 0 && now - _lastPacket > Stopwatch.Frequency)
                 || _pending.Count >= 256 || _queuedBytes + chunk.BytesRecorded > MaximumQueuedBytes
                 || _queuedSeconds + seconds > MaximumQueuedSeconds)
                 ResetLocked(AudioMatchStatus.Interrupted, state);
-            _pending.Enqueue(chunk.Pcm.Span[..chunk.BytesRecorded].ToArray());
-            _queuedBytes += chunk.BytesRecorded;
-            _queuedSeconds += seconds;
+            if (_failure != null)
+                return;
+            // A callback can straddle LOAD. Keep only complete sample frames after its boundary.
+            int skip = _requireContinuousSession
+                ? (int)Math.Clamp(Math.Ceiling((AudioClock.ToNanoseconds(_start) - chunk.TimestampNs)
+                    * (chunk.Format.SampleRate / 1_000_000_000d) + chunk.BytesRecorded / alignment), 0, chunk.BytesRecorded / alignment)
+                : 0;
+            int bytes = chunk.BytesRecorded - skip * alignment;
+            if (bytes > 0)
+            {
+                _pending.Enqueue(chunk.Pcm.Span.Slice(skip * alignment, bytes).ToArray());
+                _queuedBytes += bytes;
+                _queuedSeconds += bytes / (double)alignment / chunk.Format.SampleRate;
+            }
             _lastPacket = now;
+            _lastTimestampNs = chunk.TimestampNs;
         }
     }
 
@@ -135,6 +185,15 @@ public sealed class AudioMatchMonitor : IDisposable
 
     private void ResetLocked(AudioMatchStatus status, AudioCaptureState? state)
     {
+        if (_requireContinuousSession && !_disposed)
+        {
+            if (!ReferenceEquals(state, _loadedSession))
+                _failure ??= "音频源已断开或重新连接，请重新运行脚本。";
+            else if (status == AudioMatchStatus.InvalidAudio)
+                _failure ??= "识别收到无效音频、格式变化或不连续的时间戳。";
+            else if (status == AudioMatchStatus.Interrupted)
+                _failure ??= "音频输入中断或后台分析积压，识别已停止，请检查输入和处理负载。";
+        }
         _epoch++;
         _pending.Clear();
         _queuedBytes = 0;
@@ -147,6 +206,7 @@ public sealed class AudioMatchMonitor : IDisposable
     public AudioMatchUpdate Poll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        CheckHealth();
         AudioCaptureState state;
         byte[][] packets;
         long epoch;
@@ -187,9 +247,10 @@ public sealed class AudioMatchMonitor : IDisposable
                 _matcher ??= new AudioTemplateMatcher(_template, state.Format!);
                 _matcher.Append(packet, match =>
                 {
-                    score = Math.Max(score ?? 0, match.Score);
+                    double similarity = match.Score * 100;
+                    score = Math.Max(score ?? 0, similarity);
                     if (_trigger.Observe(match, settings))
-                        hits.Add(new AudioMatchHit(DateTimeOffset.Now, match.Score, settings.Threshold));
+                        hits.Add(new AudioMatchHit(DateTimeOffset.Now, similarity, settings.Threshold));
                 }, cancellationToken);
             }
         }
@@ -199,6 +260,7 @@ public sealed class AudioMatchMonitor : IDisposable
             {
                 if (_epoch == epoch)
                     ResetLocked(AudioMatchStatus.InvalidAudio, state);
+                CheckHealth();
                 return new AudioMatchUpdate(AudioMatchStatus.InvalidAudio, null, []) { Generation = _epoch };
             }
         }
@@ -206,6 +268,7 @@ public sealed class AudioMatchMonitor : IDisposable
         // A disconnect/overflow during analysis invalidates the whole in-flight batch, including hits.
         lock (_gate)
         {
+            CheckHealth();
             if (_disposed || _epoch != epoch || !ReferenceEquals(state, _source.State))
                 return new AudioMatchUpdate(AudioMatchStatus.Interrupted, null, []) { Generation = _epoch };
         }
@@ -224,6 +287,23 @@ public sealed class AudioMatchMonitor : IDisposable
         lock (_gate)
             return !_disposed && _epoch == update.Generation && ReferenceEquals(_session, _source.State)
                 && (_lastPacket == 0 || _clock() - _lastPacket <= Stopwatch.Frequency);
+    }
+
+    /// <summary>Script sessions keep a terminal failure; the diagnostic UI may instead recover.</summary>
+    public void CheckHealth()
+    {
+        if (!_requireContinuousSession)
+            return;
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (!ReferenceEquals(_source.State, _loadedSession))
+                _failure ??= "音频源已断开或重新连接，请重新运行脚本。";
+            if (_clock() - (_lastPacket == 0 ? _start : _lastPacket) > Stopwatch.Frequency)
+                _failure ??= "音频输入超过 1 秒没有新数据，请检查输入并重新运行脚本。";
+            if (_failure != null)
+                throw new InvalidOperationException(_failure);
+        }
     }
 
     public void Dispose()
@@ -246,9 +326,10 @@ internal sealed class AudioMatchTrigger
     public bool Observe(AudioMatchScore match, AudioMatchSettings settings)
     {
         // Rearm only after the signal falls. Cooldown alone would repeatedly report one long sound.
-        if (match.Score < Math.Max(0, settings.Threshold - 0.05))
+        double similarity = match.Score * 100;
+        if (similarity < Math.Max(0, settings.Threshold - 5))
             _armed = true;
-        if (!_armed || match.Score < settings.Threshold || match.EndSeconds - _lastHit < settings.CooldownSeconds)
+        if (!_armed || similarity < settings.Threshold || match.EndSeconds - _lastHit < settings.CooldownSeconds)
             return false;
         _armed = false;
         _lastHit = match.EndSeconds;

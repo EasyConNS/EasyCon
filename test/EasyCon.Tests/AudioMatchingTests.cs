@@ -68,7 +68,7 @@ public class AudioMatchingTests
     public void ALongSoundIsOneHitAndANewSoundCanRearmAfterCooldown()
     {
         AudioMatchTrigger trigger = new();
-        AudioMatchSettings settings = new(0.85, 1);
+        AudioMatchSettings settings = new(85, 1);
         Assert.That(trigger.Observe(new AudioMatchScore(0.9, 1), settings), Is.True);
         Assert.That(trigger.Observe(new AudioMatchScore(0.99, 3), settings), Is.False);
         Assert.That(trigger.Observe(new AudioMatchScore(0.82, 3.1), settings), Is.False);
@@ -92,7 +92,7 @@ public class AudioMatchingTests
         source.Emit(sound.Pcm.ToArray());
         AudioMatchUpdate found = monitor.Poll();
         Assert.That(found.Hits, Has.Count.EqualTo(1));
-        Assert.That(found.Score, Is.GreaterThan(0.98));
+        Assert.That(found.Score, Is.GreaterThan(98));
         Assert.That(monitor.Poll().Hits, Is.Empty);
         clock += 2 * Stopwatch.Frequency;
         AudioMatchUpdate stale = monitor.Poll();
@@ -166,7 +166,7 @@ public class AudioMatchingTests
         source.Emit([1], old);
         source.Emit(pcm[(pcm.Length / 2)..]);
         AudioMatchUpdate current = monitor.Poll();
-        Assert.That(current.Score, Is.GreaterThan(0.98), "An invalid old packet must not discard the new session's partial template.");
+        Assert.That(current.Score, Is.GreaterThan(98), "An invalid old packet must not discard the new session's partial template.");
         Assert.That(current.Hits, Has.Count.EqualTo(1));
     }
 
@@ -232,7 +232,7 @@ public class AudioMatchingTests
             await Task.WhenAll(reader, reconnect).WaitAsync(TimeSpan.FromSeconds(3));
             AudioMatchUpdate current = monitor.Poll();
             Assert.That(current.Hits, Has.Count.EqualTo(1), "A stale state read must not erase the new connection's complete sound.");
-            Assert.That(current.Score, Is.GreaterThan(0.98));
+            Assert.That(current.Score, Is.GreaterThan(98));
         }
         finally
         {
@@ -249,12 +249,12 @@ public class AudioMatchingTests
         AudioClip sound = Sound(gain: 0.8);
         FakeSource source = new(sound.Format);
         using AudioMatchMonitor monitor = new(source, AudioMatchTemplate.Create(sound)!);
-        monitor.Settings = new AudioMatchSettings(1, 0);
+        monitor.Settings = new AudioMatchSettings(100, 0);
         source.Emit(Sound(frequencyShift: 20).Pcm.ToArray());
         AudioMatchUpdate first = monitor.Poll();
         Assert.That(first.Hits, Is.Empty);
-        Assert.That(first.Score, Is.GreaterThan(0.6).And.LessThan(1));
-        monitor.Settings = new AudioMatchSettings(0.6, 0);
+        Assert.That(first.Score, Is.GreaterThan(60).And.LessThan(100));
+        monitor.Settings = new AudioMatchSettings(60, 0);
         Assert.That(monitor.Poll().Hits, Is.Empty);
         source.Emit(new byte[sound.Pcm.Length]);
         monitor.Poll();

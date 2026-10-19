@@ -44,8 +44,8 @@ public class AudioMatchTestViewModelTests
             Assert.That(vm.OpenCommand.CanExecute(null), Is.False);
             source.Emit(_sound.Pcm.ToArray());
             await UntilAsync(() => vm.HitCount == 1);
-            Assert.That(vm.PeakScore, Is.GreaterThan(0.98));
-            vm.Threshold = 0.91;
+            Assert.That(vm.PeakScore, Is.GreaterThan(98).And.LessThanOrEqualTo(100));
+            vm.Threshold = 91;
             vm.CooldownSeconds = 2;
             vm.StopCommand.Execute(null);
             await listening.WaitAsync(TimeSpan.FromSeconds(3));
@@ -123,7 +123,7 @@ public class AudioMatchTestViewModelTests
         Assert.That(vm.StartCommand.CanExecute(null), Is.False);
         vm.Threshold = double.NaN;
         vm.CooldownSeconds = double.PositiveInfinity;
-        Assert.That(vm.Threshold, Is.EqualTo(0.85));
+        Assert.That(vm.Threshold, Is.EqualTo(85));
         Assert.That(vm.CooldownSeconds, Is.EqualTo(1));
     }
 

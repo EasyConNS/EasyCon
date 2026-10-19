@@ -8,172 +8,236 @@ using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyCon.Tests.Support;
 using EasyScript;
-using System.Globalization;
-using System.Text;
+using System.Collections.Concurrent;
 
 namespace EasyCon.Tests.Capabilities;
 
 [TestFixture]
 public class AudioCapabilityTests
 {
-    [TestCase("audio-lookback.ecs")]
-    [TestCase("audio-wait.ecs")]
-    [TestCase("audio-wait-score.ecs")]
-    [TestCase("audio-key-lookback.ecs")]
-    public void PublishedExamplesCompile(string file)
+    private string _directory = null!;
+    private TestAudioSource _source = null!;
+    private byte[] _sound = null!;
+
+    [SetUp]
+    public void SetUp()
     {
+        _directory = Path.Combine(Path.GetTempPath(), "easycon-script-audio-" + Guid.NewGuid().ToString("N"));
+        _source = new TestAudioSource(new AudioFormat(8000, 1, 16, "pcm"), AudioClock.NowNanoseconds);
+        _sound = AudioTestRig.MakeSound();
+        AudioLabelStore.Save(Path.Combine(_directory, "audiolabel"), "医疗", new AudioClip(_source.State.Format!, _sound));
+        AudioLabelStore.Save(Path.Combine(_directory, "audiolabel"), "other",
+            new AudioClip(_source.State.Format!, AudioTestRig.MakeSound(frequencyShift: 1400)));
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        _source.Dispose();
+        Directory.Delete(_directory, true);
+    }
+
+    [TestCase("audio-load-score.ecs")]
+    [TestCase("audio-reload.ecs")]
+    [TestCase("audio-observe.ecs")]
+    public void PublishedExamplesCompileAndRun(string file)
+    {
+        ExampleAudio audio = new();
+        TestPad pad = new((_, _, _) => audio.Peak = 92);
+        using CapabilityLease lease = Assemble(audio, pad);
         CompileResult result = Compile(ReadExample(file));
         Assert.That(result.Image!.Features & EcsImageFeatures.Audio, Is.Not.Zero);
+        Run(result, lease);
+        Assert.That(audio.Disposed, Is.True);
+        Assert.That(audio.Loaded, Is.False);
+        if (file == "audio-load-score.ecs")
+        {
+            Assert.That(pad.Keys, Is.EqualTo(new[] { GamePadKey.A, GamePadKey.B, GamePadKey.B, GamePadKey.B, GamePadKey.B, GamePadKey.B }));
+            Assert.That(audio.Loads, Is.EqualTo(1));
+        }
+        else if (file == "audio-reload.ecs")
+            Assert.That(audio.Loads, Is.EqualTo(2));
     }
 
-    [TestCase(true)]
-    [TestCase(false)]
-    public void PublishedWaitScoreExamplePrintsTheActualNumericScore(bool hit)
+    [TestCase("RETURN AUDIO(\"医疗\", 1000)")]
+    [TestCase("RETURN AUDIO_WAIT(\"医疗\", 1000)")]
+    [TestCase("RETURN AUDIO_WAIT_SCORE()")]
+    public void RemovedFunctionsNoLongerCompile(string script)
     {
-        AudioTestRig rig = new();
+        CompileResult result = Compilation.CompileSource(script, ScriptCompileProfiles.Interactive());
+        Assert.That(result.Diagnostics.Any(diagnostic => diagnostic.IsError), Is.True);
+    }
+
+    [TestCase("WAIT 1000")]
+    [TestCase("A 1000")]
+    public async Task MatchingRunsDuringWaitOrKeysAndReadsDoNotConsumeThePeak(string operation)
+    {
+        using CancellationTokenSource stop = new(TimeSpan.FromSeconds(10));
+        TestPad pad = new((_, duration, token) => CustomDelay.Delay(duration, token));
+        using CapabilityLease lease = Assemble(new AudioLabelService(_source, _directory), pad);
+        Task playback = PlayAsync(stop.Token);
+        try
+        {
+            CompileResult script = Compile($"AUDIO_LOAD \"医疗\"\n{operation}\n$first = AUDIO_SCORE(\"医疗\")\n$second = AUDIO_SCORE(\"医疗\")\nAUDIO_UNLOAD \"医疗\"\nRETURN $first + $second");
+            Value value = await Task.Run(() => Run(script, lease, stop.Token));
+            Assert.That(value.AsDouble(), Is.InRange(196, 200));
+            Assert.That(_source.Subscribers, Is.Zero);
+            Assert.That(_source.StateSubscribers, Is.Zero);
+            Assert.That(_source.Disposed, Is.False);
+        }
+        finally
+        {
+            await stop.CancelAsync();
+            await playback;
+        }
+    }
+
+    [Test]
+    public async Task NamesAreIndependentAndReloadAndNewRunsStartAtZero()
+    {
+        AudioLabelService service = new(_source, _directory);
+        using CancellationTokenSource stop = new(TimeSpan.FromSeconds(10));
+        using IAudioSession session = service.BeginRun(stop.Token);
+        session.Load("医疗", stop.Token);
+        session.Load("other", stop.Token);
+        Assert.That(session.Score("医疗", default), Is.Zero);
+        Task playback = PlayAsync(stop.Token);
+        try
+        {
+            await AudioTestRig.UntilAsync(() => session.Score("医疗", default) > 98);
+            Assert.That(session.Score("other", default), Is.LessThan(70));
+            Assert.That(Assert.Throws<InvalidOperationException>(() => session.Load("医疗", default))!.Message, Does.Contain("先 AUDIO_UNLOAD"));
+            Assert.That(session.Score("医疗", default), Is.GreaterThan(98));
+            session.Unload("医疗", default);
+            Assert.That(_source.Subscribers, Is.EqualTo(1));
+            Assert.Throws<InvalidOperationException>(() => session.Score("医疗", default));
+            session.Load("医疗", default);
+            Assert.That(session.Score("医疗", default), Is.Zero);
+            using IAudioSession next = service.BeginRun(default);
+            next.Load("医疗", default);
+            Assert.That(next.Score("医疗", default), Is.Zero);
+        }
+        finally
+        {
+            await stop.CancelAsync();
+            await playback;
+        }
+    }
+
+    [TestCase("stop")]
+    [TestCase("error")]
+    [TestCase("disconnect")]
+    [TestCase("invalid-audio")]
+    public async Task EveryExitCleansBackgroundWorkAndInputFailuresRemainVisible(string exit)
+    {
+        using CancellationTokenSource stop = new(TimeSpan.FromSeconds(10));
         RecordingConsole console = new();
-        using CapabilityLease lease = Assemble(new AudioService(rig), console: console);
-        rig.PlayOnDelay(hit ? rig.Sound : new byte[128000]);
-        Run(Compile(ReadExample("audio-wait-score.ecs")), lease);
-        string output = console.Output.ToString();
-        const string prefix = "本次等待最高分：";
-        string scoreLine = output.Split('\n').Single(line => line.StartsWith(prefix, StringComparison.Ordinal));
-        Assert.That(double.TryParse(scoreLine[prefix.Length..], CultureInfo.InvariantCulture, out double score), Is.True, output);
-        Assert.That(score, Is.EqualTo(hit ? rig.ReferenceScore() : 0).Within(1e-6));
-        Assert.That(output, Does.Contain(hit ? "检测到闪光音效，结束脚本" : "等待超时，指定时间内未确认命中"));
-        Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch + (hit ? 600 : 8000) * 1_000_000L));
+        using CapabilityLease lease = Assemble(new AudioLabelService(_source, _directory), console: console);
+        string tail = exit == "error" ? "RETURN 1 / INT(ARG(0))" : "RETURN 0";
+        CompileResult script = Compile("AUDIO_LOAD \"医疗\"\nPRINT \"loaded\"\nWAIT 300\n" + tail);
+        Task run = Task.Run(() => Run(script, lease, stop.Token));
+        try
+        {
+            await AudioTestRig.UntilAsync(() => console.Lines.Contains("loaded") || run.IsCompleted);
+            Assert.That(console.Lines, Does.Contain("loaded"));
+            if (exit == "stop")
+                await stop.CancelAsync();
+            else if (exit == "disconnect")
+                _source.SetState(new(AudioCaptureStatus.Disconnected));
+            else if (exit == "invalid-audio")
+                _source.Emit([1]);
+            if (exit == "stop")
+                Assert.ThrowsAsync<OperationCanceledException>(async () => await run);
+            else
+            {
+                ScriptException? error = Assert.ThrowsAsync<ScriptException>(async () => await run);
+                if (exit is "disconnect" or "invalid-audio")
+                    Assert.That(error!.Message, Does.Contain("后台识别失败"));
+            }
+            Assert.That(_source.Subscribers, Is.Zero);
+            Assert.That(_source.StateSubscribers, Is.Zero);
+            Assert.That(_source.Disposed, Is.False);
+        }
+        finally
+        {
+            await stop.CancelAsync();
+            try { await run; }
+            catch (Exception) when (run.IsFaulted || run.IsCanceled) { }
+        }
     }
 
-    [Test]
-    public void AudioDuringKeysIsAvailableBeforeTheFirstQueryAndEachRunIsIsolated()
+    [TestCase("AUDIO_LOAD \"医疗\"")]
+    [TestCase("RETURN AUDIO_SCORE(\"医疗\")")]
+    [TestCase("AUDIO_UNLOAD \"医疗\"")]
+    public void MissingCapabilityFailsBeforeKeysAndBareInterpreterDoesNotDegrade(string call)
     {
-        AudioTestRig rig = new();
-        AudioService audio = new(rig);
-        using CapabilityLease lease = Assemble(audio, new AudioPad(rig));
-        CompileResult script = Compile("A 600\nRETURN AUDIO(\"tone\", 5000)");
-        Assert.That(script.Image!.Features & EcsImageFeatures.Audio, Is.Not.Zero);
-        Assert.That(Run(script, lease).AsDouble(), Is.EqualTo(rig.ReferenceScore()).Within(1e-12));
-        Assert.That(rig.Source.Subscribers, Is.Zero);
-        ScriptException? error = Assert.Throws<ScriptException>(() => Run(Compile("RETURN AUDIO(\"tone\", 1000)"), lease));
-        Assert.That(error!.Message, Does.Contain("历史不足"));
-        Assert.That(audio.Runs, Is.EqualTo(2));
-        Assert.That(rig.Source.StateSubscribers, Is.Zero);
+        TestPad pad = new((_, _, _) => Assert.Fail("Missing audio capability must fail before the first key."));
+        using CapabilityLease lease = Assemble(pad: pad);
+        Assert.That(Assert.Throws<ScriptException>(() => Run(Compile("A\n" + call), lease))!.Message, Does.Contain("未提供脚本音频能力"));
+        Assert.That(EcxInterpreter.Run(Compile(call).Image!, new EcxHost()), Is.EqualTo(EcxInterpreter.ERR_NOSUCHNATIVE));
     }
 
-    [Test]
-    public void BuiltinDefaultThresholdAndReturnTypesReachTheAudioPort()
-    {
-        AudioTestRig rig = new();
-        AudioService audio = new(rig);
-        using CapabilityLease lease = Assemble(audio);
-        rig.PlayOnDelay(rig.Sound);
-        Assert.That(Run(Compile("RETURN AUDIO_WAIT(\"tone\", 2000)"), lease).AsBool(), Is.True);
-        Assert.That(audio.Thresholds, Is.EqualTo(new[] { 0.85 }));
-        rig.PlayOnDelay(new byte[16000]);
-        Assert.That(Run(Compile("RETURN AUDIO_WAIT(\"tone\", 1000, 1)"), lease).AsBool(), Is.False);
-        Assert.That(audio.Thresholds, Is.EqualTo(new[] { 0.85, 1.0 }));
-        Assert.That(Assert.Throws<ScriptException>(() => Run(Compile("RETURN AUDIO_WAIT(\"tone\", 1000, 85)"), lease))!.Message,
-            Does.Contain("threshold"));
-        Assert.That(rig.Source.Subscribers, Is.Zero);
-    }
-
-    [TestCase(true)]
-    [TestCase(false)]
-    public void WaitScoreReturnsADoubleAfterHitOrTimeoutAndIsIsolatedPerRun(bool hit)
-    {
-        AudioTestRig rig = new();
-        using CapabilityLease lease = Assemble(new AudioService(rig));
-        rig.PlayOnDelay(hit ? rig.Sound : new byte[32000]);
-        CompileResult script = Compile("$hit = AUDIO_WAIT(\"tone\", 2000)\nRETURN AUDIO_WAIT_SCORE()");
-        Assert.That(Run(script, lease).AsDouble(), Is.EqualTo(hit ? rig.ReferenceScore() : 0).Within(1e-12));
-        Assert.That(rig.Source.Subscribers, Is.Zero);
-        CompileResult readOnly = Compile("RETURN AUDIO_WAIT_SCORE()");
-        Assert.That(readOnly.Image!.Features & EcsImageFeatures.Audio, Is.Not.Zero);
-        Assert.That(Assert.Throws<ScriptException>(() => Run(readOnly, lease))!.Message,
-            Does.Contain("需要先完成一次 AUDIO_WAIT"));
-        Assert.That(rig.Source.Subscribers, Is.Zero);
-        Assert.That(rig.Source.StateSubscribers, Is.Zero);
-    }
-
-    [Test]
-    public void CancellationIsNotAFalseResultAndClosesAllListeners()
-    {
-        AudioTestRig rig = new();
-        using CancellationTokenSource cancellation = new();
-        using CapabilityLease lease = Assemble(new AudioService(rig));
-        rig.AfterDelay = () => cancellation.Cancel();
-        Assert.Throws<OperationCanceledException>(() => Run(Compile("RETURN AUDIO_WAIT(\"tone\", 8000)"), lease, cancellation.Token));
-        Assert.That(rig.Source.Subscribers, Is.Zero);
-        Assert.That(rig.Source.StateSubscribers, Is.Zero);
-        Assert.That(rig.Source.Disposed, Is.False);
-    }
-
-    [Test]
-    public void MissingCapabilityFailsBeforeAnyKeyAndBareInterpreterDoesNotDegrade()
-    {
-        AudioTestRig rig = new();
-        using CapabilityLease lease = Assemble(pad: new AudioPad(rig));
-        CompileResult script = Compile("A 600\nRETURN AUDIO(\"tone\", 1000)");
-        Assert.That(Assert.Throws<ScriptException>(() => Run(script, lease))!.Message, Does.Contain("未提供脚本音频能力"));
-        Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch));
-        CompileResult wait = Compile("RETURN AUDIO_WAIT(\"tone\", 1000)");
-        Assert.That(EcxInterpreter.Run(wait.Image!, new EcxHost()), Is.EqualTo(EcxInterpreter.ERR_NOSUCHNATIVE));
-        CompileResult score = Compile("A 600\nRETURN AUDIO_WAIT_SCORE()");
-        Assert.That(Assert.Throws<ScriptException>(() => Run(score, lease))!.Message, Does.Contain("未提供脚本音频能力"));
-        Assert.That(rig.Time, Is.EqualTo(AudioTestRig.Epoch));
-        Assert.That(EcxInterpreter.Run(Compile("RETURN AUDIO_WAIT_SCORE()").Image!, new EcxHost()),
-            Is.EqualTo(EcxInterpreter.ERR_NOSUCHNATIVE));
-    }
-
-    [TestCase("AUDIO_WAIT(\"tone\", 1000)")]
-    [TestCase("AUDIO_WAIT_SCORE()")]
+    [TestCase("AUDIO_LOAD \"医疗\"")]
+    [TestCase("RETURN AUDIO_SCORE(\"医疗\")")]
+    [TestCase("AUDIO_UNLOAD \"医疗\"")]
     public void McuRejectsAudioAtLoadEvenWithoutStrictCapabilities(string call)
     {
-        string directory = Path.Combine(Path.GetTempPath(), "easycon-audio-vm-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(directory);
-        try
-        {
-            string? binary = CvmRunner.EnsureBuilt(directory);
-            if (binary == null)
-                Assert.Ignore("No C compiler available.");
-            CompileResult script = Compile($"A 600\nRETURN {call}");
-            (int exit, string output, string error) = CvmRunner.Run(binary!, EcsContainer.WriteImage(script.Image!), "audio", directory);
-            Assert.That(exit, Is.EqualTo(14), error);
-            Assert.That(output, Is.Empty);
-        }
-        finally
-        {
-            Directory.Delete(directory, true);
-        }
+        string? binary = CvmRunner.EnsureBuilt(_directory);
+        if (binary == null)
+            Assert.Ignore("No C compiler available.");
+        CompileResult script = Compile("A\n" + call);
+        (int exit, string output, string error) = CvmRunner.Run(binary!, EcsContainer.WriteImage(script.Image!), "audio", _directory);
+        Assert.That(exit, Is.EqualTo(14), error);
+        Assert.That(output, Is.Empty);
     }
 
     [Test]
-    public void LabelsResolveOnlyUnderTheSavedScriptAndFailuresAreExplicit()
+    public void LabelsResolveUnderTheSavedScriptAndFailuresAreNotZeroScores()
     {
-        string directory = Path.Combine(Path.GetTempPath(), "easycon-script-audio-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(directory);
+        Assert.Throws<InvalidOperationException>(() => new AudioLabelService(_source, null).BeginRun(default));
+        using IAudioSession session = new AudioLabelService(_source, _directory).BeginRun(default);
+        Assert.That(_source.Subscribers, Is.Zero, "Opening a run must not listen before LOAD.");
+        Assert.Throws<InvalidOperationException>(() => session.Score("医疗", default));
+        Assert.Throws<InvalidOperationException>(() => session.Unload("医疗", default));
+        Assert.That(Assert.Throws<InvalidOperationException>(() => session.Load("missing", default))!.Message,
+            Does.Contain(Path.Combine(_directory, "audiolabel", "missing.audiolabel", "label.json")));
+        Assert.Throws<ArgumentException>(() => session.Load("../other", default));
+        session.Load("医疗", default);
+        Assert.That(session.Score("医疗", default), Is.Zero);
+        session.Unload("医疗", default);
+        File.WriteAllText(Path.Combine(_directory, "audiolabel", "医疗.audiolabel", "label.json"), "{invalid");
+        Assert.That(Assert.Throws<InvalidOperationException>(() => session.Load("医疗", default))!.Message, Does.Contain("无法加载"));
+        Assert.That(_source.Subscribers, Is.Zero);
+    }
+
+    [Test]
+    public void NonAudioScriptsDoNotRequireASavedPathOrConnectedAudio()
+    {
+        _source.SetState(new(AudioCaptureStatus.Disconnected));
+        using CapabilityLease lease = ScriptHostAssembler.Assemble(new ScriptHostContext
+        {
+            AudioSource = _source,
+            EnableOcr = false,
+            EnableInference = false,
+        });
+        Assert.That(Run(Compile("WAIT 1\nRETURN 42"), lease).AsInt(), Is.EqualTo(42));
+        Assert.That(_source.Subscribers, Is.Zero);
+        Assert.That(Assert.Throws<ScriptException>(() => Run(Compile("AUDIO_LOAD \"医疗\""), lease))!.Message, Does.Contain("先保存脚本"));
+    }
+
+    private async Task PlayAsync(CancellationToken token)
+    {
         try
         {
-            AudioTestRig rig = new();
-            Assert.Throws<InvalidOperationException>(() => new AudioLabelService(rig.Source, null).BeginRun(default));
-            using IAudioSession session = new AudioLabelService(rig.Source, directory).BeginRun(default);
-            Assert.That(Assert.Throws<InvalidOperationException>(() => session.GetWaitScore(default))!.Message,
-                Does.Contain("需要先完成一次 AUDIO_WAIT"));
-            Assert.That(Assert.Throws<InvalidOperationException>(() => session.Match("missing", 1000, default))!.Message,
-                Does.Contain(Path.Combine(directory, "audiolabel", "missing.audiolabel", "label.json")));
-            Assert.Throws<ArgumentException>(() => session.Match("../other", 1000, default));
-            string path = AudioLabelStore.Save(Path.Combine(directory, "audiolabel"), "tone",
-                new AudioClip(rig.Source.State.Format!, rig.Sound));
-            Assert.That(Assert.Throws<InvalidOperationException>(() => session.Match("tone", 1000, default))!.Message,
-                Does.Contain("历史不足"), "Valid label loads successfully, but an empty buffer is not a valid score.");
-            File.WriteAllText(path, "{invalid");
-            using IAudioSession nextRun = new AudioLabelService(rig.Source, directory).BeginRun(default);
-            Assert.That(Assert.Throws<InvalidOperationException>(() => nextRun.Match("tone", 1000, default))!.Message, Does.Contain("无法加载"));
+            while (_source.Subscribers == 0)
+                await Task.Delay(5, token);
+            for (int offset = 0; ; offset += 1600)
+            {
+                await Task.Delay(100, token);
+                _source.Emit(offset < _sound.Length ? _sound.AsSpan(offset, 1600).ToArray() : new byte[1600]);
+            }
         }
-        finally
-        {
-            Directory.Delete(directory, true);
-        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
     }
 
     private static string ReadExample(string file)
@@ -203,37 +267,24 @@ public class AudioCapabilityTests
     private static Value Run(CompileResult script, CapabilityLease lease, CancellationToken token = default)
         => EcxVm.Run(script.Image!, lease.Capabilities, token, nativeSymbols: script.NativeSymbols);
 
-    private sealed class AudioService(AudioTestRig rig) : IAudioService
+    private sealed class ExampleAudio : IAudioService, IAudioSession
     {
-        public int Runs { get; private set; }
-        public List<double> Thresholds { get; } = [];
-        public IAudioSession BeginRun(CancellationToken token)
-        {
-            token.ThrowIfCancellationRequested();
-            Runs++;
-            return new Session(rig.Open(), Thresholds);
-        }
-
-        private sealed class Session(AudioDetectionSession detection, List<double> thresholds) : IAudioSession
-        {
-            public double Match(string name, int milliseconds, CancellationToken token) => detection.Match(name, milliseconds, token);
-            public bool Wait(string name, int milliseconds, double threshold, CancellationToken token)
-            {
-                thresholds.Add(threshold);
-                return detection.Wait(name, milliseconds, threshold, token);
-            }
-            public double GetWaitScore(CancellationToken token) => detection.GetWaitScore(token);
-            public void Dispose() => detection.Dispose();
-        }
+        public bool Loaded { get; private set; }
+        public bool Disposed { get; private set; }
+        public int Loads { get; private set; }
+        public double Peak { get; set; }
+        public IAudioSession BeginRun(CancellationToken token) => this;
+        public void Load(string labelName, CancellationToken token) { Assert.That(Loaded, Is.False); Loaded = true; Loads++; Peak = 0; }
+        public double Score(string labelName, CancellationToken token) { Assert.That(Loaded, Is.True); return Peak; }
+        public void Unload(string labelName, CancellationToken token) { Assert.That(Loaded, Is.True); Loaded = false; }
+        public void CheckHealth(CancellationToken token) { }
+        public void Dispose() { Loaded = false; Disposed = true; }
     }
 
-    private sealed class AudioPad(AudioTestRig rig) : IPadInput
+    private sealed class TestPad(Action<GamePadKey, int, CancellationToken> click) : IPadInput
     {
-        public void ClickButtons(GamePadKey key, int duration, CancellationToken token)
-        {
-            Assert.That(rig.Source.Subscribers, Is.EqualTo(1), "The listener must precede the very first key operation.");
-            rig.Feed(rig.Sound);
-        }
+        public List<GamePadKey> Keys { get; } = [];
+        public void ClickButtons(GamePadKey key, int duration, CancellationToken token) { Keys.Add(key); click(key, duration, token); }
         public void PressButtons(GamePadKey key) { }
         public void ReleaseButtons(GamePadKey key) { }
         public void ClickStick(GamePadKey key, byte x, byte y, int duration, CancellationToken token) { }
@@ -243,13 +294,8 @@ public class AudioCapabilityTests
 
     private sealed class RecordingConsole : IConsoleIo
     {
-        public StringBuilder Output { get; } = new();
-        public void Print(string message, bool newline = true)
-        {
-            Output.Append(message);
-            if (newline)
-                Output.Append('\n');
-        }
-        public void Alert(string message) => Assert.Fail("The example should report results through PRINT.");
+        public ConcurrentQueue<string> Lines { get; } = new();
+        public void Print(string message, bool newline = true) => Lines.Enqueue(message);
+        public void Alert(string message) => Lines.Enqueue(message);
     }
 }

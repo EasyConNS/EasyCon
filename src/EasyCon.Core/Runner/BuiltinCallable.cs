@@ -21,14 +21,20 @@ internal static class BuiltinCallable
     public static Value InvokeAudio(string name, ReadOnlySpan<Value> args, IAudioSession? session, CancellationToken token)
     {
         if (session == null)
-            throw new InvalidOperationException("当前宿主未提供脚本音频能力 AUDIO/AUDIO_WAIT/AUDIO_WAIT_SCORE。");
-        return name switch
+            throw new InvalidOperationException("当前宿主未提供脚本音频能力 AUDIO_LOAD/AUDIO_SCORE/AUDIO_UNLOAD。");
+        switch (name)
         {
-            "AUDIO" => Value.FromDouble(session.Match(args[0].AsString(), args[1].AsInt(), token)),
-            "AUDIO_WAIT" => Value.FromBool(session.Wait(args[0].AsString(), args[1].AsInt(), args[2].AsDouble(), token)),
-            "AUDIO_WAIT_SCORE" => Value.FromDouble(session.GetWaitScore(token)),
-            _ => throw new InvalidOperationException($"未知脚本音频函数：{name}。"),
-        };
+            case "AUDIO_LOAD":
+                session.Load(args[0].AsString(), token);
+                return Value.Void;
+            case "AUDIO_SCORE":
+                return Value.FromDouble(session.Score(args[0].AsString(), token));
+            case "AUDIO_UNLOAD":
+                session.Unload(args[0].AsString(), token);
+                return Value.Void;
+            default:
+                throw new InvalidOperationException($"未知脚本音频函数：{name}。");
+        }
     }
 
     public static Value ImplJq(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)

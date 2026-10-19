@@ -299,7 +299,7 @@ WAIT 5000    # 等待5秒
 - **[完整脚本语法](./Script.md)** - 学习更强大的脚本功能
 - **[示例脚本库](../examples/)** - 查看更多实用脚本
 - **[图像识别详解](./Script.md#图像识别)** - 学习视觉自动化
-- **[声音标签接入 ECS](./AudioLabels.md#第一次在-ecs-中使用)** - 按步骤放置标签、运行声音检测示例和排查路径错误（Windows GUI）
+- **[声音标签接入 ECS](./AudioLabels.md#第一次在-ecs-中使用)** - 按步骤放置标签，用 LOAD/SCORE/UNLOAD 在按键期间识别声音并读取累计最高分（Windows GUI）
 
 ### 实际应用
 

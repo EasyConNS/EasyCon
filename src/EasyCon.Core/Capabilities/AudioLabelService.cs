@@ -10,29 +10,23 @@ public sealed class AudioLabelService(IAudioCaptureSource source, string? script
         token.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(scriptDirectory))
             throw new InvalidOperationException("请先保存脚本；声音标签从脚本目录的 audiolabel 文件夹加载。");
-        return new Session(source, Path.GetFullPath(scriptDirectory));
+        return new Session(source, Path.GetFullPath(scriptDirectory), token);
     }
 
-    private sealed class Session : IAudioSession
+    private sealed class Session(IAudioCaptureSource source, string directory, CancellationToken runToken) : IAudioSession
     {
-        private readonly AudioDetectionSession _detection;
-        private readonly string _directory;
-        private readonly Dictionary<string, AudioMatchTemplate> _templates = new(StringComparer.Ordinal);
+        // The script thread owns the dictionary; each recognition owns its background consumer.
+        private readonly Dictionary<string, AudioRecognition> _loaded = new(StringComparer.Ordinal);
+        private bool _disposed;
 
-        public Session(IAudioCaptureSource source, string directory)
+        public void Load(string name, CancellationToken token)
         {
-            _directory = directory;
-            _detection = new AudioDetectionSession(source, Load);
-        }
-
-        private AudioMatchTemplate Load(string name, CancellationToken token)
-        {
-            token.ThrowIfCancellationRequested();
+            CheckHealth(token);
             if (!AudioLabelStore.IsValidName(name))
                 throw new ArgumentException("声音标签名称无效，不能包含路径或扩展目录。", nameof(name));
-            if (_templates.TryGetValue(name, out AudioMatchTemplate? cached))
-                return cached;
-            string path = Path.Combine(_directory, "audiolabel", name + ".audiolabel", "label.json");
+            if (_loaded.ContainsKey(name))
+                throw new InvalidOperationException($"声音标签“{name}”已加载；请先 AUDIO_UNLOAD，再 AUDIO_LOAD 开始新一轮。");
+            string path = Path.Combine(directory, "audiolabel", name + ".audiolabel", "label.json");
             try
             {
                 AudioLabel label = AudioLabelStore.Load(path);
@@ -40,11 +34,8 @@ public sealed class AudioLabelService(IAudioCaptureSource source, string? script
                     throw new InvalidDataException("目录名称与标签元数据中的名称不一致。");
                 AudioMatchTemplate template = AudioMatchTemplate.Create(label.Clip, token)
                     ?? throw new InvalidDataException("标签没有足够的声音特征。");
-                // Bound feature memory as well as PCM history; reload evicted labels on demand.
-                if (_templates.Count >= 32)
-                    _templates.Clear();
-                _templates.Add(name, template);
-                return template;
+                token.ThrowIfCancellationRequested();
+                _loaded.Add(name, new AudioRecognition(source, template, runToken));
             }
             catch (Exception ex) when (ex is IOException or ArgumentException or System.Text.Json.JsonException)
             {
@@ -52,14 +43,47 @@ public sealed class AudioLabelService(IAudioCaptureSource source, string? script
             }
         }
 
-        public double Match(string labelName, int lookbackMs, CancellationToken token)
-            => _detection.Match(labelName, lookbackMs, token);
+        public double Score(string labelName, CancellationToken token)
+        {
+            CheckHealth(token);
+            return GetLoaded(labelName).Score;
+        }
 
-        public bool Wait(string labelName, int timeoutMs, double threshold, CancellationToken token)
-            => _detection.Wait(labelName, timeoutMs, threshold, token);
+        public void Unload(string labelName, CancellationToken token)
+        {
+            CheckHealth(token);
+            AudioRecognition recognition = GetLoaded(labelName);
+            _loaded.Remove(labelName);
+            recognition.Dispose();
+        }
 
-        public double GetWaitScore(CancellationToken token) => _detection.GetWaitScore(token);
+        private AudioRecognition GetLoaded(string name)
+            => _loaded.TryGetValue(name, out AudioRecognition? recognition) ? recognition
+                : throw new InvalidOperationException($"声音标签“{name}”尚未加载或已卸载；请先 AUDIO_LOAD。");
 
-        public void Dispose() => _detection.Dispose();
+        public void CheckHealth(CancellationToken token)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            runToken.ThrowIfCancellationRequested();
+            token.ThrowIfCancellationRequested();
+            foreach ((string name, AudioRecognition recognition) in _loaded)
+            {
+                try { recognition.CheckHealth(); }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    throw new InvalidOperationException($"声音标签“{name}”后台识别失败：{ex.Message}", ex);
+                }
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+            _disposed = true;
+            foreach (AudioRecognition recognition in _loaded.Values)
+                recognition.Dispose();
+            _loaded.Clear();
+        }
     }
 }

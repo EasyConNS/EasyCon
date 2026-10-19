@@ -1069,7 +1069,7 @@ static int32_t load_image(ecs_vm *vm, const uint8_t *image, size_t len)
 
     /* 特征需求投影（flags.I → FEAT_IL）；strict 语义保留——能力降级为后续契约批次 */
     uint32_t img_feats = feats | ((flags & 0x4) ? ECS_FEAT_IL : 0);
-    /* Audio is mandatory even without strict_caps: unsupported never means "no match". */
+    /* Background audio is mandatory even without strict_caps: unsupported never means a zero score. */
     if ((img_feats & ECS_FEAT_AUDIO) && !(vm->host.feats & ECS_FEAT_AUDIO)) return ECS_ERR_FEAT;
     /* S-21：feats = 元信息，缺省不拒载（运行期按缺省值表降级）；strict_caps 恢复响亮校验 */
     if (vm->host.strict_caps) {

@@ -139,11 +139,11 @@ public class AudioLabelEditorTests
 
             // Create the ECS afterward, in the folder selected when the label was saved.
             string scriptPath = Path.Combine(scriptDirectory, "test.ecs");
-            File.WriteAllText(scriptPath, "RETURN AUDIO(\"test\", 1000)");
+            File.WriteAllText(scriptPath, "AUDIO_LOAD \"test\"\nRETURN AUDIO_SCORE(\"test\")");
             using IAudioSession session = new AudioLabelService(source, Path.GetDirectoryName(scriptPath)).BeginRun(default);
-            InvalidOperationException? error = Assert.Throws<InvalidOperationException>(() => session.Match("test", 1000, default));
-            Assert.That(error!.Message, Does.Contain("有效历史不足"),
-                "The ECS audio service must load the saved label successfully before reporting its empty playback history.");
+            session.Load("test", default);
+            Assert.That(session.Score("test", default), Is.Zero,
+                "The ECS service must load the saved label successfully; the new recognition starts at zero.");
 
             AudioLabel saved = AudioLabelStore.Load(Path.Combine(scriptDirectory, "audiolabel", "test.audiolabel", "label.json"));
             Assert.Multiple(() =>

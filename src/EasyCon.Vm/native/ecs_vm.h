@@ -80,7 +80,7 @@ enum {
 #define ECS_FEAT_CAPTURE  0x2u
 #define ECS_FEAT_FFI      0x4u
 #define ECS_FEAT_FILE     0x8u
-#define ECS_FEAT_AUDIO    0x20u /* Detection cannot degrade to a false negative. */
+#define ECS_FEAT_AUDIO    0x20u /* AUDIO_LOAD/SCORE/UNLOAD require a background-audio host. */
 
 /* 指令字数（1 = 4B，2 = 8B 带 u32 数据字）——单一事实源，与 C# EcsFormat.WordCount /
  * docs/VM2.md §4.1 对齐（新增指令双端各改一处表 + 执行/发射语义）。数据字是「数据」：

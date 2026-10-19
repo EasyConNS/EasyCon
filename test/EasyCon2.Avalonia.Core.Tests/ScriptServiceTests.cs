@@ -20,12 +20,12 @@ namespace EasyCon2.Avalonia.Core.Tests;
 public partial class ScriptServiceTests
 {
     [Test]
-    public async Task AudioWaitUsesTheSavedScriptDirectoryAndStopCleansListeners()
+    public async Task AudioLoadUsesTheSavedScriptDirectoryAndStopCleansListeners()
     {
         FakeLogService log = new();
         ScriptAudioSource audio = new();
         ScriptService service = new(new FakeDeviceService(), new FakeCaptureService(), log, audioSource: audio);
-        string path = CreateScriptFile("audio.ecs", "RETURN AUDIO_WAIT(\"tone\", 8000)");
+        string path = CreateScriptFile("audio.ecs", "AUDIO_LOAD \"tone\"\nWAIT 8000");
         byte[] pcm = new byte[9600];
         for (int i = 0; i < pcm.Length / 2; i++)
             System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(pcm.AsSpan(i * 2),
@@ -34,9 +34,9 @@ public partial class ScriptServiceTests
         service.Run(path);
         try
         {
-            await WaitUntilAsync(() => audio.Subscribers == 2, "运行历史和独立等待应已订阅", detail: () => string.Join(" | ", log.Snapshot()));
+            await WaitUntilAsync(() => audio.Subscribers == 1, "已加载标签应开始后台识别", detail: () => string.Join(" | ", log.Snapshot()));
             service.Stop();
-            await WaitUntilAsync(() => !service.IsRunning, "停止应立即取消音频等待");
+            await WaitUntilAsync(() => !service.IsRunning, "停止应取消脚本并清理后台识别");
             Assert.That(audio.Subscribers, Is.Zero);
             Assert.That(log.Snapshot(), Does.Contain("脚本已终止"));
             Assert.That(log.Snapshot(), Does.Not.Contain("脚本运行完成"));
@@ -53,7 +53,7 @@ public partial class ScriptServiceTests
     {
         FakeLogService log = new();
         ScriptService service = new(new FakeDeviceService(), new FakeCaptureService(), log);
-        service.RunFromContent("RETURN AUDIO(\"tone\", 1000)");
+        service.RunFromContent("AUDIO_LOAD \"tone\"");
         await WaitUntilAsync(() => !service.IsRunning, "缺少音频能力应退出");
         Assert.That(log.Snapshot().Any(message => message.Contains("未提供脚本音频能力")), Is.True);
         Assert.That(log.Snapshot(), Does.Not.Contain("脚本运行完成"));

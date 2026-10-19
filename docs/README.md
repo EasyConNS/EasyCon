@@ -11,7 +11,7 @@
 | [Script.md](Script.md) | ECS 脚本语言完整语法：变量/常量/类型/流程控制/函数/结构体/数组/按键语句/识图标签/IMPORT |
 | [Functions.md](Functions.md) | 内置函数手册（按功能域；速查表含桌面/单片机可用性） |
 | [AudioSource.md](AudioSource.md) | 连接 Windows 游戏音频输入、查看电平及连接排查 |
-| [AudioLabels.md](AudioLabels.md) | 声音标签制作、相对 ECS 的放置位置、首次运行、匹配校准与常见报错 |
+| [AudioLabels.md](AudioLabels.md) | 声音标签制作、ECS 目录、LOAD/SCORE/UNLOAD 后台识别示例、0～100 分校准与排错 |
 
 ## 🏗️ 架构与编译管线（改编译器/宿主前必读）
 

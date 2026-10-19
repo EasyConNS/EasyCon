@@ -31,7 +31,7 @@ public partial class AudioMatchTestViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _labelName = "";
     [ObservableProperty]
-    private double _threshold = 0.85;
+    private double _threshold = 85;
     [ObservableProperty]
     private double _cooldownSeconds = 1;
     [ObservableProperty]
@@ -65,9 +65,9 @@ public partial class AudioMatchTestViewModel : ObservableObject, IDisposable
     public bool HasTemplate => _template != null;
     public string TemplateSummary => _template == null ? L10nBridge.T("Text.AudioMatch.NoTemplate")
         : string.Format(L10nBridge.T("Text.AudioMatch.TemplateSummary"), LabelName, _template.DurationSeconds);
-    public string ScoreText => Score?.ToString("F3") ?? "—";
+    public string ScoreText => Score?.ToString("F2") ?? "—";
     public double ScoreValue => Score ?? 0;
-    public string PeakScoreText => PeakScore.ToString("F3");
+    public string PeakScoreText => PeakScore.ToString("F2");
     public string HitSummary => string.Format(L10nBridge.T("Text.AudioMatch.HitSummary"), HitCount);
     public string Status => string.Format(L10nBridge.T(_statusKey), _statusArguments);
 
@@ -82,7 +82,7 @@ public partial class AudioMatchTestViewModel : ObservableObject, IDisposable
     partial void OnHitCountChanged(int value) => OnPropertyChanged(nameof(HitSummary));
     partial void OnThresholdChanged(double value)
     {
-        double bounded = double.IsFinite(value) ? Math.Clamp(value, 0.1, 1) : 0.85;
+        double bounded = double.IsFinite(value) ? Math.Clamp(value, 10, 100) : 85;
         if (bounded != value)
             Threshold = bounded;
         UpdateSettings();
@@ -219,7 +219,7 @@ public partial class AudioMatchTestViewModel : ObservableObject, IDisposable
         {
             HitCount++;
             Hits.Insert(0, new AudioMatchHitRow(hit.DetectedAt.ToLocalTime().ToString("HH:mm:ss.fff"),
-                hit.Score.ToString("F3"), hit.Threshold.ToString("F3")));
+                hit.Score.ToString("F2"), hit.Threshold.ToString("F2")));
             if (Hits.Count > 100)
                 Hits.RemoveAt(Hits.Count - 1);
         }

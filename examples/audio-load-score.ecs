@@ -1,0 +1,18 @@
+# 在桌面 GUI 连接游戏音频和手柄后运行。
+# 将本脚本保存在自己的脚本目录；标签应为同级的
+# audiolabel/医疗.audiolabel/label.json 和 audio.wav。
+# 85 是示例相似度阈值，请用真实游戏声音校准。
+# 未命中会持续按 A；可以点击停止脚本结束。
+AUDIO_LOAD "医疗"
+FOR
+    IF AUDIO_SCORE("医疗") >= 85
+        FOR 5
+            B
+            WAIT 800
+        NEXT
+        BREAK
+    ENDIF
+    A
+    WAIT 800
+NEXT
+AUDIO_UNLOAD "医疗"

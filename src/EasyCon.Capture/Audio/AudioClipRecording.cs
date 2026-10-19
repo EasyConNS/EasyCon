@@ -18,7 +18,7 @@ public sealed class AudioClipRecording : IDisposable
     private bool _disposed;
 
     public AudioClipRecording(IAudioCaptureSource source)
-        : this(source, AudioDetectionSession.Now, true)
+        : this(source, AudioClock.NowNanoseconds, true)
     {
     }
 
