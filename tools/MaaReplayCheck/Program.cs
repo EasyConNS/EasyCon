@@ -132,6 +132,11 @@ object summary = new
     nativeDifferences,
     nativeIntegerDifferences,
     maximumRawDifference,
+    nativeTemplatesValidated = new { gui = vision.Session.ValidatedTemplates, cli = cli.Session.ValidatedTemplates },
+    nativeResourceDirectories = new { gui = vision.Session.NativeResourceDirectory, cli = cli.Session.NativeResourceDirectory },
+    maximumTemplatePathLength = new[] { generation, cliGeneration }.SelectMany(version => version.Labels.Values
+        .Where(entry => entry.NativeType == "TemplateMatch")
+        .Select(entry => Path.Combine(version.Directory, "image", "legacy", entry.TemplateDigest + ".png").Length)).DefaultIfEmpty().Max(),
     cliServiceMethodFrameChecks = cliChecked.Count,
     routes,
     memory,

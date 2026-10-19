@@ -42,7 +42,20 @@
         <KeyBinding Gesture="Ctrl+Shift+S" Command="{Binding SaveScriptAsCommand}"/>
     </Window.KeyBindings>
 
+    <Window.Resources>
+        <DataTemplate x:Key="ConnectionButtonContent">
+            <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
+                <TextBlock Text="{Binding}"/>
+            </Viewbox>
+        </DataTemplate>
+    </Window.Resources>
+
     <Window.Styles>
+        <Style Selector="Button.connection-action">
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="Padding" Value="4,5"/>
+            <Setter Property="ContentTemplate" Value="{StaticResource ConnectionButtonContent}"/>
+        </Style>
         <Style Selector="ToggleSwitch.compact-switch">
             <Setter Property="Width" Value="46" />
             <Setter Property="MinWidth" Value="46" />
@@ -627,12 +640,13 @@
                           Margin="5"
                           Padding="10">
                     <GroupBox.Header>
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="{loc:Translate Text.Panel.Switch}" FontWeight="Bold"/>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="{loc:Translate Text.Panel.Switch}" FontWeight="Bold" FontSize="12"/>
                             <Ellipse Classes="connection-indicator"
                                      Classes.connected="{Binding Switch.IsNintendoSwitchConnected}"
                                      Classes.disconnected="{Binding !Switch.IsNintendoSwitchConnected}"/>
                             <TextBlock Text="{Binding Switch.NintendoSwitchStatus}"
+                                       FontSize="12"
                                        FontWeight="Bold"
                                        Classes="connection-status"
                                        Classes.connected="{Binding Switch.IsNintendoSwitchConnected}"
@@ -640,13 +654,23 @@
                         </StackPanel>
                     </GroupBox.Header>
                     <StackPanel Orientation="Vertical" Spacing="10">
-                        <ComboBox ItemsSource="{Binding Switch.SerialPortOptions}"
+                        <ComboBox x:Name="ClassicControllerSource" ItemsSource="{Binding Switch.SerialPortOptions}"
                                   SelectedItem="{Binding Switch.SelectedSerialPort}"
                                   HorizontalAlignment="Stretch"
-                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Switch.RefreshSerialPortsCommand}"/>
+                                  HorizontalContentAlignment="Stretch"
+                                  MinWidth="0"
+                                  ToolTip.Tip="{Binding Switch.SelectedSerialPort}"
+                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Switch.RefreshSerialPortsCommand}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                         <TextBlock Grid.Row="2" VerticalAlignment="Bottom" Text="{Binding Switch.SelectionNotice}" IsVisible="{Binding Switch.SelectionUnavailable}" FontSize="11" TextWrapping="Wrap"/>
                         <Grid ColumnDefinitions="*,*">
                             <Button Grid.Column="0"
+                                    Classes="connection-action"
                                     Content="{Binding Switch.NintendoSwitchButtonText}"
                                     Command="{Binding Switch.ConnectNintendoSwitchCommand}"
                                     IsEnabled="{Binding !Switch.IsConnectingNintendoSwitch}"
@@ -657,7 +681,7 @@
                                     Content="{loc:Translate Text.Btn.AutoConnect}"
                                     Command="{Binding Switch.AutoConnectNintendoSwitchCommand}"
                                     IsEnabled="{Binding !Switch.IsConnectingNintendoSwitch}"
-                                    Classes="outline-accent"
+                                    Classes="outline-accent connection-action"
                                     Margin="5,0,0,0"
                                     HorizontalAlignment="Stretch"
                                     HorizontalContentAlignment="Center"/>
@@ -670,12 +694,13 @@
                           Margin="5"
                           Padding="10">
                     <GroupBox.Header>
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <TextBlock Text="{loc:Translate Text.Panel.Capture}" FontWeight="Bold"/>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <TextBlock Text="{loc:Translate Text.Panel.Capture}" FontWeight="Bold" FontSize="12"/>
                             <Ellipse Classes="connection-indicator"
                                      Classes.connected="{Binding Capture.IsCaptureSourceConnected}"
                                      Classes.disconnected="{Binding !Capture.IsCaptureSourceConnected}"/>
                             <TextBlock Text="{Binding Capture.CaptureSourceStatus}"
+                                       FontSize="12"
                                        FontWeight="Bold"
                                        Classes="connection-status"
                                        Classes.connected="{Binding Capture.IsCaptureSourceConnected}"
@@ -683,12 +708,21 @@
                         </StackPanel>
                     </GroupBox.Header>
                     <StackPanel Orientation="Vertical" Spacing="10">
-                        <ComboBox ItemsSource="{Binding Capture.CaptureSourceOptions}"
+                        <ComboBox x:Name="ClassicCaptureSource" ItemsSource="{Binding Capture.CaptureSourceOptions}"
                                   SelectedItem="{Binding Capture.SelectedCaptureSource}"
                                   HorizontalAlignment="Stretch"
-                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Capture.RefreshCaptureSourcesCommand}"/>
+                                  HorizontalContentAlignment="Stretch"
+                                  MinWidth="0"
+                                  ToolTip.Tip="{Binding Capture.SelectedCaptureSource}"
+                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Capture.RefreshCaptureSourcesCommand}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                         <TextBlock Grid.Row="2" VerticalAlignment="Bottom" Text="{Binding Capture.SelectionNotice}" IsVisible="{Binding Capture.SelectionUnavailable}" FontSize="11" TextWrapping="Wrap"/>
-                        <Button Content="{Binding Capture.CaptureSourceButtonText}"
+                        <Button Classes="connection-action" Content="{Binding Capture.CaptureSourceButtonText}"
                                 Command="{Binding Capture.ConnectCaptureSourceCommand}"
                                 IsEnabled="{Binding !Capture.IsConnectingCaptureSource}"
                                 HorizontalAlignment="Stretch"
@@ -1121,18 +1155,27 @@
                         <Border Grid.Row="1"
                                 Height="1"
                                 Background="{DynamicResource WorkbenchBorderBrush}"/>
-                        <ComboBox Grid.Row="2"
+                        <ComboBox x:Name="CardControllerSource" Grid.Row="2"
                                   ItemsSource="{Binding Switch.SerialPortOptions}"
                                   SelectedItem="{Binding Switch.SelectedSerialPort}"
                                   HorizontalAlignment="Stretch"
+                                  HorizontalContentAlignment="Stretch"
+                                  MinWidth="0"
+                                  ToolTip.Tip="{Binding Switch.SelectedSerialPort}"
                                   VerticalAlignment="Center"
-                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Switch.RefreshSerialPortsCommand}"/>
+                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Switch.RefreshSerialPortsCommand}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                         <TextBlock Grid.Row="2" VerticalAlignment="Bottom" Text="{Binding Switch.SelectionNotice}" IsVisible="{Binding Switch.SelectionUnavailable}" FontSize="11" TextWrapping="Wrap"/>
                         <Grid Grid.Row="3"
                               ColumnDefinitions="*,*"
                               ColumnSpacing="10"
                               VerticalAlignment="Bottom">
-                            <Button Content="{Binding Switch.NintendoSwitchButtonText}"
+                            <Button Classes="connection-action" Content="{Binding Switch.NintendoSwitchButtonText}"
                                     Command="{Binding Switch.ConnectNintendoSwitchCommand}"
                                     IsEnabled="{Binding !Switch.IsConnectingNintendoSwitch}"
                                     HorizontalAlignment="Stretch"/>
@@ -1140,7 +1183,7 @@
                                     Content="{loc:Translate Text.Btn.AutoConnect}"
                                     Command="{Binding Switch.AutoConnectNintendoSwitchCommand}"
                                     IsEnabled="{Binding !Switch.IsConnectingNintendoSwitch}"
-                                    Classes="outline-accent"
+                                    Classes="outline-accent connection-action"
                                     HorizontalAlignment="Stretch"/>
                         </Grid>
                     </Grid>
@@ -1174,14 +1217,23 @@
                         <Border Grid.Row="1"
                                 Height="1"
                                 Background="{DynamicResource WorkbenchBorderBrush}"/>
-                        <ComboBox Grid.Row="2"
+                        <ComboBox x:Name="CardCaptureSource" Grid.Row="2"
                                   ItemsSource="{Binding Capture.CaptureSourceOptions}"
                                   SelectedItem="{Binding Capture.SelectedCaptureSource}"
                                   HorizontalAlignment="Stretch"
+                                  HorizontalContentAlignment="Stretch"
+                                  MinWidth="0"
+                                  ToolTip.Tip="{Binding Capture.SelectedCaptureSource}"
                                   VerticalAlignment="Center"
-                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Capture.RefreshCaptureSourcesCommand}"/>
+                                  behaviors:DropDownRefreshBehavior.RefreshCommand="{Binding Capture.RefreshCaptureSourcesCommand}">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                         <TextBlock Grid.Row="2" VerticalAlignment="Bottom" Text="{Binding Capture.SelectionNotice}" IsVisible="{Binding Capture.SelectionUnavailable}" FontSize="11" TextWrapping="Wrap"/>
-                        <Button Grid.Row="3"
+                        <Button Classes="connection-action" Grid.Row="3"
                                 Content="{Binding Capture.CaptureSourceButtonText}"
                                 Command="{Binding Capture.ConnectCaptureSourceCommand}"
                                 IsEnabled="{Binding !Capture.IsConnectingCaptureSource}"
