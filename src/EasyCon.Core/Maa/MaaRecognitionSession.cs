@@ -4,6 +4,7 @@ using MaaFramework.Binding;
 using MaaFramework.Binding.Buffers;
 using MaaFramework.Binding.Custom;
 using OpenCvSharp;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace EasyCon.Core.Maa;
@@ -16,6 +17,8 @@ public sealed class MaaRecognitionSession : IMaaRecognitionSession, IDisposable
     private readonly MaaTasker _tasker;
     private readonly LegacyRecognition _legacy;
     private readonly LegacyRecognition _condition;
+    private readonly MaaResourceBundleLease? _bundle;
+    private readonly Dictionary<string, Size> _templates = new(StringComparer.Ordinal);
     private readonly CancellationTokenSource _lifetime = new();
     private volatile bool _disposed;
     private int _queued;
@@ -26,31 +29,107 @@ public sealed class MaaRecognitionSession : IMaaRecognitionSession, IDisposable
     public static int ActiveSessions => Volatile.Read(ref _activeSessions);
     public long CompletedRequests { get; private set; }
     public int RetainedResults { get; private set; }
+    public int ValidatedTemplates => _templates.Count;
+    public string NativeResourceDirectory { get; }
 
     public MaaRecognitionSession(string? resourceDirectory = null, IReadOnlyDictionary<string, MaaLabelEntry>? labels = null)
     {
         _ = MaaEnvironment.RuntimeVersion;
         _legacy = new(labels ?? new Dictionary<string, MaaLabelEntry>());
         _condition = new(labels ?? new Dictionary<string, MaaLabelEntry>(), true);
-        _resource = CreateResource(resourceDirectory ?? MaaEnvironment.BootstrapResource, _legacy, _condition);
+        string directory = resourceDirectory ?? MaaEnvironment.BootstrapResource;
+        _bundle = labels == null ? null : new(directory);
+        NativeResourceDirectory = _bundle?.Directory ?? directory;
+        try { _resource = CreateResource(NativeResourceDirectory, _legacy, _condition); }
+        catch { _bundle?.Dispose(); throw; }
+        MaaTasker? tasker = null;
         try
         {
-            MaaTasker tasker = new() { Resource = _resource, Controller = MaaController.Null, DisposeOptions = DisposeOptions.None };
+            tasker = new() { Resource = _resource, Controller = MaaController.Null, DisposeOptions = DisposeOptions.None };
             if (!tasker.IsInitialized)
-            {
-                tasker.Dispose();
                 throw new InvalidOperationException("Maa 独立识别 Tasker 未初始化");
-            }
             _tasker = tasker;
+            LoadAndValidateTemplates(directory, labels);
             Interlocked.Increment(ref _activeSessions);
         }
-        catch { _resource.Dispose(); throw; }
+        catch { tasker?.Dispose(); _resource.Dispose(); _bundle?.Dispose(); throw; }
     }
 
     internal static void ValidateResource(string directory, IReadOnlyDictionary<string, MaaLabelEntry> labels)
     {
-        using MaaResource resource = CreateResource(directory, new LegacyRecognition(labels), new LegacyRecognition(labels, true));
-        if (!resource.IsLoaded) throw new InvalidDataException("生成的 Maa 资源未就绪");
+        using MaaRecognitionSession session = new(directory, labels);
+    }
+
+    private void LoadAndValidateTemplates(string directory, IReadOnlyDictionary<string, MaaLabelEntry>? labels)
+    {
+        if (labels == null) return;
+        foreach (string digest in labels.Values.Where(entry => entry.Error == null && entry.NativeType == "TemplateMatch")
+            .Select(entry => entry.TemplateDigest!).Distinct(StringComparer.Ordinal))
+        {
+            string name = "legacy/" + digest + ".png";
+            string path = Path.Combine(directory, "image", "legacy", digest + ".png");
+            try
+            {
+                byte[] png = File.ReadAllBytes(path);
+                if (Convert.ToHexStringLower(SHA256.HashData(png)) != digest)
+                    throw new InvalidDataException("模板摘要不符");
+                using MaaImageBuffer image = new();
+                if (!image.TrySetEncodedData(png) || !_resource.OverrideImage(name, image))
+                    throw new InvalidDataException("Maa 模板内存装载失败");
+                // 避免原生 imread 的长路径限制；同时以真实 TemplateMatch 验证缓冲区已被资源持有。
+                using Mat dimensions = Cv2.ImDecode(png, ImreadModes.Color);
+                string parameters = JsonSerializer.Serialize(new
+                {
+                    template = name,
+                    roi = new[] { 0, 0, dimensions.Width, dimensions.Height },
+                    method = 1,
+                    threshold = 2,
+                    green_mask = false,
+                });
+                MaaTaskJob probe = _tasker.AppendRecognition("TemplateMatch", parameters, image);
+                MaaJobStatus status = probe.Wait();
+                using RecognitionDetail? result = probe.QueryRecognitionDetail();
+                if (status != MaaJobStatus.Succeeded || result == null)
+                    throw new InvalidDataException($"原生模板探针失败（{status}）");
+                ValidateTemplateDetail(result.Detail);
+                using JsonDocument detail = JsonDocument.Parse(result.Detail);
+                if (!result.Hit || detail.RootElement.GetProperty("best").ValueKind != JsonValueKind.Object)
+                    throw new InvalidDataException("原生模板探针没有命中自身图像");
+                _templates.Add(name, dimensions.Size());
+            }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or OpenCVException)
+            {
+                throw new InvalidDataException($"Maa 模板资源不可用: {path}", ex);
+            }
+            finally
+            {
+                if (!_tasker.ClearCache()) throw new InvalidOperationException("Maa 模板探针历史清理失败");
+            }
+        }
+    }
+
+    private void ValidateTemplateRequest(string parameters)
+    {
+        using JsonDocument document = JsonDocument.Parse(parameters);
+        if (!document.RootElement.TryGetProperty("template", out JsonElement value))
+            throw new InvalidDataException("Maa TemplateMatch 没有指定模板资源");
+        string?[] names = value.ValueKind == JsonValueKind.String ? [value.GetString()] :
+            value.ValueKind == JsonValueKind.Array ? value.EnumerateArray().Select(item => item.GetString()).ToArray() : [];
+        if (names.Length == 0 || names.Any(name => name == null || !_templates.ContainsKey(name)))
+            throw new InvalidDataException("Maa TemplateMatch 引用了未通过原生装载验证的模板资源");
+        if (document.RootElement.TryGetProperty("roi", out JsonElement roi) && roi.ValueKind == JsonValueKind.Array)
+        {
+            int[] bounds = roi.EnumerateArray().Select(item => item.GetInt32()).ToArray();
+            if (bounds.Length != 4 || names.Any(name => bounds[2] < _templates[name!].Width || bounds[3] < _templates[name!].Height))
+                throw new InvalidDataException("Maa 模板 ROI 小于已装载的模板，不能视为正常无候选");
+        }
+    }
+
+    private static void ValidateTemplateDetail(string detail, bool allowEmpty = false)
+    {
+        using JsonDocument document = JsonDocument.Parse(detail);
+        if (!document.RootElement.TryGetProperty("all", out JsonElement all) || all.ValueKind != JsonValueKind.Array || (!allowEmpty && all.GetArrayLength() == 0))
+            throw new InvalidDataException("Maa 原生模板未产生计算结果（资源不可用或计算失败），不能视为正常无候选");
     }
 
     private static MaaResource CreateResource(string directory, LegacyRecognition legacy, LegacyRecognition condition)
@@ -93,6 +172,7 @@ public sealed class MaaRecognitionSession : IMaaRecognitionSession, IDisposable
     private MaaRecognitionResult Recognize(MaaRecognitionRequest request, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
+        if (request.Type == "TemplateMatch") ValidateTemplateRequest(request.Parameters);
         _legacy.Error = null;
         _legacy.Token = token;
         _condition.Error = null;
@@ -115,6 +195,9 @@ public sealed class MaaRecognitionSession : IMaaRecognitionSession, IDisposable
                 if (_condition.Error != null) throw new InvalidOperationException("Maa 旧分数条件识别失败", _condition.Error);
                 using RecognitionDetail? result = job.QueryRecognitionDetail();
                 if (result == null) throw new InvalidOperationException($"Maa {request.Type} 未提供识别结果（{status}）");
+                if (status != MaaJobStatus.Succeeded) throw new InvalidOperationException($"Maa {request.Type} 识别作业失败（{status}）");
+                // 负相关等正常候选过滤也可能返回 all=[]；模板已在同一原生资源中逐一自匹配验证。
+                if (request.Type == "TemplateMatch") ValidateTemplateDetail(result.Detail, allowEmpty: true);
                 RetainedResults = 1;
                 return new(request.RequestId, status.ToString(), result.Detail, null, result.Hit);
             }
@@ -159,6 +242,7 @@ public sealed class MaaRecognitionSession : IMaaRecognitionSession, IDisposable
             _disposed = true;
             _tasker.Dispose();
             _resource.Dispose();
+            _bundle?.Dispose();
             _lifetime.Dispose();
             Interlocked.Decrement(ref _activeSessions);
         }

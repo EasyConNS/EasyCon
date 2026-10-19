@@ -345,7 +345,7 @@ public partial class ScriptServiceTests
             Assert.That(device.GetDevice().InputEpoch, Is.EqualTo(inputEpoch));
             Assert.That(capture.ActiveSource, Is.EqualTo("source-A"));
             Assert.That(input.NintendoSwitchStatus, Is.EqualTo(connectedInputStatus));
-            Assert.That(video.CaptureSourceStatus, Does.Contain("source-A"));
+            Assert.That(video.CaptureSourceStatus, Is.EqualTo(connectedInputStatus));
         });
     }
 

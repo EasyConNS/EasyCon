@@ -117,6 +117,24 @@ jobs:
           --configuration Debug --no-build
           --filter "FullyQualifiedName~MainWindowSaveTests.CtrlS_SavesLatestEditorTextFromTheFocusedEditor"
 
+      - name: 串行运行连接区 M18 渲染与交互回归
+        env:
+          EASYCON_CONNECTION_RENDER_DIR: acceptance-connection
+        run: >-
+          dotnet test test/EasyCon2.Avalonia.UiTests/EasyCon2.Avalonia.UiTests.csproj
+          --configuration Debug --no-build
+          --filter "FullyQualifiedName~MainWindowSaveTests.ConnectionPanels_Render"
+          --logger "trx;LogFileName=connection-m18.trx" --results-directory TestResultsConnection
+
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: connection-m18
+          path: |
+            acceptance-connection/*.png
+            acceptance-connection/*.json
+            TestResultsConnection/*.trx
+
       - name: 发布 Windows 验收包
         shell: pwsh
         run: |

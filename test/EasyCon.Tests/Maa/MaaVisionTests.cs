@@ -11,7 +11,7 @@ using System.Text.Json;
 namespace EasyCon.Tests.Maa;
 
 [TestFixture]
-public sealed class MaaVisionTests
+public sealed partial class MaaVisionTests
 {
     private string _root = "";
 

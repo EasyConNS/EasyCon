@@ -44,7 +44,7 @@ public sealed record LabelConversionResult(LabelGeneration? Generation, LabelCon
 /// <summary>只写派生资源。临时版本通过真实 Maa 装载后才发布，失败保留原 current.json。</summary>
 public static class MaaLabelConverter
 {
-    public const string Version = "easycon.labels/2";
+    public const string Version = "easycon.labels/3";
     private static readonly object PublicationGate = new();
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
@@ -173,10 +173,12 @@ public static class MaaLabelConverter
                 converter = Version,
                 runtime = "5.14.3",
                 binding = "5.10.0",
+                nativeLoading = "short-bundle+managed-images/1",
                 profile,
                 normalizationId,
                 modelDigest = ocrProfile?.Digest ?? modelDigest,
-                sources = discovery.Selected.Select(source => new { source.Name, source.Digest, source.Priority }),
+                // 来源路径也持久化在不可变索引中，迁移目录必须得到新的 generation。
+                sources = discovery.Selected.Select(source => new { source.Name, source.Path, source.Digest, source.Priority }),
                 diagnostics,
             });
             string id = Digest(Encoding.UTF8.GetBytes(signature));

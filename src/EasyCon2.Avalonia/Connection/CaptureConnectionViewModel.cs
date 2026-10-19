@@ -123,7 +123,6 @@ public partial class CaptureConnectionViewModel : ObservableObject
             : L10nBridge.T("Text.Btn.ConnectCapture");
         if (connected)
         {
-            CaptureSourceStatus = $"{L10nBridge.T("Text.Status.Connected")}: {_captureService.ActiveSource ?? SelectedCaptureSource} ({_captureService.ActiveBackend ?? SelectedCaptureType})";
             CaptureConnected?.Invoke();   // 与手动连接一致：父级借此自动打开监视器
         }
     }
@@ -171,7 +170,6 @@ public partial class CaptureConnectionViewModel : ObservableObject
                     {
                         IsCaptureSourceConnected = true;
                         SetCaptureStatus("Text.Status.Connected");
-                        CaptureSourceStatus += $": {_captureService.ActiveSource ?? sourceName} ({_captureService.ActiveBackend ?? SelectedCaptureType})";
                         CaptureSourceButtonText = L10nBridge.T("Text.Btn.DisconnectCapture");
                         _logService.AddLog(string.Format(L10nBridge.T("Text.Msg.CaptureOk"), sourceName));
 

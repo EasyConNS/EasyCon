@@ -21,7 +21,7 @@ using EasyDevice;
 namespace EasyCon2.Avalonia.UiTests;
 
 [TestFixture]
-public class MainWindowSaveTests
+public partial class MainWindowSaveTests
 {
     private static bool _stylesInitialized;
     private string _tempRoot = "";
@@ -366,7 +366,7 @@ public class MainWindowSaveTests
         }
     }
 
-    private static MainWindowViewModel CreateViewModel(TestServices services, ConfigState? config = null)
+    private static MainWindowViewModel CreateViewModel(TestServices services, ConfigState? config = null, IUiDispatcher? dispatcher = null)
     {
         return new MainWindowViewModel(
             services,
@@ -376,7 +376,7 @@ public class MainWindowSaveTests
             services,
             services,
             services,
-            SynchronousUiDispatcher.Instance,
+            dispatcher ?? SynchronousUiDispatcher.Instance,
             userSettings: new UserSettingsService(() => config ?? new ConfigState(), _ => { }));
     }
 
@@ -405,7 +405,7 @@ public class MainWindowSaveTests
         Assert.That(condition(), Is.True, message);
     }
 
-    private sealed class TestServices : ILogService, IDeviceService, ICaptureService, IScriptService,
+    private sealed partial class TestServices : ILogService, IDeviceService, ICaptureService, IScriptService,
         IControllerService, IDialogService, IWindowService
     {
         private readonly List<string> _messages = [];
@@ -444,8 +444,8 @@ public class MainWindowSaveTests
         public void Alert(string message) => AddLog(message);
         public string ReadLine() => "";
         public bool TryReadLine(out string line) { line = ""; return false; }
-        public string[] GetAvailablePorts() => [];
-        public string[] GetAvailableSources() => [];
+        public string[] GetAvailablePorts() => Ports;
+        public string[] GetAvailableSources() => VideoSources;
         IReadOnlyList<ControlSourceInfo> IControllerService.GetAvailableSources() => [];
         public bool TryConnect(string sourceName) => false;
         public string? AutoConnect() => null;
