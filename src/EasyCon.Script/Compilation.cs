@@ -111,7 +111,8 @@ public sealed class CompileOptions
         // 必须 +1，使全部旧缓存按未命中重编，不写迁移。2026-10-06 自 7 重置为 1
         // （无旧版缓存、仅开发测试；旧履历 M4–M7 删除）。M2：参数/出站窗口按函数需求分配。
         // M5：声音接口改为 AUDIO_LOAD/AUDIO_SCORE/AUDIO_UNLOAD。M6：AUDIO_SCORE 返回 INT。
-        return $"O={(Optimize ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}|M=6";
+        // M7：合入 SSA 全局提升修复，使旧音频分支的编译缓存失效。
+        return $"O={(Optimize ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}|M=7";
     }
 }
 

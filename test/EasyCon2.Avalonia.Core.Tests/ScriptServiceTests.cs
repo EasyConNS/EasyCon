@@ -19,32 +19,53 @@ namespace EasyCon2.Avalonia.Core.Tests;
 [TestFixture]
 public partial class ScriptServiceTests
 {
-    [Test]
-    public async Task AudioLoadUsesTheSavedScriptDirectoryAndStopCleansListeners()
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task AudioLoadUsesTheSavedScriptDirectoryAndStopCleansListeners(bool withInput)
     {
         FakeLogService log = new();
         ScriptAudioSource audio = new();
-        ScriptService service = new(new FakeDeviceService(), new FakeCaptureService(), log, audioSource: audio);
-        string path = CreateScriptFile("audio.ecs", "AUDIO_LOAD \"tone\"\nWAIT 8000");
+        RecordingConnection connection = new();
+        TestNintendoSwitch switchDevice = new(connection);
+        if (withInput)
+            Assert.That(switchDevice.TryConnect("fake://script-service"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
+        FakeDeviceService device = new(switchDevice);
+        ScriptService service = CreateService(log, device, new FakeCaptureService(), audioSource: audio);
+        string operation = withInput ? "A 8000" : "WAIT 8000";
+        string path = CreateScriptFile("audio.ecs", $"AUDIO_LOAD \"tone\"\n{operation}");
         byte[] pcm = new byte[9600];
         for (int i = 0; i < pcm.Length / 2; i++)
             System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(pcm.AsSpan(i * 2),
                 (short)(12000 * Math.Sin(2 * Math.PI * 700 * i / 8000)));
         AudioLabelStore.Save(Path.Combine(Path.GetDirectoryName(path)!, "audiolabel"), "tone", new AudioClip(audio.State.Format!, pcm));
+        ConcurrentQueue<byte[]> packets = new();
+        void RecordPacket(string _, byte[] packet) => packets.Enqueue(packet.ToArray());
+        connection.BytesSent += RecordPacket;
         service.Run(path);
         try
         {
             await WaitUntilAsync(() => audio.Subscribers == 1, "已加载标签应开始后台识别", detail: () => string.Join(" | ", log.Snapshot()));
+            if (withInput)
+            {
+                byte[] pressedA = new SwitchReport { Button = (ushort)SwitchButton.A }.GetBytes();
+                await WaitUntilAsync(() => packets.Any(packet => packet.SequenceEqual(pressedA)), "音频识别期间应能发送按键");
+            }
             service.Stop();
-            await WaitUntilAsync(() => !service.IsRunning, "停止应取消脚本并清理后台识别");
+            await WaitUntilAsync(() => !service.IsRunning, "停止应取消脚本并清理后台识别", timeoutMs: 3000);
             Assert.That(audio.Subscribers, Is.Zero);
             Assert.That(log.Snapshot(), Does.Contain("脚本已终止"));
             Assert.That(log.Snapshot(), Does.Not.Contain("脚本运行完成"));
             Assert.That(audio.Disposed, Is.False);
+            if (withInput)
+            {
+                Assert.That(packets.Last(), Is.EqualTo(new SwitchReport().GetBytes()), "停止完成时必须已写出释放报告");
+                Assert.That(device.IsConnected, Is.True, "停止脚本保留共享手柄连接");
+            }
         }
         finally
         {
             service.Stop();
+            connection.BytesSent -= RecordPacket;
         }
     }
 
@@ -52,7 +73,7 @@ public partial class ScriptServiceTests
     public async Task AudioWithoutHostCapabilityReportsAnError()
     {
         FakeLogService log = new();
-        ScriptService service = new(new FakeDeviceService(), new FakeCaptureService(), log);
+        ScriptService service = CreateService(log, new FakeDeviceService(), new FakeCaptureService());
         service.RunFromContent("AUDIO_LOAD \"tone\"");
         await WaitUntilAsync(() => !service.IsRunning, "缺少音频能力应退出");
         Assert.That(log.Snapshot().Any(message => message.Contains("未提供脚本音频能力")), Is.True);
@@ -333,10 +354,11 @@ public partial class ScriptServiceTests
         }
     }
 
-    private ScriptService CreateService(FakeLogService log, FakeDeviceService device, FakeCaptureService capture)
+    private ScriptService CreateService(FakeLogService log, FakeDeviceService device, FakeCaptureService capture,
+        IAlertService? alertService = null, IAudioCaptureSource? audioSource = null)
     {
         _devices.Add(device);
-        return new ScriptService(device, capture, log);
+        return new ScriptService(device, capture, log, alertService, audioSource);
     }
 
     private string CreateScriptFile(string fileName, string contents)
@@ -422,7 +444,7 @@ public partial class ScriptServiceTests
     {
         FakeLogService log = new();
         RecordingAlert alert = new();
-        ScriptService service = new(new FakeDeviceService(), new FakeCaptureService(), log, alert);
+        ScriptService service = CreateService(log, new FakeDeviceService(), new FakeCaptureService(), alert);
         service.RunFromContent("ALERT \"任务完成\"\nPRINT \"继续执行\"");
 
         string message = await alert.Message.Task.WaitAsync(TimeSpan.FromSeconds(15));
