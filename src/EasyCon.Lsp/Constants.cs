@@ -39,6 +39,9 @@ internal static class Constants
         ["FILE_EXISTS"] = "文件是否存在",
         ["NET_LOAD"] = "加载 ONNX 模型，返回网络句柄",
         ["NET_OUT"] = "读取输出张量元素",
+        ["AUDIO_LOAD"] = "从入口脚本旁 audiolabel 加载标签并开始后台识别；按键和 WAIT 期间持续运行；同名重复加载需先 AUDIO_UNLOAD",
+        ["AUDIO_SCORE"] = "非阻塞读取本次加载以来的累计最高相似度 0～100（INT，百分制向下取整）；首个完整结果前为 0，读取不清零；未加载、断线或后台异常时报错",
+        ["AUDIO_UNLOAD"] = "停止指定标签的后台识别并释放本轮分数；重新 AUDIO_LOAD 开始新一轮；脚本结束、出错或停止也会自动清理",
     };
 
     public static readonly string[] Keywords =

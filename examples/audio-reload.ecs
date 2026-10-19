@@ -1,0 +1,20 @@
+# AUDIO_SCORE 返回 0～100 的整数峰值，百分制向下取整。
+# 桌面 GUI：先保存脚本并连接游戏音频，无需连接手柄。
+# 标签：脚本旁 audiolabel/医疗.audiolabel/{label.json,audio.wav}。
+# 每轮 8 秒由脚本 WAIT 决定，识别在后台持续进行。
+AUDIO_LOAD "医疗"
+PRINT "第一轮开始，请触发目标声音"
+WAIT 8000
+$first = AUDIO_SCORE("医疗")
+PRINT "第一轮最高分：" & $first
+AUDIO_UNLOAD "医疗"
+
+AUDIO_LOAD "医疗"
+$initial = AUDIO_SCORE("医疗")
+PRINT "第二轮初始分数：" & $initial
+PRINT "第二轮开始，请再次触发目标声音"
+WAIT 8000
+$second = AUDIO_SCORE("医疗")
+PRINT "第二轮最高分：" & $second
+AUDIO_UNLOAD "医疗"
+# $first 保留第一轮结果；第二轮不会继承第一轮峰值。

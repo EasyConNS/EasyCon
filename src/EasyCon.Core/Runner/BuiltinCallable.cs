@@ -18,6 +18,25 @@ namespace EasyCon.Core.Runner;
 /// </summary>
 internal static class BuiltinCallable
 {
+    public static Value InvokeAudio(string name, ReadOnlySpan<Value> args, IAudioSession? session, CancellationToken token)
+    {
+        if (session == null)
+            throw new InvalidOperationException("当前宿主未提供脚本音频能力 AUDIO_LOAD/AUDIO_SCORE/AUDIO_UNLOAD。");
+        switch (name)
+        {
+            case "AUDIO_LOAD":
+                session.Load(args[0].AsString(), token);
+                return Value.Void;
+            case "AUDIO_SCORE":
+                return Value.FromInt(session.Score(args[0].AsString(), token));
+            case "AUDIO_UNLOAD":
+                session.Unload(args[0].AsString(), token);
+                return Value.Void;
+            default:
+                throw new InvalidOperationException($"未知脚本音频函数：{name}。");
+        }
+    }
+
     public static Value ImplJq(ReadOnlySpan<Value> args, CapabilitySet capabilities, CancellationToken token)
     {
         try

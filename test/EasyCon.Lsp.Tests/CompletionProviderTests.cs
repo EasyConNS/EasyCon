@@ -45,12 +45,20 @@ public class CompletionProviderTests
             // 与 BuiltinFunctions.Manifest 同步的真实内建面（旧断言里的 TIME 并非内建函数）
             Assert.That(labels, Does.Contain("FOPEN"));
             Assert.That(labels, Does.Contain("OCR_CONF"));
+            Assert.That(labels, Does.Contain("AUDIO_LOAD"));
+            Assert.That(labels, Does.Contain("AUDIO_SCORE"));
+            Assert.That(labels, Does.Contain("AUDIO_UNLOAD"));
+            Assert.That(labels, Does.Not.Contain("AUDIO"));
+            Assert.That(labels, Does.Not.Contain("AUDIO_WAIT"));
+            Assert.That(labels, Does.Not.Contain("AUDIO_WAIT_SCORE"));
             // 内建洞函数（__ 前缀）不对用户暴露
             Assert.That(labels, Does.Not.Contain("__TESSERACT__"));
             Assert.That(labels, Does.Not.Contain("__CAPTURE__"));
         });
 
         var waitItem = completions.Items.First(i => i.Label == "WAIT");
+        Assert.That(Constants.BuiltinFunctions.Single(item => item.Name == "AUDIO_SCORE").Doc,
+            Does.Contain("INT").And.Contain("向下取整").And.Not.Contain("DOUBLE"));
         Assert.Multiple(() =>
         {
             Assert.That(waitItem.Kind, Is.EqualTo(CompletionItemKind.Function));

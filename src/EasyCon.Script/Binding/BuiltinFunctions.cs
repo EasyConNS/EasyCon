@@ -65,6 +65,10 @@ public static class BuiltinFunctions
     // --- OCR 置信度查询（普通 callable，注册到 root scope）---
     public static readonly FunctionSymbol OcrConf = new("OCR_CONF", [], ScriptType.Int);
 
+    public static readonly FunctionSymbol AudioLoad = new("AUDIO_LOAD", [new("labelName", ScriptType.String)], ScriptType.Void);
+    public static readonly FunctionSymbol AudioScore = new("AUDIO_SCORE", [new("labelName", ScriptType.String)], ScriptType.Int);
+    public static readonly FunctionSymbol AudioUnload = new("AUDIO_UNLOAD", [new("labelName", ScriptType.String)], ScriptType.Void);
+
     // --- ONNX 推理函数（L3 名表，宿主能力 IInference；Vision 特征位）。
     //     纯标量协议：原生边界（EcxNativeContext）不携带数组，大数组驻留宿主，输出经 NET_OUT 逐元素读取。
     public static readonly FunctionSymbol NetLoad = new("NET_LOAD", [new("path", ScriptType.String)], ScriptType.Ptr);
@@ -217,6 +221,9 @@ public static class BuiltinFunctions
         // L3 名表原生（准入：能力洞 + std 加速洞；MCU native=NULL → 不可用）
         new(EncodeHole, BuiltinRoute.NativeName),
         new(JqHole, BuiltinRoute.NativeName),
+        new(AudioLoad, BuiltinRoute.NativeName, EcsImageFeatures.Audio),
+        new(AudioScore, BuiltinRoute.NativeName, EcsImageFeatures.Audio),
+        new(AudioUnload, BuiltinRoute.NativeName, EcsImageFeatures.Audio),
         new(NetLoad, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
         new(NetOut, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
         new(NetImageHole, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
@@ -278,7 +285,7 @@ public static class BuiltinFunctions
          NetRunH, NetScale, NetFree, NetUnload, NetArgMax, NetRows,
          NetNorm, NetLabels, NetLabel,
          YoloCount, YoloCls, YoloScore, YoloX1, YoloY1, YoloX2, YoloY2,
-         DetCount, DetX, DetY, DetW, DetH];
+         DetCount, DetX, DetY, DetW, DetH, AudioLoad, AudioScore, AudioUnload];
 
     internal static IReadOnlyList<FunctionSymbol> GetAll() => All;
 

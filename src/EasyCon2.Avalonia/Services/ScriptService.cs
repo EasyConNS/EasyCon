@@ -1,4 +1,5 @@
 using EasyCon.Capture;
+using EasyCon.Capture.Audio;
 using EasyCon.Core;
 using EasyCon.Core.Capabilities;
 using EasyCon.Core.Config;
@@ -19,6 +20,7 @@ public class ScriptService : IScriptService
     private readonly ICaptureService _captureService;
     private readonly ILogService _logService;
     private readonly IAlertService? _alertService;
+    private readonly IAudioCaptureSource? _audioSource;
     private readonly IScriptEngine _engine = new EasyScriptEngine();
     private readonly HostRunCoordinator _runs;
     private readonly object _runGate = new();
@@ -49,12 +51,13 @@ public class ScriptService : IScriptService
     }
 
     public ScriptService(IDeviceService deviceService, ICaptureService captureService, ILogService logService,
-        IAlertService? alertService = null)
+        IAlertService? alertService = null, IAudioCaptureSource? audioSource = null)
     {
         _deviceService = deviceService;
         _captureService = captureService;
         _logService = logService;
         _alertService = alertService;
+        _audioSource = audioSource;
         _runs = new HostRunCoordinator(deviceService.GetDevice(), captureService.FrameHub);
     }
 
@@ -299,6 +302,8 @@ public class ScriptService : IScriptService
                         CancellationToken = scope.Token,
                         Args = args,
                         AppDir = AppDomain.CurrentDomain.BaseDirectory,
+                        AudioSource = _audioSource,
+                        ScriptDirectory = string.IsNullOrWhiteSpace(sourcePath) ? null : Path.GetDirectoryName(Path.GetFullPath(sourcePath)),
                     });
 
                     if (hasKeyAction && lease.Capabilities.Input == null)
