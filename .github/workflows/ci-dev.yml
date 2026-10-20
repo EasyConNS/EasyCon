@@ -65,6 +65,9 @@ jobs:
   build-and-test:
     runs-on: windows-latest
     needs: format
+    env:
+      EASYCON_CONNECTION_RENDER_DIR: ${{ github.workspace }}/acceptance-connection
+      EASYCON_CONNECTION_RESULTS_DIR: ${{ github.workspace }}/TestResultsConnection
     steps:
       - uses: actions/checkout@v6
         with:
@@ -117,23 +120,37 @@ jobs:
           --configuration Debug --no-build
           --filter "FullyQualifiedName~MainWindowSaveTests.CtrlS_SavesLatestEditorTextFromTheFocusedEditor"
 
+      - name: 验证连接区证据完整性门禁的回归用例
+        shell: pwsh
+        run: ./ci/test-connection-evidence.ps1
+
       - name: 串行运行连接区 M18 渲染与交互回归
-        env:
-          EASYCON_CONNECTION_RENDER_DIR: acceptance-connection
         run: >-
           dotnet test test/EasyCon2.Avalonia.UiTests/EasyCon2.Avalonia.UiTests.csproj
           --configuration Debug --no-build
           --filter "FullyQualifiedName~MainWindowSaveTests.ConnectionPanels_Render"
-          --logger "trx;LogFileName=connection-m18.trx" --results-directory TestResultsConnection
+          --logger "trx;LogFileName=connection-m18.trx"
+          --results-directory "${{ env.EASYCON_CONNECTION_RESULTS_DIR }}"
 
-      - uses: actions/upload-artifact@v6
+      - name: 上传前校验完整 M18 证据
+        id: connection-evidence
         if: always()
+        shell: pwsh
+        run: >-
+          ./ci/verify-connection-evidence.ps1
+          -RenderDirectory $env:EASYCON_CONNECTION_RENDER_DIR
+          -TrxPath (Join-Path $env:EASYCON_CONNECTION_RESULTS_DIR 'connection-m18.trx')
+
+      - name: 上传完整 M18 截图、结构化记录与测试结果
+        uses: actions/upload-artifact@v6
+        if: ${{ always() && steps.connection-evidence.outcome == 'success' }}
         with:
           name: connection-m18
+          if-no-files-found: error
           path: |
-            acceptance-connection/*.png
-            acceptance-connection/*.json
-            TestResultsConnection/*.trx
+            ${{ env.EASYCON_CONNECTION_RENDER_DIR }}/*.png
+            ${{ env.EASYCON_CONNECTION_RENDER_DIR }}/*.json
+            ${{ env.EASYCON_CONNECTION_RESULTS_DIR }}/connection-m18.trx
 
       - name: 发布 Windows 验收包
         shell: pwsh
