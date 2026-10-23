@@ -7,6 +7,7 @@ using EasyCon.Core.Hosting;
 using EasyCon.Core.Maa;
 using EasyCon.Core.Notifications;
 using EasyCon.Core.Runner;
+using EasyCon.Core.Script;
 using EasyCon.Lsp;
 using EasyCon.Script;
 using EasyCon.Script.Ssa;
@@ -546,27 +547,28 @@ compileCommand.SetAction(async (parseResult, cancellationToken) =>
     // MCU 分发档：obj/ 缓存 + 可分发 .ecx（单流化后全部产物同形态，容量由烧录前预检判定）。
     var (label, _, _) = ECCore.LoadImgLabels(
         Path.GetDirectoryName(Path.GetFullPath(file)) ?? "", AppDomain.CurrentDomain.BaseDirectory);
-    var project = EasyCon.Script.Modules.ProjectCompiler.CompileProject(
-        file, ScriptCompileProfiles.Distributable(label.Select(il => il.name)));
+    string source = File.ReadAllText(file);
+    EcxExportResult export = EcxExportService.Export(
+        source, file, label.Select(il => il.name), stripDebug: strip);
     if (jsonDiag)
     {
-        Console.WriteLine(EasyCon.Script.DiagnosticFormat.ToJson(project.Diagnostics));
-        if (!project.Success)
+        Console.WriteLine(EasyCon.Script.DiagnosticFormat.ToJson(export.Diagnostics));
+        if (!export.Success)
             return 1;
     }
     else
     {
-        foreach (var w in project.Warnings)
-            Console.WriteLine($"警告: {w}");
-        if (!project.Success)
+        foreach (Diagnostic diagnostic in export.Diagnostics.Where(d => d.IsWarning))
+            Console.WriteLine($"警告: {diagnostic.Message}");
+        if (!export.Success)
         {
-            foreach (var d in project.Diagnostics)
-                Console.Error.WriteLine($"错误: {d}");
+            foreach (Diagnostic diagnostic in export.Diagnostics.Where(d => d.IsError))
+                Console.Error.WriteLine($"错误: {diagnostic}");
             return 1;
         }
     }
-    File.WriteAllBytes(outPath, EasyCon.Script.Bytecode.EcsContainer.WriteImage(project.Image!, stripDebug: strip));
-    Console.WriteLine($"已生成 {outPath}（{new FileInfo(outPath).Length} B，{project.Image!.Functions.Count} 函数{(strip ? "，stripDebug" : "，含调试段")}，模块: {string.Join(" → ", project.Artifacts.Select(a => a.Name))}）");
+    File.WriteAllBytes(outPath, export.Bytes!);
+    Console.WriteLine($"已生成 {outPath}（{new FileInfo(outPath).Length} B，{export.Compilation.Image!.Functions.Count} 函数{(strip ? "，stripDebug" : "，含调试段")}，模块: {string.Join(" → ", export.Compilation.Artifacts.Select(a => a.Name))}）");
     Console.WriteLine($"执行: ecs-vm run {outPath}");
     return 0;
 });

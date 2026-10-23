@@ -33,7 +33,7 @@ public interface IFileSystem
     void Move(string sourcePath, string destinationPath);
 
     /// <summary>文件移动（对应 File.Move）。</summary>
-    void MoveFile(string sourcePath, string destinationPath);
+    void MoveFile(string sourcePath, string destinationPath, bool overwrite = false);
 
     void CopyFile(string source, string destination, bool overwrite);
 

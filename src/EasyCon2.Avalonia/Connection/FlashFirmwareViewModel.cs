@@ -93,7 +93,7 @@ public partial class FlashFirmwareViewModel : ObservableObject
             }
 
             // 组装为字节码
-            var bytes = await _scriptService.BuildAsync(true);
+            byte[] bytes = await _scriptService.BuildAsync(stripDebug: true);
             if (bytes == null || bytes.Length == 0)
             {
                 _logService.AddLog(L10nBridge.T("Text.Msg.CompileEmptyFlash"));
@@ -176,7 +176,7 @@ public partial class FlashFirmwareViewModel : ObservableObject
         }
 
         // 组装为字节码
-        var bytes = await _scriptService.BuildAsync(false);
+        byte[] bytes = await _scriptService.BuildAsync(stripDebug: true);
         if (bytes == null || bytes.Length == 0)
         {
             _logService.AddLog(L10nBridge.T("Text.Msg.CompileEmptyFirmware"));
@@ -213,11 +213,22 @@ public partial class FlashFirmwareViewModel : ObservableObject
                 var hexContent = _fileStorage.ReadAllText(firmwareFile);
                 var outputFileName = Path.GetFileNameWithoutExtension(firmwareFile) + "+Script" + Path.GetExtension(firmwareFile);
                 var output = Path.Combine(Environment.CurrentDirectory, outputFileName);
+                var temporary = output + ".tmp-" + Guid.NewGuid().ToString("N");
 
                 // 使用HexWriter写入脚本到固件。UTF8Encoding(false) 与两参 WriteAllText
                 // 重载语义一致（UTF-8 无 BOM）
                 var resultHex = EasyCon.Script.Asm.HexWriter.WriteHex(hexContent, scriptBytes, scriptOffset, protocolVersion);
-                _fileStorage.WriteAllText(output, resultHex, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+                try
+                {
+                    _fileStorage.WriteAllText(temporary, resultHex, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+                    _fileSystem.MoveFile(temporary, output, overwrite: true);
+                }
+                catch
+                {
+                    if (_fileSystem.FileExists(temporary))
+                        _fileSystem.DeleteFile(temporary);
+                    throw;
+                }
                 return output;
             });
 

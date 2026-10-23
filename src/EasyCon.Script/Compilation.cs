@@ -173,6 +173,7 @@ public sealed class Compilation
         // MD_AMBIGUOUS_EXPORT 等项目级警告并入诊断流（v1 诊断数组本就含警告）
         var noLocation = new TextLocation(SourceText.From("", ""), new SourceSpan(0, 0));
         diagnostics.AddRange(project.Warnings.Select(w => Diagnostic.Warning(noLocation, w)));
+        diagnostics = diagnostics.DistinctStable().ToList();
 
         var image = project.Image;
         return new CompileResult(

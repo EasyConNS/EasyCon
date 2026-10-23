@@ -107,7 +107,7 @@ public static class ProjectCompiler
         if (mainTree.Diagnostics.Where(d => d.IsError).ToList() is { Count: > 0 } mainTreeErrors)
         {
             result.Diagnostics.AddRange(mainTreeErrors);
-            return result;
+            return FinalizeResult(result);
         }
 
         var diagnostics = new DiagnosticBag();
@@ -115,7 +115,7 @@ public static class ProjectCompiler
         if (diagnostics.HasErrors())
         {
             result.Diagnostics.AddRange(diagnostics);
-            return result;
+            return FinalizeResult(result);
         }
         result.Diagnostics.AddRange(diagnostics.Where(d => !d.IsError));   // 非致命提示透传
 
@@ -123,7 +123,7 @@ public static class ProjectCompiler
         if (!pipeline.CompileAll(graph.CompileOrder))
         {
             result.MainTree = mainTree;
-            return result;
+            return FinalizeResult(result);
         }
 
         foreach (var node in graph.CompileOrder)
@@ -155,11 +155,45 @@ public static class ProjectCompiler
         }
 
         result.NativeSymbols = pipeline.NativeSymbols.ToImmutableArray();
-        result.Image = EcxPipeline.Link(result.Artifacts,
-            result.Artifacts.Any(a => a.KeyAction),
-            result.Artifacts.Any(a => a.NeedIL));
-        result.Success = true;
         result.MainTree = mainTree;
+        if (result.Diagnostics.HasErrors())
+            return FinalizeResult(result);
+
+        try
+        {
+            result.Image = EcxPipeline.Link(result.Artifacts,
+                result.Artifacts.Any(a => a.KeyAction),
+                result.Artifacts.Any(a => a.NeedIL));
+            result.Success = true;
+        }
+        catch (BytecodeException ex)
+        {
+            string message = string.Join("；", ex.Diagnostics
+                .Select(d => d.ToString())
+                .Distinct(StringComparer.Ordinal));
+            result.Diagnostics.Add(Diagnostic.Error(
+                ModuleLocations.Default(mainTree), message, DiagnosticCodes.Link));
+            result.Image = null;
+            result.Success = false;
+        }
+        catch (Exception ex)
+        {
+            result.Diagnostics.Add(Diagnostic.Error(
+                ModuleLocations.Default(mainTree), ex.Message, DiagnosticCodes.Link));
+            result.Image = null;
+            result.Success = false;
+        }
+        return FinalizeResult(result);
+    }
+
+    static ModuleProjectResult FinalizeResult(ModuleProjectResult result)
+    {
+        result.Diagnostics = result.Diagnostics.DistinctStable().ToList();
+        if (result.Diagnostics.Any(d => d.IsError))
+        {
+            result.Image = null;
+            result.Success = false;
+        }
         return result;
     }
 }
