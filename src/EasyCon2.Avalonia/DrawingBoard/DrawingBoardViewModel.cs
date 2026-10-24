@@ -107,6 +107,8 @@ public partial class DrawingBoardViewModel : ViewModelBase
             await _dialogService.ShowMessageAsync(MessageTitle, "串口未连接");
             return;
         }
+        if (DrawTask is { IsCompleted: false })
+            return;
 
         _source = new CancellationTokenSource();
         CancellationToken token = _source.Token;
@@ -149,7 +151,9 @@ public partial class DrawingBoardViewModel : ViewModelBase
     private async Task StopAsync()
     {
         _source?.Cancel();
-        await Task.Delay(1000);
+        // 等后台绘制真正退出再释放按键、恢复开始按钮（旧版固定等 1 秒，期间绘制可能仍在发键）
+        if (DrawTask != null)
+            await DrawTask;
         try
         {
             _pad.Reset();

@@ -105,7 +105,7 @@ public class DrawingBoardTests
     }
 
     [Test]
-    public void Draw_Cancelled_StopsWithoutFinalReset()
+    public void Draw_CancelledBeforeStart_OnlyReleasesKeys()
     {
         List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Canvas((0, 5)), FullCanvas);
         RecordingPad pad = new();
@@ -113,7 +113,45 @@ public class DrawingBoardTests
         bool completed = new SplatoonDrawing(pad, 0, 0).Draw(rows, new CancellationToken(true));
 
         Assert.That(completed, Is.False);
-        Assert.That(pad.Events, Is.Empty);
+        Assert.That(pad.Events, Is.EqualTo(new[] { "reset" }));
+    }
+
+    [Test]
+    public void Draw_CancelledWhileKeyHeld_StopsPromptlyAndReleases()
+    {
+        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Canvas((0, 100), (0, 101)), FullCanvas);
+        using CancellationTokenSource cts = new();
+        RecordingPad pad = new() { OnDown = cts.Cancel };
+        System.Diagnostics.Stopwatch elapsed = System.Diagnostics.Stopwatch.StartNew();
+
+        bool completed = new SplatoonDrawing(pad, 0, 10_000).Draw(rows, cts.Token);
+
+        Assert.That(completed, Is.False);
+        Assert.That(elapsed.ElapsedMilliseconds, Is.LessThan(2_000));
+        Assert.That(pad.Events, Is.EqualTo(new[] { "down " + Right, "reset" }));
+    }
+
+    [Test]
+    public async Task Stop_WaitsForDrawToExitThenReenablesStart()
+    {
+        Fixture f = new(Canvas((0, 100)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.DelayText = "0";
+        f.Vm.DurationText = "10000";
+        TaskCompletionSource firstKey = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        f.Pad.OnDown = () => firstKey.TrySetResult();
+
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        await firstKey.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.That(f.Vm.IsStartEnabled, Is.False);
+        await f.Vm.StopCommand.ExecuteAsync(null).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.That(f.Vm.DrawTask!.IsCompleted, Is.True);
+        Assert.That(f.Vm.IsStartEnabled, Is.True);
+        int count = f.Pad.Events.Count;
+        await Task.Delay(100);
+        Assert.That(f.Pad.Events, Has.Count.EqualTo(count), "停止后不应再有按键");
+        Assert.That(f.Pad.Events.Last(), Is.EqualTo("reset"));
     }
 
     [Test]
@@ -210,12 +248,35 @@ public class DrawingBoardTests
 
     private sealed class RecordingPad : IDrawingPad
     {
+        private readonly List<string> _events = [];
         public bool Connected { get; set; } = true;
-        public List<string> Events { get; } = [];
+        public Action? OnDown { get; set; }
+
+        public List<string> Events
+        {
+            get
+            {
+                lock (_events)
+                    return [.. _events];
+            }
+        }
+
         public bool IsConnected() => Connected;
-        public void Down(ECKey key) => Events.Add("down " + key.Name);
-        public void Up(ECKey key) => Events.Add("up " + key.Name);
-        public void Reset() => Events.Add("reset");
+
+        public void Down(ECKey key)
+        {
+            Add("down " + key.Name);
+            OnDown?.Invoke();
+        }
+
+        public void Up(ECKey key) => Add("up " + key.Name);
+        public void Reset() => Add("reset");
+
+        private void Add(string e)
+        {
+            lock (_events)
+                _events.Add(e);
+        }
     }
 
     private sealed class FakeImages(PixelImage image) : IImageProcessor
