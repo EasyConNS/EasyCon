@@ -28,4 +28,7 @@ public interface IDialogService
 
     /// <summary>通用确认对话框（确定/取消）。返回 true 表示用户点了确定。</summary>
     Task<bool> ConfirmAsync(string title, string message);
+
+    /// <summary>通用提示对话框（仅"确定"）。</summary>
+    Task ShowMessageAsync(string title, string message);
 }

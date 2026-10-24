@@ -78,9 +78,7 @@
                 </Grid>
             </Border>
 
-            <Border Classes="settings-card dark-disabled-buttons disabled-feature-card"
-                    IsEnabled="False"
-                    Opacity="0.5">
+            <Border Classes="settings-card dark-disabled-buttons">
                 <StackPanel Spacing="12">
                     <TextBlock Classes="card-title"
                                Text="{loc:Translate Text.Feature.Drawing}"/>
@@ -88,9 +86,12 @@
                           ColumnDefinitions="*,*"
                           ColumnSpacing="10">
                         <Button Content="喷射战士"
+                                Command="{Binding OpenDrawingBoardCommand}"
                                 HorizontalAlignment="Stretch"/>
+                        <!-- 自由画板旧版（1.6.x）即未实际发送摇杆输入，暂不开放 -->
                         <Button Grid.Column="1"
                                 Content="自由画板"
+                                IsEnabled="False"
                                 HorizontalAlignment="Stretch"/>
                     </Grid>
                 </StackPanel>

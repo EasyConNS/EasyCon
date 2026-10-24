@@ -12,6 +12,7 @@ using EasyCon.Core.Notifications;
 using EasyCon2.Avalonia.AlertConfig;
 using EasyCon2.Avalonia.AudioLabels;
 using EasyCon2.Avalonia.Connection;
+using EasyCon2.Avalonia.DrawingBoard;
 using EasyCon2.Avalonia.KeyMapping;
 using EasyCon2.Avalonia.Mcp;
 using EasyCon2.Avalonia.ModelsConfig;
@@ -94,6 +95,11 @@ public partial class App : Application
                 window.Closed += (_, _) => matcher.Dispose();
                 window.Activated += (_, _) => matcher.RefreshLocalizedTexts();
                 return window;
+            });
+            windowService.Register(WindowKeys.DrawingBoard, () => new DrawingBoardWindow
+            {
+                DataContext = new DrawingBoardViewModel(new DeviceDrawingPad(deviceService), dialogService,
+                    new SkiaImageProcessor(), uiDispatcher, logService)
             });
             var mainWindow = new MainWindow { DataContext = mainWindowViewModel };
             desktop.MainWindow = mainWindow;

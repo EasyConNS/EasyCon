@@ -1,3 +1,4 @@
+using EasyCon2.Avalonia.Models;
 using EasyCon2.Avalonia.Services;
 using SkiaSharp;
 
@@ -55,6 +56,32 @@ public sealed class SkiaImageProcessor : IImageProcessor
             using var image = SKImage.FromBitmap(source);
             using var data = image.Encode(SKEncodedImageFormat.Png, 100);
             return data?.ToArray();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public PixelImage? LoadPixels(string filePath)
+    {
+        try
+        {
+            if (!File.Exists(filePath))
+                return null;
+
+            using SKCodec? codec = SKCodec.Create(filePath);
+            if (codec == null)
+                return null;
+
+            // 非预乘：半透明像素的 RGB 与 System.Drawing.Bitmap.GetPixel 读到的一致
+            SKImageInfo info = new(codec.Info.Width, codec.Info.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+            using SKBitmap bitmap = new(info);
+            SKCodecResult result = codec.GetPixels(info, bitmap.GetPixels());
+            if (result != SKCodecResult.Success && result != SKCodecResult.IncompleteInput)
+                return null;
+
+            return new PixelImage(info.Width, info.Height, bitmap.Bytes);
         }
         catch
         {

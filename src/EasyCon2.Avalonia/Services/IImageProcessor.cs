@@ -1,3 +1,5 @@
+using EasyCon2.Avalonia.Models;
+
 namespace EasyCon2.Avalonia.Services;
 
 /// <summary>
@@ -12,4 +14,7 @@ public interface IImageProcessor
 
     /// <summary>从文件加载图像并编码为 PNG 字节；失败返回 null。</summary>
     byte[]? LoadAsPng(string filePath);
+
+    /// <summary>从文件解码为 RGBA 非预乘像素（供逐像素读取）；失败返回 null。</summary>
+    PixelImage? LoadPixels(string filePath);
 }

@@ -398,5 +398,6 @@ public class AudioLabelEditorRenderTests
         public Task<DialogColor?> PickColorAsync(DialogColor current) => Task.FromResult<DialogColor?>(null);
         public Task<string[]?> ShowScriptArgsDialogAsync() => Task.FromResult<string[]?>(null);
         public Task<bool> ConfirmAsync(string title, string message) => Task.FromResult(false);
+        public Task ShowMessageAsync(string title, string message) => Task.CompletedTask;
     }
 }
