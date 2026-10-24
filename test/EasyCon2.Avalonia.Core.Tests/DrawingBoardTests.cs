@@ -164,14 +164,17 @@ public class DrawingBoardTests
         Assert.That(f.Pad.Events.Last(), Is.EqualTo("reset"));
     }
 
-    [Test]
-    public async Task Load_WrongSize_WarnsAndSkipsPreview()
+    [TestCase(100, 50)]
+    [TestCase(320, 100)]
+    [TestCase(300, 120)]
+    public async Task Load_WrongSize_IsRejected(int width, int height)
     {
-        Fixture f = new(new PixelImage(100, 50, White(100, 50)));
+        Fixture f = new(new PixelImage(width, height, White(width, height)));
 
         await f.Vm.LoadPictureFileAsync("x.png");
+        await f.Vm.EvaluateCommand.ExecuteAsync(null);
 
-        Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "图片不是320*120大小，建议重新修改" }));
+        Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "图片不是320*120大小，请重新修改", "未加载图片" }));
         Assert.That(f.Vm.PicturePng, Is.Null);
     }
 

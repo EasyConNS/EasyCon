@@ -88,14 +88,14 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
             await _dialogService.ShowMessageAsync(MessageTitle, "图片加载失败");
             return;
         }
-        // 与旧版一致：尺寸不符只提示、不预览，但图片仍会被用于绘制
-        _image = image;
-        if (image.Width != 320 && image.Height != 120)
+        // 旧版用 && 判断（宽高都不对才提示），且提示后仍会用该图绘制，小图会在绘制中途越界
+        if (image.Width != 320 || image.Height != 120)
         {
-            await _dialogService.ShowMessageAsync(MessageTitle, "图片不是320*120大小，建议重新修改");
+            await _dialogService.ShowMessageAsync(MessageTitle, "图片不是320*120大小，请重新修改");
             return;
         }
 
+        _image = image;
         PicturePng = _imageProcessor.LoadAsPng(filepath);
     }
 
