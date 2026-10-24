@@ -4,6 +4,7 @@ using EasyCon.Core.Maa;
 using EasyCon2.Avalonia.Models;
 using EasyCon2.Avalonia.Services;
 using EasyDevice;
+using System.Diagnostics.CodeAnalysis;
 using ILogService = EasyCon.Core.Services.ILogService;
 
 namespace EasyCon2.Avalonia.DrawingBoard;
@@ -109,32 +110,29 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         }
         if (DrawTask is { IsCompleted: false })
             return;
-
-        _source = new CancellationTokenSource();
-        CancellationToken token = _source.Token;
-        PixelImage? image = _image;
-        string[] texts = [DelayText, DurationText, StartPosYText, StartPosXText, WidthText, HeightText];
-        bool reverse = Reverse;
-        //开启一个task执行任务
-        DrawTask = Task.Run(() => DrawTaskOpt(image, texts, reverse, token));
-        IsStartEnabled = false;
-    }
-
-    private void DrawTaskOpt(PixelImage? image, string[] texts, bool reverse, CancellationToken token)
-    {
-        if (image == null)
+        if (_image == null)
         {
-            _ui.Post(() =>
-            {
-                IsStartEnabled = true;
-                _ = _dialogService.ShowMessageAsync(MessageTitle, "未加载图片");
-            });
+            await _dialogService.ShowMessageAsync(MessageTitle, "未加载图片");
+            return;
+        }
+        if (!TryParseSettings(out DrawingBoardSettings? settings, out string? error))
+        {
+            await _dialogService.ShowMessageAsync(MessageTitle, error);
             return;
         }
 
+        _source = new CancellationTokenSource();
+        CancellationToken token = _source.Token;
+        PixelImage image = _image;
+        //开启一个task执行任务
+        DrawTask = Task.Run(() => DrawTaskOpt(image, settings, token));
+        IsStartEnabled = false;
+    }
+
+    private void DrawTaskOpt(PixelImage image, DrawingBoardSettings settings, CancellationToken token)
+    {
         try
         {
-            DrawingBoardSettings settings = ParseSettings(texts, reverse);
             List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, settings);
             SplatoonDrawing drawing = new(_pad, settings.Wait, settings.Duration);
             if (drawing.Draw(rows, token))
@@ -188,18 +186,15 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        try
+        if (!TryParseSettings(out DrawingBoardSettings? settings, out string? error))
         {
-            DrawingBoardSettings settings = ParseSettings(
-                [DelayText, DurationText, StartPosYText, StartPosXText, WidthText, HeightText], Reverse);
-            List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(_image, settings);
-            TimeSpan elapsed = SplatoonDrawing.Estimate(rows, settings.Wait, settings.Duration);
-            EvaluateText = SplatoonDrawing.FormatEvaluation(elapsed);
+            await _dialogService.ShowMessageAsync(MessageTitle, error);
+            return;
         }
-        catch (Exception ex) when (ex is FormatException or OverflowException or ArgumentOutOfRangeException)
-        {
-            await _dialogService.ShowMessageAsync(MessageTitle, ex.Message);
-        }
+
+        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(_image, settings);
+        TimeSpan elapsed = SplatoonDrawing.Estimate(rows, settings.Wait, settings.Duration);
+        EvaluateText = SplatoonDrawing.FormatEvaluation(elapsed);
     }
 
     /// <summary>
@@ -221,16 +216,33 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         _source?.Cancel();
     }
 
-    /// <summary>texts 顺序：延迟、按键持续、起始行、起始列、列数、行数（旧版 int.Parse 的读取顺序）。</summary>
-    private static DrawingBoardSettings ParseSettings(string[] texts, bool reverse)
+    /// <summary>
+    /// 校验并读取各输入框。旧版直接 int.Parse，非数字会让绘制任务静默中断，
+    /// 负数或越界的起点会在扫描时越界。
+    /// </summary>
+    private bool TryParseSettings([NotNullWhen(true)] out DrawingBoardSettings? settings, [NotNullWhen(false)] out string? error)
     {
-        int wait = int.Parse(texts[0]);
-        int duration = int.Parse(texts[1]);
-        int start_row = int.Parse(texts[2]);
-        int start_col = int.Parse(texts[3]);
-        int col = int.Parse(texts[4]);
-        int row = int.Parse(texts[5]);
-        return new DrawingBoardSettings(wait, duration, start_row, start_col, col, row, reverse);
+        settings = null;
+        if (!TryParseField("延迟", DelayText, 0, 10000, out int wait, out error)
+            || !TryParseField("按键持续", DurationText, 1, 10000, out int duration, out error)
+            || !TryParseField("起始行", StartPosYText, 0, 119, out int start_row, out error)
+            || !TryParseField("起始列", StartPosXText, 0, 319, out int start_col, out error)
+            || !TryParseField("列数", WidthText, 1, 320, out int col, out error)
+            || !TryParseField("行数", HeightText, 1, 120, out int row, out error))
+            return false;
+        settings = new DrawingBoardSettings(wait, duration, start_row, start_col, col, row, Reverse);
+        return true;
+    }
+
+    private static bool TryParseField(string name, string text, int min, int max, out int value, [NotNullWhen(false)] out string? error)
+    {
+        if (int.TryParse(text.Trim(), out value) && value >= min && value <= max)
+        {
+            error = null;
+            return true;
+        }
+        error = $"{name}应为 {min}～{max} 的整数";
+        return false;
     }
 }
 

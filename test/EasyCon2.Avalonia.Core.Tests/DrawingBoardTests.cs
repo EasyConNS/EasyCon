@@ -227,15 +227,50 @@ public class DrawingBoardTests
     }
 
     [Test]
-    public async Task Start_WithoutImage_WarnsAndReenablesStart()
+    public async Task Start_WithoutImage_WarnsWithoutStarting()
     {
         Fixture f = new(Canvas());
 
         await f.Vm.StartCommand.ExecuteAsync(null);
-        await f.Vm.DrawTask!;
 
         Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "未加载图片" }));
+        Assert.That(f.Vm.DrawTask, Is.Null);
         Assert.That(f.Vm.IsStartEnabled, Is.True);
+    }
+
+    [TestCase("abc", "0", "0", "320", "120", "延迟应为 0～10000 的整数")]
+    [TestCase("45", "-1", "0", "320", "120", "起始列应为 0～319 的整数")]
+    [TestCase("45", "0", "120", "320", "120", "起始行应为 0～119 的整数")]
+    [TestCase("45", "0", "0", "0", "120", "列数应为 1～320 的整数")]
+    [TestCase("45", "0", "0", "320", "", "行数应为 1～120 的整数")]
+    public async Task InvalidSettings_AreRejectedWithFieldName(string delay, string startCol, string startRow, string width, string height, string expected)
+    {
+        Fixture f = new(Canvas((0, 1)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.DelayText = delay;
+        f.Vm.StartPosXText = startCol;
+        f.Vm.StartPosYText = startRow;
+        f.Vm.WidthText = width;
+        f.Vm.HeightText = height;
+
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        await f.Vm.EvaluateCommand.ExecuteAsync(null);
+
+        Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { expected, expected }));
+        Assert.That(f.Vm.DrawTask, Is.Null);
+        Assert.That(f.Vm.EvaluateText, Is.EqualTo("耗时："));
+    }
+
+    [Test]
+    public async Task DurationZero_IsRejected()
+    {
+        Fixture f = new(Canvas((0, 1)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.DurationText = "0";
+
+        await f.Vm.EvaluateCommand.ExecuteAsync(null);
+
+        Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "按键持续应为 1～10000 的整数" }));
     }
 
     [Test]
@@ -244,7 +279,7 @@ public class DrawingBoardTests
         Fixture f = new(Canvas((0, 1)));
         await f.Vm.LoadPictureFileAsync("x.png");
         f.Vm.DelayText = "0";
-        f.Vm.DurationText = "0";
+        f.Vm.DurationText = "1";
 
         await f.Vm.StartCommand.ExecuteAsync(null);
         await f.Vm.DrawTask!;
@@ -278,7 +313,7 @@ public class DrawingBoardTests
         Fixture f = new(Canvas((0, 1)));
         await f.Vm.LoadPictureFileAsync("x.png");
         f.Vm.DelayText = "0";
-        f.Vm.DurationText = "0";
+        f.Vm.DurationText = "1";
         f.Pad.OnDown = () => throw new ControllerOperationException("Busy", "设备正由其他运行使用");
 
         await f.Vm.StartCommand.ExecuteAsync(null);
