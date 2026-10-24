@@ -96,10 +96,13 @@ public partial class App : Application
                 window.Activated += (_, _) => matcher.RefreshLocalizedTexts();
                 return window;
             });
-            windowService.Register(WindowKeys.DrawingBoard, () => new DrawingBoardWindow
+            windowService.Register(WindowKeys.DrawingBoard, () =>
             {
-                DataContext = new DrawingBoardViewModel(new DeviceDrawingPad(deviceService), dialogService,
-                    new SkiaImageProcessor(), uiDispatcher, logService)
+                DrawingBoardViewModel board = new(new DeviceDrawingPad(deviceService), dialogService,
+                    new SkiaImageProcessor(), uiDispatcher, logService);
+                DrawingBoardWindow window = new() { DataContext = board };
+                window.Closed += (_, _) => board.Dispose();
+                return window;
             });
             var mainWindow = new MainWindow { DataContext = mainWindowViewModel };
             desktop.MainWindow = mainWindow;

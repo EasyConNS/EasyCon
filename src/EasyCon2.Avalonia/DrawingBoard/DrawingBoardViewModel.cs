@@ -12,7 +12,7 @@ namespace EasyCon2.Avalonia.DrawingBoard;
 /// 喷射战士画板（移植自 1.6.3 WinForms 版 DrawingBoard 窗体）。
 /// 输入框默认值、提示文案与按钮启用时机均与旧版一致；算法见 <see cref="SplatoonDrawing"/>。
 /// </summary>
-public partial class DrawingBoardViewModel : ViewModelBase
+public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 {
     private const string MessageTitle = "画板";
 
@@ -192,6 +192,12 @@ public partial class DrawingBoardViewModel : ViewModelBase
     public void OnPicturePressed(int x, int y)
     {
         CurPosText = "当前位置:" + (x / 2).ToString() + "," + (y / 2).ToString();
+    }
+
+    /// <summary>窗口关闭时调用：中止进行中的绘制（绘制线程收到取消后自行松开全部按键）。</summary>
+    public void Dispose()
+    {
+        _source?.Cancel();
     }
 
     /// <summary>texts 顺序：延迟、按键持续、起始行、起始列、列数、行数（旧版 int.Parse 的读取顺序）。</summary>

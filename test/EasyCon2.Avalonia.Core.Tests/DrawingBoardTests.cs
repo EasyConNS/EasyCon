@@ -206,6 +206,24 @@ public class DrawingBoardTests
     }
 
     [Test]
+    public async Task Dispose_StopsRunningDrawAndReleasesKeys()
+    {
+        Fixture f = new(Canvas((0, 100)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.DelayText = "0";
+        f.Vm.DurationText = "10000";
+        TaskCompletionSource firstKey = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        f.Pad.OnDown = () => firstKey.TrySetResult();
+
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        await firstKey.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        f.Vm.Dispose();
+        await f.Vm.DrawTask!.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.That(f.Pad.Events.Last(), Is.EqualTo("reset"));
+    }
+
+    [Test]
     public void PicturePressed_ShowsHalvedCoordinates()
     {
         Fixture f = new(Canvas());
