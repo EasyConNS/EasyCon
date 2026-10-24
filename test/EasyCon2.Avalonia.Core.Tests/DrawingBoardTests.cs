@@ -39,14 +39,24 @@ public class DrawingBoardTests
     }
 
     [Test]
-    public void SearchLines_LastRunEndingAtColumnZero_ExtendsToRowEnd_LikeLegacy()
+    public void SearchLines_SingleDotAtColumnZero_StaysSinglePixel()
     {
-        // 旧版用 end.Y == 0 判断"线段延续到行尾"，第 0 列的单个墨点因此被画成整行
+        // 旧版用 end.Y == 0 判断"线段延续到行尾"，第 0 列的单个墨点会被画成整行
         PixelImage image = Canvas((0, 0));
 
         List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas);
 
-        Assert.That(rows[0].Select(Describe), Is.EqualTo(new[] { "0:0-319" }));
+        Assert.That(rows[0].Select(Describe), Is.EqualTo(new[] { "0:0-0" }));
+    }
+
+    [Test]
+    public void SearchLines_RunReachingRegionEnd_EndsAtRegionLastColumn()
+    {
+        PixelImage image = Canvas((0, 3), (0, 4), (0, 5));
+
+        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas with { Col = 5 });
+
+        Assert.That(rows[0].Select(Describe), Is.EqualTo(new[] { "0:3-4" }));
     }
 
     [Test]

@@ -110,15 +110,13 @@ public sealed class SplatoonDrawing
                 }
             }
 
+            // 扫到行尾时线段仍未结束：终点补为区域最后一列
+            // （旧版用 end.Y == 0 判断，会把第 0 列的单个墨点误画成整行）
+            if (line_find)
+                Lines.Last().end.Y = start_col + col - 1;
+
             if (Lines.Count > 0)
-            {
-                if (Lines.Last().end.Y == 0)
-                {
-                    Lines.Last().end.Y = start_col + col - 1;
-                    line_find = false;
-                }
                 rows.Add(Lines);
-            }
         }
         return rows;
     }
