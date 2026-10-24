@@ -13,13 +13,14 @@ public partial class DrawingBoardWindow : Window
         PictureFrame.PointerPressed += OnPicturePointerPressed;
     }
 
-    // 指针坐标属于视觉树信息，只在此换算成整数像素后交给 ViewModel
+    // 指针坐标与控件尺寸属于视觉树信息，只在此取出后交给 ViewModel 换算
     private void OnPicturePointerPressed(object? sender, PointerPressedEventArgs e)
     {
         PointerPoint point = e.GetCurrentPoint(PictureBox);
         if (!point.Properties.IsLeftButtonPressed || DataContext is not DrawingBoardViewModel vm)
             return;
         Point position = point.Position;
-        vm.OnPicturePressed((int)position.X, (int)position.Y);
+        Size size = PictureBox.Bounds.Size;
+        vm.OnPicturePressed(position.X, position.Y, size.Width, size.Height);
     }
 }

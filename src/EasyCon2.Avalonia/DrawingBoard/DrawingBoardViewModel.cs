@@ -202,10 +202,17 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         }
     }
 
-    /// <summary>预览图左键按下：旧版按 PictureBox 内像素坐标除以 2 显示。</summary>
-    public void OnPicturePressed(int x, int y)
+    /// <summary>
+    /// 预览图左键按下：按预览框实际尺寸换算成 320×120 画布坐标（列,行）。
+    /// 旧版固定除以 2，但预览框是 822×282 拉伸显示，显示的坐标与画布对不上。
+    /// </summary>
+    public void OnPicturePressed(double x, double y, double width, double height)
     {
-        CurPosText = "当前位置:" + (x / 2).ToString() + "," + (y / 2).ToString();
+        if (width <= 0 || height <= 0)
+            return;
+        int col = Math.Clamp((int)(x * 320 / width), 0, 319);
+        int row = Math.Clamp((int)(y * 120 / height), 0, 119);
+        CurPosText = "当前位置:" + col.ToString() + "," + row.ToString();
     }
 
     /// <summary>窗口关闭时调用：中止进行中的绘制（绘制线程收到取消后自行松开全部按键）。</summary>

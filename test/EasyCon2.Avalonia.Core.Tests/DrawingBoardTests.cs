@@ -254,14 +254,17 @@ public class DrawingBoardTests
         Assert.That(f.Pad.Events.Last(), Is.EqualTo("reset"));
     }
 
-    [Test]
-    public void PicturePressed_ShowsHalvedCoordinates()
+    [TestCase(0, 0, "当前位置:0,0")]
+    [TestCase(411, 141, "当前位置:160,60")]
+    [TestCase(821.9, 281.9, "当前位置:319,119")]
+    [TestCase(822, 282, "当前位置:319,119")]
+    public void PicturePressed_ScalesToCanvasCoordinates(double x, double y, string expected)
     {
         Fixture f = new(Canvas());
 
-        f.Vm.OnPicturePressed(201, 81);
+        f.Vm.OnPicturePressed(x, y, 822, 282);
 
-        Assert.That(f.Vm.CurPosText, Is.EqualTo("当前位置:100,40"));
+        Assert.That(f.Vm.CurPosText, Is.EqualTo(expected));
     }
 
     private static string Describe(DrawingLine line) => $"{line.start.X}:{line.start.Y}-{line.end.Y}";
