@@ -1,3 +1,4 @@
+using EasyCon.Core.Maa;
 using EasyCon.Core.Services;
 using EasyCon2.Avalonia.DrawingBoard;
 using EasyCon2.Avalonia.Models;
@@ -233,6 +234,23 @@ public class DrawingBoardTests
         f.Vm.Dispose();
         await f.Vm.DrawTask!.WaitAsync(TimeSpan.FromSeconds(5));
 
+        Assert.That(f.Pad.Events.Last(), Is.EqualTo("reset"));
+    }
+
+    [Test]
+    public async Task Start_DeviceError_ReportsAndReenablesStart()
+    {
+        Fixture f = new(Canvas((0, 1)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.DelayText = "0";
+        f.Vm.DurationText = "0";
+        f.Pad.OnDown = () => throw new ControllerOperationException("Busy", "设备正由其他运行使用");
+
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        await f.Vm.DrawTask!;
+
+        Assert.That(f.Vm.IsStartEnabled, Is.True);
+        Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "画图中断: 设备正由其他运行使用" }));
         Assert.That(f.Pad.Events.Last(), Is.EqualTo("reset"));
     }
 

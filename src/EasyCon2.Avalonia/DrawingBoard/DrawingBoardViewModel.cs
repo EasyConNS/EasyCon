@@ -142,8 +142,22 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         }
         catch (Exception ex)
         {
-            // 旧版任务异常被静默吞掉、开始按钮保持禁用直到点击停止；这里仅补一条日志说明原因
-            _logService.AddLog($"画图中断: {ex.Message}");
+            // 旧版任务异常被静默吞掉，开始按钮一直禁用到点击停止，用户无从得知原因
+            string message = $"画图中断: {ex.Message}";
+            _logService.AddLog(message);
+            // 出错时 A 键可能仍按着；设备本身不可用时释放也会失败，只能忽略
+            try
+            {
+                _pad.Reset();
+            }
+            catch (ControllerOperationException)
+            {
+            }
+            _ui.Post(() =>
+            {
+                IsStartEnabled = true;
+                _ = _dialogService.ShowMessageAsync(MessageTitle, message);
+            });
         }
     }
 
