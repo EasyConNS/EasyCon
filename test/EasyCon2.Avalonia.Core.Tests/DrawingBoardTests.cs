@@ -71,6 +71,22 @@ public class DrawingBoardTests
     }
 
     [Test]
+    public void SearchLines_TransparentPixels_CountAsWhite()
+    {
+        byte[] rgba = White(320, 120);
+        SetPixel(rgba, 0, 2, 0, 0, 0, 255);
+        SetPixel(rgba, 0, 5, 0, 0, 0, 0);     // 全透明黑：视为白
+        SetPixel(rgba, 0, 6, 0, 0, 0, 200);   // 大部分不透明的黑：仍是墨点
+        PixelImage image = new(320, 120, rgba);
+
+        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas);
+        List<List<DrawingLine>> reversed = SplatoonDrawing.SearchLines(image, FullCanvas with { Col = 8, Reverse = true });
+
+        Assert.That(rows[0].Select(Describe), Is.EqualTo(new[] { "0:2-2", "0:6-6" }));
+        Assert.That(reversed[0].Select(Describe), Is.EqualTo(new[] { "0:0-1", "0:3-5", "0:7-7" }));
+    }
+
+    [Test]
     public void SearchLines_ClampsRegionToCanvas()
     {
         PixelImage image = Canvas((119, 319), (100, 300));
@@ -292,6 +308,15 @@ public class DrawingBoardTests
         => Enumerable.Range(0, count).SelectMany(_ => new[] { "down " + key, "up " + key });
 
     private static byte[] White(int width, int height) => Enumerable.Repeat((byte)255, width * height * 4).ToArray();
+
+    private static void SetPixel(byte[] rgba, int row, int col, byte r, byte g, byte b, byte a)
+    {
+        int i = (row * 320 + col) * 4;
+        rgba[i] = r;
+        rgba[i + 1] = g;
+        rgba[i + 2] = b;
+        rgba[i + 3] = a;
+    }
 
     /// <summary>320×120 白底，给定 (行, 列) 处为黑点。</summary>
     private static PixelImage Canvas(params (int Row, int Col)[] dark)

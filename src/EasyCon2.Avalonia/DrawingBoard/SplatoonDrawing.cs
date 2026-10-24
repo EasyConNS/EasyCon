@@ -76,10 +76,10 @@ public sealed class SplatoonDrawing
             List<DrawingLine> Lines = new List<DrawingLine>();
             for (int j = start_col; j < start_col + col; j++)
             {
-                Color color = pic.GetPixel(j, i);
+                int brightness = Brightness(pic.GetPixel(j, i));
                 if (reverse)
                 {
-                    if (color.R + color.G + color.B > 255 * 3 / 2 && line_find == false)
+                    if (brightness > 255 * 3 / 2 && line_find == false)
                     {
                         DrawingLine line = new DrawingLine();
                         line.start.X = i;
@@ -88,7 +88,7 @@ public sealed class SplatoonDrawing
                         Lines.Add(line);
                         line_find = true;
                     }
-                    else if (color.R + color.G + color.B < 255 * 3 / 2 && line_find == true)
+                    else if (brightness < 255 * 3 / 2 && line_find == true)
                     {
                         Lines.Last().end.Y = j - 1;
                         line_find = false;
@@ -96,7 +96,7 @@ public sealed class SplatoonDrawing
                 }
                 else
                 {
-                    if (color.R + color.G + color.B < 255 * 3 / 2 && line_find == false)
+                    if (brightness < 255 * 3 / 2 && line_find == false)
                     {
                         DrawingLine line = new DrawingLine();
                         line.start.X = i;
@@ -105,7 +105,7 @@ public sealed class SplatoonDrawing
                         Lines.Add(line);
                         line_find = true;
                     }
-                    else if (color.R + color.G + color.B > 255 * 3 / 2 && line_find == true)
+                    else if (brightness > 255 * 3 / 2 && line_find == true)
                     {
                         Lines.Last().end.Y = j - 1;
                         line_find = false;
@@ -122,6 +122,17 @@ public sealed class SplatoonDrawing
                 rows.Add(Lines);
         }
         return rows;
+    }
+
+    /// <summary>
+    /// 像素按白底合成后的 R+G+B。旧版直接读 RGB，透明 PNG 的透明区域 RGB 通常为 0，整片背景被当成墨点；
+    /// 不透明像素（含所有 JPG）结果与旧版相同。
+    /// </summary>
+    private static int Brightness(Color color)
+    {
+        int alpha = color.A;
+        int OverWhite(int channel) => (channel * alpha + 255 * (255 - alpha)) / 255;
+        return OverWhite(color.R) + OverWhite(color.G) + OverWhite(color.B);
     }
 
     /// <summary>
