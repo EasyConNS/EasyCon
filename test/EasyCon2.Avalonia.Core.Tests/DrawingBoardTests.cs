@@ -81,14 +81,33 @@ public class DrawingBoardTests
     }
 
     [Test]
-    public void Evaluate_CountsColumnMovesOnly()
+    public void Estimate_SumsEveryWaitOfTheDrawSequence()
     {
+        // 13 次方向点按 × (50 + 45)，外加每次移动后 2 次、落笔后 1 次、抬笔后 1 次、收尾 1 次延迟，共 13 × 45
         List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Canvas((0, 5), (0, 6), (2, 1)), FullCanvas);
 
-        int points = SplatoonDrawing.EvaluatePoints(rows);
+        TimeSpan elapsed = SplatoonDrawing.Estimate(rows, 45, 50);
 
-        Assert.That(points, Is.EqualTo(11));
-        Assert.That(SplatoonDrawing.FormatEvaluation(1000, 45, 50), Is.EqualTo("耗时：" + 1.583.ToString("0.00") + "mins"));
+        Assert.That(elapsed, Is.EqualTo(TimeSpan.FromMilliseconds(13 * 95 + 13 * 45)));
+    }
+
+    [Test]
+    public void Estimate_MatchesWaitsActuallyPerformedByDraw()
+    {
+        PixelImage image = Canvas((0, 5), (0, 6), (2, 1), (7, 300), (7, 302), (90, 0));
+        long performed = 0;
+
+        new SplatoonDrawing(new RecordingPad(), 45, 50, (milliseconds, _) => performed += milliseconds)
+            .Draw(SplatoonDrawing.SearchLines(image, FullCanvas), CancellationToken.None);
+        TimeSpan estimated = SplatoonDrawing.Estimate(SplatoonDrawing.SearchLines(image, FullCanvas), 45, 50);
+
+        Assert.That(estimated, Is.EqualTo(TimeSpan.FromMilliseconds(performed)));
+    }
+
+    [Test]
+    public void FormatEvaluation_UsesMinutes()
+    {
+        Assert.That(SplatoonDrawing.FormatEvaluation(TimeSpan.FromSeconds(95)), Is.EqualTo("耗时：" + 1.583.ToString("0.00") + "mins"));
     }
 
     [Test]

@@ -37,13 +37,16 @@ public sealed class SplatoonDrawing
     private readonly IDrawingPad _ns;
     private readonly int _duration;
     private readonly int _wait;
+    private readonly Action<int, CancellationToken> _sleep;
     private Point _pos;
 
-    public SplatoonDrawing(IDrawingPad pad, int wait, int duration)
+    /// <param name="sleep">等待实现；默认为可取消的真实等待，估算耗时时替换为累加器。</param>
+    public SplatoonDrawing(IDrawingPad pad, int wait, int duration, Action<int, CancellationToken>? sleep = null)
     {
         _ns = pad;
         _wait = wait;
         _duration = duration;
+        _sleep = sleep ?? Sleep;
     }
 
     /// <summary>按行扫描图片，得到每行的墨点线段（旧版开始画图与估算耗时共用的同一段代码）。</summary>
@@ -121,53 +124,22 @@ public sealed class SplatoonDrawing
         return rows;
     }
 
-    /// <summary>旧版"估算耗时"按钮：只累计列方向移动的格数。</summary>
-    public static int EvaluatePoints(List<List<DrawingLine>> rows)
+    /// <summary>
+    /// 估算耗时：以与 <see cref="Draw"/> 完全相同的发键序列空跑一遍，累加其中每一次等待。
+    /// 旧版只累计列方向移动的格数再乘以 (延迟 + 按键持续)，漏算了行方向移动以及每次移动、落笔、抬笔后的等待。
+    /// 注意 <see cref="Draw"/> 会就地调整各行线段顺序，估算与绘制应各用一份 <see cref="SearchLines"/> 结果。
+    /// </summary>
+    public static TimeSpan Estimate(List<List<DrawingLine>> rows, int wait, int duration)
     {
-        Point Pos = new Point(0, 0);
-        int point_num = 0;
-        foreach (List<DrawingLine> Lines in rows)
-        {
-            // search nearest line
-            if (Math.Abs(Pos.Y - Lines[0].start.Y) > Math.Abs(Pos.Y - Lines.Last().end.Y))
-                Lines.Reverse();
-
-            // draw line
-            foreach (DrawingLine line in Lines)
-            {
-                if (Math.Abs(Pos.Y - line.start.Y) < Math.Abs(Pos.Y - line.end.Y))
-                {
-                    point_num += Math.Abs(Pos.Y - line.start.Y);
-                    Pos.Y = line.start.Y;
-                    Pos.X = line.start.X;
-                }
-                else
-                {
-                    point_num += Math.Abs(Pos.Y - line.end.Y);
-                    Pos.Y = line.end.Y;
-                    Pos.X = line.end.X;
-                }
-
-                if (Math.Abs(Pos.Y - line.start.Y) < Math.Abs(Pos.Y - line.end.Y))
-                {
-                    point_num += Math.Abs(Pos.Y - line.end.Y);
-                    Pos.Y = line.end.Y;
-                    Pos.X = line.end.X;
-                }
-                else
-                {
-                    point_num += Math.Abs(Pos.Y - line.start.Y);
-                    Pos.Y = line.start.Y;
-                    Pos.X = line.start.X;
-                }
-            }
-        }
-        return point_num;
+        long total = 0;
+        SplatoonDrawing dryRun = new(NullPad.Instance, wait, duration, (milliseconds, _) => total += Math.Max(0, milliseconds));
+        dryRun.Draw(rows, CancellationToken.None);
+        return TimeSpan.FromMilliseconds(total);
     }
 
-    public static string FormatEvaluation(int pointNum, int wait, int duration)
+    public static string FormatEvaluation(TimeSpan elapsed)
     {
-        return "耗时：" + (pointNum * (wait + duration) / 1000.0 / 60.0).ToString("0.00") + "mins";
+        return "耗时：" + elapsed.TotalMinutes.ToString("0.00") + "mins";
     }
 
     /// <summary>
@@ -194,17 +166,17 @@ public sealed class SplatoonDrawing
                     else
                         MoveTo(line.start.X, line.end.Y, token);
                     _ns.Down(_a);
-                    Sleep(_wait, token);
+                    _sleep(_wait, token);
                     if (Math.Abs(_pos.Y - line.start.Y) < Math.Abs(_pos.Y - line.end.Y))
                         MoveTo(line.end.X, line.end.Y, token);
                     else
                         MoveTo(line.end.X, line.start.Y, token);
                     _ns.Reset();
-                    Sleep(_wait, token);
+                    _sleep(_wait, token);
                 }
             }
             _ns.Reset();
-            Sleep(_wait, token);
+            _sleep(_wait, token);
             _ns.Reset();
             return true;
         }
@@ -240,18 +212,18 @@ public sealed class SplatoonDrawing
             if (_pos.X < x)
             {
                 _ns.Down(_down);
-                Sleep(_duration, token);
+                _sleep(_duration, token);
                 _ns.Up(_down);
             }
             else
             {
                 _ns.Down(_up);
-                Sleep(_duration, token);
+                _sleep(_duration, token);
                 _ns.Up(_up);
             }
-            Sleep(_wait, token);
+            _sleep(_wait, token);
         }
-        Sleep(_wait, token);
+        _sleep(_wait, token);
 
         if (_pos.Y > y)
         {
@@ -264,20 +236,29 @@ public sealed class SplatoonDrawing
             if (_pos.Y < y)
             {
                 _ns.Down(_right);
-                Sleep(_duration, token);
+                _sleep(_duration, token);
                 _ns.Up(_right);
             }
             else
             {
                 _ns.Down(_left);
-                Sleep(_duration, token);
+                _sleep(_duration, token);
                 _ns.Up(_left);
             }
-            Sleep(_wait, token);
+            _sleep(_wait, token);
         }
-        Sleep(_wait, token);
+        _sleep(_wait, token);
 
         _pos.X = x;
         _pos.Y = y;
+    }
+
+    private sealed class NullPad : IDrawingPad
+    {
+        public static readonly NullPad Instance = new();
+        public bool IsConnected() => true;
+        public void Down(ECKey key) { }
+        public void Up(ECKey key) { }
+        public void Reset() { }
     }
 }

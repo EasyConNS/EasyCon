@@ -193,8 +193,8 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
             DrawingBoardSettings settings = ParseSettings(
                 [DelayText, DurationText, StartPosYText, StartPosXText, WidthText, HeightText], Reverse);
             List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(_image, settings);
-            int point_num = SplatoonDrawing.EvaluatePoints(rows);
-            EvaluateText = SplatoonDrawing.FormatEvaluation(point_num, settings.Wait, settings.Duration);
+            TimeSpan elapsed = SplatoonDrawing.Estimate(rows, settings.Wait, settings.Duration);
+            EvaluateText = SplatoonDrawing.FormatEvaluation(elapsed);
         }
         catch (Exception ex) when (ex is FormatException or OverflowException or ArgumentOutOfRangeException)
         {
