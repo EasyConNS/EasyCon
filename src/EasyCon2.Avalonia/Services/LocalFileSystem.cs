@@ -39,7 +39,8 @@ public sealed class LocalFileSystem : IFileSystem
 
     public void Move(string sourcePath, string destinationPath) => Directory.Move(sourcePath, destinationPath);
 
-    public void MoveFile(string sourcePath, string destinationPath) => File.Move(sourcePath, destinationPath);
+    public void MoveFile(string sourcePath, string destinationPath, bool overwrite = false)
+        => File.Move(sourcePath, destinationPath, overwrite);
 
     public void CopyFile(string source, string destination, bool overwrite) => File.Copy(source, destination, overwrite);
 

@@ -60,6 +60,7 @@ public static class DiagnosticCodes
     // ---- 字节码/容器（异常包装）----
     public const string BytecodeEmit = "ECX0301";
     public const string ContainerImage = "ECX0302";
+    public const string Link = "ECX0303";
 
     // ---- 模块系统 ----
     public const string ModuleCompileFailed = "ECX0401";

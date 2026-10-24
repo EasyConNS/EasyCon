@@ -33,6 +33,7 @@
 | 文档 | 状态 | 内容 |
 |---|---|---|
 | [McuBytecodeDelivery.md](McuBytecodeDelivery.md) | 📋 方案（未实施） | MCU 下发链路：McuImageBuilder/预检/能力查询 0x8A/四条件判定/标签不脱机硬门 |
+| [Maa-EasyCon-dev维护与v2设计大纲-20261020.md](Maa-EasyCon-dev维护与v2设计大纲-20261020.md) | ✅ 部分实施·含实施记录 | dev 维护边界、已落地的编译错误闸门/GUI ECX 导出，以及尚未实施的 Maa v2 信息/决策/执行工作流大纲 |
 
 ## 📎 其他
 

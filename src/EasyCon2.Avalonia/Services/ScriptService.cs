@@ -26,6 +26,9 @@ public class ScriptService : IScriptService
     private readonly object _runGate = new();
     private IScriptSession? _session;
     private CancellationTokenSource? _cts;
+    private string? _compiledSource;
+    private string? _compiledSourcePath;
+    private ImmutableHashSet<string> _compiledExternalLabels = ImmutableHashSet<string>.Empty;
 
     public bool IsRunning { get; private set; }
     public bool HasKeyAction => _session?.Info.KeyAction ?? false;
@@ -68,15 +71,38 @@ public class ScriptService : IScriptService
         try
         {
             // 编译大脚本可达数秒，放线程池执行，避免冻结调用方所在的 UI 线程
-            _session = await Task.Run(() => CompileContent(scriptText, fileName).Session);
+            var compiled = await Task.Run(() => CompileContent(scriptText, fileName));
+            _session = compiled.Session;
+            if (_session == null)
+            {
+                ClearCompiledSnapshot();
+            }
+            else
+            {
+                _compiledSource = scriptText;
+                _compiledSourcePath = string.IsNullOrWhiteSpace(fileName)
+                    ? null
+                    : Path.GetFullPath(fileName);
+                _compiledExternalLabels = compiled.Labels == null
+                    ? ImmutableHashSet<string>.Empty
+                    : compiled.Labels.Selected.Select(label => label.Name).ToImmutableHashSet(StringComparer.Ordinal);
+            }
             return _session != null;
         }
         catch (Exception ex)
         {
             _session = null;
+            ClearCompiledSnapshot();
             _logService.AddLog($"编译异常: {ex.Message}");
             return false;
         }
+    }
+
+    void ClearCompiledSnapshot()
+    {
+        _compiledSource = null;
+        _compiledSourcePath = null;
+        _compiledExternalLabels = ImmutableHashSet<string>.Empty;
     }
 
     public string GetFormattedCode()
@@ -86,17 +112,41 @@ public class ScriptService : IScriptService
         return formattedCode;
     }
 
-    public Task<byte[]> BuildAsync(bool autoRun)
+    public async Task<byte[]> BuildAsync(bool stripDebug)
     {
         try
         {
-            // v1 Assemble 已随 IRunner 移除（P2）；ECX 产物请用 CLI compile
-            throw new NotImplementedException("v1 Assemble 已移除；请用 CLI compile 产出 .ecx");
+            string? source = _compiledSource;
+            string? sourcePath = _compiledSourcePath;
+            ImmutableHashSet<string> externalLabels = _compiledExternalLabels;
+            if (source == null)
+            {
+                _logService.AddLog("ECX 导出失败: 没有可导出的已编译脚本");
+                return [];
+            }
+
+            EcxExportResult export = await Task.Run(() => EcxExportService.Export(
+                source, sourcePath, externalLabels, stripDebug));
+            foreach (Diagnostic diagnostic in export.Diagnostics.Where(d => d.IsError))
+            {
+                string location = FormatDiagnosticLocation(diagnostic, sourcePath);
+                _logService.AddLog($"ECX 导出失败: {location}: {diagnostic.Message}");
+            }
+
+            if (!export.Success)
+            {
+                if (!export.Diagnostics.Any(d => d.IsError))
+                    _logService.AddLog("ECX 导出失败: 编译未生成可分发镜像");
+                return [];
+            }
+
+            _logService.AddLog($"ECX 导出完成: {export.Bytes!.Length} 字节");
+            return export.Bytes;
         }
         catch (Exception ex)
         {
-            _logService.AddLog($"编译失败: {ex.Message}");
-            return Task.FromResult(Array.Empty<byte>());
+            _logService.AddLog($"ECX 导出失败: {ex.Message}");
+            return [];
         }
     }
 
@@ -145,9 +195,7 @@ public class ScriptService : IScriptService
         ImmutableArray<Diagnostic> diag = session.Info.Diagnostics;
         if (diag.HasErrors())
         {
-            var errors = diag.Where(d => d.IsError)
-                .DistinctBy(d => (d.FileName, d.Location.StartLine, d.Message))
-                .Take(8);
+            var errors = diag.Where(d => d.IsError).DistinctStable();
             foreach (Diagnostic error in errors)
             {
                 string location = FormatDiagnosticLocation(error, sourcePath);
