@@ -236,6 +236,8 @@
     <x:String x:Key="Text.DrawingBoard.Delay">延迟</x:String>
     <x:String x:Key="Text.DrawingBoard.Start">开始画图</x:String>
     <x:String x:Key="Text.DrawingBoard.Stop">停止</x:String>
+    <x:String x:Key="Text.DrawingBoard.EraserMode">橡皮擦模式（画布已涂黑）</x:String>
+    <x:String x:Key="Text.DrawingBoard.EraserHelp">橡皮擦模式：开始前先在游戏里用最大笔刷把整个画布涂黑，再把笔刷调到最小、光标移到左上角。程序会按住 B（橡皮擦）擦出图中的空白部分，最终效果与画笔模式相同。黑多白少的图要处理的点更少，通常更快，可对比右下角的耗时选择。只处理绘制区域内的点，区域外保持涂黑。</x:String>
     <x:String x:Key="Text.DrawingBoard.Tip">开始前，请先进入画画页面，笔刷调整到最小，光标移动到左上角，绘制是从左上到右下</x:String>
     <x:String x:Key="Text.DrawingBoard.CurPosNone">当前位置：点击预览图查看</x:String>
     <x:String x:Key="Text.DrawingBoard.CurPos">当前位置:{0},{1}</x:String>

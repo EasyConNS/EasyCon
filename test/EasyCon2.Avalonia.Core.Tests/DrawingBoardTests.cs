@@ -393,6 +393,68 @@ public class DrawingBoardTests
     }
 
     [Test]
+    public void Inverted_SwapsInkAndBlank()
+    {
+        InkMask mask = new(3, 1, [true, false, true]);
+
+        InkMask inverted = mask.Inverted();
+
+        Assert.That(Cells(inverted), Is.EqualTo(new[] { false, true, false }));
+        Assert.That(Cells(mask), Is.EqualTo(new[] { true, false, true }), "原掩码不变");
+    }
+
+    [Test]
+    public async Task EraserMode_HoldsBAndErasesOnlyBlankPointsInRegion()
+    {
+        Fixture f = new(Canvas((0, 1)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.DelayText = "0";
+        f.Vm.DurationText = "1";
+        f.Vm.WidthText = "3";
+        f.Vm.HeightText = "1";
+        f.Vm.EraserMode = true;
+
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        await f.Vm.DrawTask!;
+
+        // 区域内第 0 行 0～2 列：第 1 列是墨点要保留，第 0、2 列擦成空白
+        Assert.That(f.Pad.Events, Is.EqualTo(new[]
+        {
+            "press B", "release B",
+            "click RIGHT", "click RIGHT", "press B", "release B",
+            LeaseRelease,
+        }));
+    }
+
+    [Test]
+    public async Task EraserMode_IsFasterForMostlyBlackPictures()
+    {
+        byte[] rgba = new byte[320 * 120 * 4];
+        for (int i = 3; i < rgba.Length; i += 4)
+            rgba[i] = 255;
+        SetPixel(rgba, 60, 160, 255, 255, 255, 255);
+        Fixture f = new(new PixelImage(320, 120, rgba));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        double pen = Minutes(f.Vm.EstimateText);
+
+        f.Vm.EraserMode = true;
+
+        Assert.That(Minutes(f.Vm.EstimateText), Is.LessThan(pen / 10), "几乎全黑的图只需擦一个点");
+    }
+
+    [Test]
+    public async Task EraserMode_DoesNotChangeThePreview()
+    {
+        Fixture f = new(Canvas((0, 1)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        PixelImage? preview = f.Vm.Preview;
+
+        f.Vm.EraserMode = true;
+
+        Assert.That(f.Vm.Preview, Is.SameAs(preview), "预览显示最终效果，两种模式相同");
+    }
+
+    [Test]
     public void MaskPreview_IsBlackWhereInk()
     {
         InkMask mask = new(2, 1, [true, false]);

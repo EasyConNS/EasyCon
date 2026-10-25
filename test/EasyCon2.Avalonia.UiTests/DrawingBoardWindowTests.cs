@@ -35,10 +35,11 @@ public class DrawingBoardWindowTests
         _stylesInitialized = true;
     }
 
-    [Test]
-    public void MinimumSize_NothingOverflows()
+    [TestCase(false)]
+    [TestCase(true)]
+    public void MinimumSize_NothingOverflows(bool eraserMode)
     {
-        DrawingBoardWindow window = Show(480, 480);
+        DrawingBoardWindow window = Show(480, 480, eraserMode);
         try
         {
             Assert.That(window.ClientSize, Is.EqualTo(new Size(window.MinWidth, window.MinHeight)));
@@ -139,12 +140,13 @@ public class DrawingBoardWindowTests
 
     private static double PreviewWidth(DrawingBoardWindow window) => RenderedWidth(window.FindControl<Image>("PictureBox")!, window);
 
-    private static DrawingBoardWindow Show(double width, double height)
+    private static DrawingBoardWindow Show(double width, double height, bool eraserMode = false)
     {
         DrawingBoardViewModel vm = new(new DisconnectedRunner(), new DialogService(), new SkiaImageProcessor(),
             SynchronousUiDispatcher.Instance, new LogService())
         {
             Preview = new PixelImage(320, 120, Enumerable.Repeat((byte)255, 320 * 120 * 4).ToArray()),
+            EraserMode = eraserMode,
         };
         DrawingBoardWindow window = new() { DataContext = vm, Width = width, Height = height };
         window.Show();

@@ -236,6 +236,8 @@
     <x:String x:Key="Text.DrawingBoard.Delay">Delay</x:String>
     <x:String x:Key="Text.DrawingBoard.Start">Start</x:String>
     <x:String x:Key="Text.DrawingBoard.Stop">Stop</x:String>
+    <x:String x:Key="Text.DrawingBoard.EraserMode">Eraser mode (canvas pre-filled black)</x:String>
+    <x:String x:Key="Text.DrawingBoard.EraserHelp">Eraser mode: before starting, fill the whole canvas black in the game with the largest brush, then pick the smallest brush and move the cursor to the top-left corner. The program holds B (eraser) to erase the blank parts of the picture; the result is the same as pen mode. Pictures that are mostly black need fewer points and usually finish faster; compare the estimate at the bottom right. Only points inside the drawing region are processed; the rest stays black.</x:String>
     <x:String x:Key="Text.DrawingBoard.Tip">Before starting, open the drawing screen, pick the smallest brush and move the cursor to the top-left corner. Drawing goes from top-left to bottom-right.</x:String>
     <x:String x:Key="Text.DrawingBoard.CurPosNone">Position: click the preview</x:String>
     <x:String x:Key="Text.DrawingBoard.CurPos">Position: {0},{1}</x:String>

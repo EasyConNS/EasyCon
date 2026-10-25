@@ -17,13 +17,13 @@ public sealed class SplatoonDrawing
 {
     public const int CanvasWidth = 320;
     public const int CanvasHeight = 120;
-    private const GamePadKey PenKey = GamePadKey.A;
 
     private readonly IPadInput _pad;
     private readonly int _duration;
     private readonly int _wait;
     private readonly Action<int, CancellationToken> _sleep;
     private readonly Action<long>? _progress;
+    private readonly GamePadKey _penKey;
     private int _row;
     private int _col;
     private long _done;
@@ -34,13 +34,16 @@ public sealed class SplatoonDrawing
     /// 每次点按或等待完成后回调已完成的计划耗时（毫秒），与 <see cref="Estimate"/> 同一口径，画完时恰好等于估算总耗时。
     /// 在绘制线程上调用。
     /// </param>
-    public SplatoonDrawing(IPadInput pad, int wait, int duration, Action<int, CancellationToken>? sleep = null, Action<long>? progress = null)
+    /// <param name="penKey">按住它走过的格子被处理：A 为画笔，B 为橡皮擦（见画板的橡皮擦模式）。</param>
+    public SplatoonDrawing(IPadInput pad, int wait, int duration, Action<int, CancellationToken>? sleep = null, Action<long>? progress = null,
+        GamePadKey penKey = GamePadKey.A)
     {
         _pad = pad;
         _wait = wait;
         _duration = duration;
         _sleep = sleep ?? Sleep;
         _progress = progress;
+        _penKey = penKey;
     }
 
     /// <summary>
@@ -115,10 +118,10 @@ public sealed class SplatoonDrawing
                 token.ThrowIfCancellationRequested();
                 // 在线段离光标近的一端落笔，按住 A 走到另一端
                 MoveTo(line.Row, NearerStart(line) ? line.StartCol : line.EndCol, token);
-                _pad.PressButtons(PenKey);
+                _pad.PressButtons(_penKey);
                 Wait(_wait, token);
                 MoveTo(line.Row, NearerStart(line) ? line.EndCol : line.StartCol, token);
-                _pad.ReleaseButtons(PenKey);
+                _pad.ReleaseButtons(_penKey);
                 Wait(_wait, token);
             }
         }

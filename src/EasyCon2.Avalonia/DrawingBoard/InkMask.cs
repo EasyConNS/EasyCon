@@ -171,6 +171,9 @@ public sealed class InkMask
         return dark;
     }
 
+    /// <summary>黑白互换：橡皮擦模式下要擦的正是原本留空的点。</summary>
+    public InkMask Inverted() => new(Width, Height, Array.ConvertAll(_ink, ink => !ink));
+
     /// <summary>黑 = 要画的点，白 = 留空。</summary>
     public PixelImage ToPreview()
     {

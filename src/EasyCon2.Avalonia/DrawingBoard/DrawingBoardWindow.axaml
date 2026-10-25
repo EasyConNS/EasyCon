@@ -14,7 +14,7 @@
 
     <!-- 布局对照 1.6.3 WinForms 版 DrawingBoard：预览图 / 坐标说明 / 参数与按钮 / 进度（新增）/ 提示与耗时。
          窗口可缩放：预览占据剩余空间并随窗口等比放大缩小；其余控件保持原尺寸，窄时参数分组自动换行 -->
-    <Grid Margin="16" RowDefinitions="*,Auto,Auto,Auto,Auto" RowSpacing="8">
+    <Grid Margin="16" RowDefinitions="*,Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
         <!-- 预览的逻辑尺寸固定为 822×282，由 Viewbox 等比缩放：点击坐标按 Image 自身坐标系换算，不受缩放影响 -->
         <Viewbox Stretch="Uniform">
             <Border x:Name="PictureFrame"
@@ -128,6 +128,11 @@
                 <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding DelayText}"/>
             </Grid>
 
+            <CheckBox Content="{loc:Translate Text.DrawingBoard.EraserMode}"
+                      ToolTip.Tip="{loc:Translate Text.DrawingBoard.EraserHelp}"
+                      IsChecked="{Binding EraserMode}"
+                      VerticalAlignment="Center"/>
+
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button Content="{loc:Translate Text.DrawingBoard.Start}"
                         Command="{Binding StartCommand}"
@@ -141,7 +146,13 @@
             </StackPanel>
         </WrapPanel>
 
-        <Grid Grid.Row="3" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+        <!-- 橡皮擦模式的准备步骤：勾选后才显示 -->
+        <TextBlock Grid.Row="3"
+                   IsVisible="{Binding EraserMode}"
+                   Text="{loc:Translate Text.DrawingBoard.EraserHelp}"
+                   TextWrapping="Wrap"/>
+
+        <Grid Grid.Row="4" ColumnDefinitions="*,Auto" ColumnSpacing="12">
             <ProgressBar Minimum="0"
                          Maximum="100"
                          Value="{Binding ProgressValue}"
@@ -154,7 +165,7 @@
                        VerticalAlignment="Center"/>
         </Grid>
 
-        <Grid Grid.Row="4" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+        <Grid Grid.Row="5" ColumnDefinitions="*,Auto" ColumnSpacing="16">
             <TextBlock Text="{loc:Translate Text.DrawingBoard.Tip}"
                        TextWrapping="Wrap"/>
             <!-- 估算耗时随图片与参数自动更新 -->

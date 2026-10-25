@@ -4,6 +4,7 @@ using EasyCon.Core.Maa;
 using EasyCon2.Avalonia.Localization;
 using EasyCon2.Avalonia.Models;
 using EasyCon2.Avalonia.Services;
+using EasyScript;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -78,6 +79,13 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     /// <summary>适配方式在 <see cref="FitModes"/> 中的下标；默认等比留白，整张图不变形。</summary>
     [ObservableProperty]
     private int _fitModeIndex;
+
+    /// <summary>
+    /// 橡皮擦模式：用户事先把整个画布涂黑，程序按住 B（橡皮擦）擦出应留白的点，而不是按住 A（画笔）画出墨点。
+    /// 最终效果相同；黑多白少的图要处理的点更少、更快。预览仍显示最终效果。
+    /// </summary>
+    [ObservableProperty]
+    private bool _eraserMode;
 
     /// <summary>原图顺时针旋转的 90° 次数（0～3），对应下拉框 0°/90°/180°/270°。</summary>
     [ObservableProperty]
@@ -169,6 +177,13 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 
     partial void OnDelayTextChanged(string value) => UpdateEstimate();
 
+    partial void OnEraserModeChanged(bool value) => UpdateEstimate();
+
+    /// <summary>实际要走笔的点：画笔模式是墨点，橡皮擦模式是要擦成空白的点。</summary>
+    private InkMask StrokeMask(InkMask mask) => EraserMode ? mask.Inverted() : mask;
+
+    private GamePadKey StrokeKey => EraserMode ? GamePadKey.B : GamePadKey.A;
+
     /// <summary>
     /// 图片或参数一变就重新估算并显示在右下角（取代旧版的"估算耗时"按钮）。参数有误时只在耗时处提示，不弹框；
     /// 整张抖动图的估算也只需几毫秒，拖动滑条时可实时跟随。
@@ -180,7 +195,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         if (Mask != null)
         {
             if (TryParseSettings(out DrawingBoardSettings? settings, out _))
-                _estimate = SplatoonDrawing.Estimate(SplatoonDrawing.SearchLines(Mask, settings), settings.Wait, settings.Duration);
+                _estimate = SplatoonDrawing.Estimate(SplatoonDrawing.SearchLines(StrokeMask(Mask), settings), settings.Wait, settings.Duration);
             else
                 _estimateInvalid = true;
         }
@@ -253,21 +268,22 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 
         _drawCancellation = new CancellationTokenSource();
         CancellationToken token = _drawCancellation.Token;
-        // 取开始时的掩码快照：绘制过程中调整阈值等参数不影响正在画的图
-        InkMask mask = Mask;
+        // 取开始时的掩码与模式快照：绘制过程中调整阈值、切换模式等不影响正在画的图
+        InkMask strokes = StrokeMask(Mask);
+        GamePadKey key = StrokeKey;
         SetProgress(0, "Text.DrawingBoard.Preparing");
-        DrawTask = Task.Run(() => RunDraw(mask, settings, token));
+        DrawTask = Task.Run(() => RunDraw(strokes, key, settings, token));
         IsStartEnabled = false;
     }
 
-    private void RunDraw(InkMask mask, DrawingBoardSettings settings, CancellationToken token)
+    private void RunDraw(InkMask strokes, GamePadKey key, DrawingBoardSettings settings, CancellationToken token)
     {
         long total = 0;
         long done = 0;
         Stopwatch clock = new();
         try
         {
-            List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(mask, settings);
+            List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(strokes, settings);
             total = (long)SplatoonDrawing.Estimate(rows, settings.Wait, settings.Duration).TotalMilliseconds;
             _runner.Run((pad, runToken) =>
             {
@@ -283,7 +299,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
                         return;
                     lastReport = now;
                     PostProgress(done, total, clock.Elapsed);
-                });
+                }, penKey: key);
                 drawing.Draw(rows, runToken);
             }, token);
             string took = FormatClock(clock.Elapsed);
