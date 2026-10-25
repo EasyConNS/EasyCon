@@ -104,6 +104,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 
     private (int Col, int Row)? _curPos;
     private TimeSpan? _estimate;
+    private bool _estimateInvalid;
     private string? _progressKey;
     private object[] _progressArgs = [];
 
@@ -152,15 +153,47 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     {
         Mask = _canvas == null ? null : InkMask.Binarize(_canvas, new BinarizeOptions(ThresholdPercent, Reverse, SelectedDither));
         Preview = ShowOriginal ? _canvas : Mask?.ToPreview();
+        UpdateEstimate();
+    }
+
+    // 区域与时序参数同样影响耗时
+    partial void OnStartPosXTextChanged(string value) => UpdateEstimate();
+
+    partial void OnStartPosYTextChanged(string value) => UpdateEstimate();
+
+    partial void OnWidthTextChanged(string value) => UpdateEstimate();
+
+    partial void OnHeightTextChanged(string value) => UpdateEstimate();
+
+    partial void OnDurationTextChanged(string value) => UpdateEstimate();
+
+    partial void OnDelayTextChanged(string value) => UpdateEstimate();
+
+    /// <summary>
+    /// 图片或参数一变就重新估算并显示在右下角（取代旧版的"估算耗时"按钮）。参数有误时只在耗时处提示，不弹框；
+    /// 整张抖动图的估算也只需几毫秒，拖动滑条时可实时跟随。
+    /// </summary>
+    private void UpdateEstimate()
+    {
+        _estimate = null;
+        _estimateInvalid = false;
+        if (Mask != null)
+        {
+            if (TryParseSettings(out DrawingBoardSettings? settings, out _))
+                _estimate = SplatoonDrawing.Estimate(SplatoonDrawing.SearchLines(Mask, settings), settings.Wait, settings.Duration);
+            else
+                _estimateInvalid = true;
+        }
+        OnPropertyChanged(nameof(EstimateText));
     }
 
     public string CurPosText => _curPos is { } pos
         ? Format("Text.DrawingBoard.CurPos", pos.Col, pos.Row)
         : T("Text.DrawingBoard.CurPosNone");
 
-    public string EvaluateText => _estimate is { } estimate
+    public string EstimateText => _estimate is { } estimate
         ? Format("Text.DrawingBoard.EstimateResult", estimate.TotalMinutes)
-        : T("Text.DrawingBoard.EstimateNone");
+        : T(_estimateInvalid ? "Text.DrawingBoard.EstimateInvalid" : "Text.DrawingBoard.EstimateNone");
 
     public string ProgressText => _progressKey == null ? "" : Format(_progressKey, _progressArgs);
 
@@ -168,7 +201,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     public void RefreshLocalizedTexts()
     {
         OnPropertyChanged(nameof(CurPosText));
-        OnPropertyChanged(nameof(EvaluateText));
+        OnPropertyChanged(nameof(EstimateText));
         OnPropertyChanged(nameof(ProgressText));
     }
 
@@ -325,26 +358,6 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         if (DrawTask != null)
             await DrawTask;
         IsStartEnabled = true;
-    }
-
-    [RelayCommand]
-    private async Task EvaluateAsync()
-    {
-        if (Mask == null)
-        {
-            await ShowMessageAsync(T("Text.DrawingBoard.NoPicture"));
-            return;
-        }
-
-        if (!TryParseSettings(out DrawingBoardSettings? settings, out string? error))
-        {
-            await ShowMessageAsync(error);
-            return;
-        }
-
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Mask, settings);
-        _estimate = SplatoonDrawing.Estimate(rows, settings.Wait, settings.Duration);
-        OnPropertyChanged(nameof(EvaluateText));
     }
 
     /// <summary>

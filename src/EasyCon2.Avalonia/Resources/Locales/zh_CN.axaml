@@ -236,11 +236,11 @@
     <x:String x:Key="Text.DrawingBoard.Delay">延迟</x:String>
     <x:String x:Key="Text.DrawingBoard.Start">开始画图</x:String>
     <x:String x:Key="Text.DrawingBoard.Stop">停止</x:String>
-    <x:String x:Key="Text.DrawingBoard.Estimate">估算耗时</x:String>
     <x:String x:Key="Text.DrawingBoard.Tip">开始前，请先进入画画页面，笔刷调整到最小，光标移动到左上角，绘制是从左上到右下</x:String>
     <x:String x:Key="Text.DrawingBoard.CurPosNone">当前位置：点击预览图查看</x:String>
     <x:String x:Key="Text.DrawingBoard.CurPos">当前位置:{0},{1}</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateNone">耗时：</x:String>
+    <x:String x:Key="Text.DrawingBoard.EstimateInvalid">耗时：参数有误</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateResult">耗时：{0:0.00}mins</x:String>
     <x:String x:Key="Text.DrawingBoard.LoadFailed">图片加载失败</x:String>
     <x:String x:Key="Text.DrawingBoard.Fit">适配</x:String>

@@ -49,29 +49,72 @@ public class DrawingBoardTests
         Fixture f = new(Canvas((0, 1)));
         await f.Vm.LoadPictureFileAsync("x.png");
         f.Vm.OnPicturePressed(411, 141, 822, 282);
-        await f.Vm.EvaluateCommand.ExecuteAsync(null);
         List<string> changed = [];
         f.Vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName!);
 
         L10nBridge.Resolver = Locale("en_US").GetValueOrDefault;
         f.Vm.RefreshLocalizedTexts();
 
-        Assert.That(changed, Is.SupersetOf(new[] { "CurPosText", "EvaluateText", "ProgressText" }));
+        Assert.That(changed, Is.SupersetOf(new[] { "CurPosText", "EstimateText", "ProgressText" }));
         Assert.That(f.Vm.CurPosText, Is.EqualTo("Position: 160,60"));
-        Assert.That(f.Vm.EvaluateText, Does.StartWith("Time: ").And.EndWith(" min"));
+        Assert.That(f.Vm.EstimateText, Does.StartWith("Time: ").And.EndWith(" min"));
     }
 
     [Test]
-    public async Task Evaluate_ShowsMinutes()
+    public async Task Estimate_AppearsAutomaticallyOnceAPictureIsLoaded()
+    {
+        Fixture f = new(Canvas((0, 1)));
+        Assert.That(f.Vm.EstimateText, Is.EqualTo("耗时："));
+
+        await f.Vm.LoadPictureFileAsync("x.png");
+
+        // 1 次点按 × (50 + 45) + 落笔前后两次移动各 2 次延迟 + 落笔、抬笔各 1 次延迟 = 95 + 6 × 45 = 365 ms
+        Assert.That(f.Vm.EstimateText, Is.EqualTo("耗时：" + (365 / 60000.0).ToString("0.00") + "mins"));
+        Assert.That(f.Dialogs.Messages, Is.Empty);
+    }
+
+    [Test]
+    public async Task Estimate_FollowsPictureAndParameterChanges()
+    {
+        // 点放远一些，让估算长到"X.XXmins"能分辨：黑点在 (60,1)，灰点在 (100,300)
+        byte[] rgba = White(320, 120);
+        SetPixel(rgba, 60, 1, 0, 0, 0, 255);
+        SetPixel(rgba, 100, 300, 100, 100, 100, 255);
+        Fixture f = new(new PixelImage(320, 120, rgba));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        List<string> seen = [f.Vm.EstimateText];
+        f.Vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(DrawingBoardViewModel.EstimateText))
+                seen.Add(f.Vm.EstimateText);
+        };
+
+        f.Vm.ThresholdPercent = 30;   // 第 300 列的灰点不再画：少走一大段
+        string afterThreshold = f.Vm.EstimateText;
+        f.Vm.DelayText = "100";       // 等待变长
+        string afterDelay = f.Vm.EstimateText;
+        f.Vm.WidthText = "1";         // 只画第 0 列：没有墨点
+        string afterRegion = f.Vm.EstimateText;
+
+        Assert.That(Minutes(afterThreshold), Is.LessThan(Minutes(seen[0])));
+        Assert.That(Minutes(afterDelay), Is.GreaterThan(Minutes(afterThreshold)));
+        Assert.That(Minutes(afterRegion), Is.Zero);
+        Assert.That(seen, Has.Count.GreaterThanOrEqualTo(4), "每次变化都通知界面");
+    }
+
+    [Test]
+    public async Task Estimate_InvalidParameter_ShowsHintWithoutDialog()
     {
         Fixture f = new(Canvas((0, 1)));
         await f.Vm.LoadPictureFileAsync("x.png");
-        Assert.That(f.Vm.EvaluateText, Is.EqualTo("耗时："));
 
-        await f.Vm.EvaluateCommand.ExecuteAsync(null);
+        f.Vm.DelayText = "";
 
-        // 1 次点按 × (50 + 45) + 落笔前后两次移动各 2 次延迟 + 落笔、抬笔各 1 次延迟 = 95 + 6 × 45 = 365 ms
-        Assert.That(f.Vm.EvaluateText, Is.EqualTo("耗时：" + (365 / 60000.0).ToString("0.00") + "mins"));
+        Assert.That(f.Vm.EstimateText, Is.EqualTo("耗时：参数有误"));
+        Assert.That(f.Dialogs.Messages, Is.Empty, "输入过程中不弹框");
+
+        f.Vm.DelayText = "45";
+        Assert.That(f.Vm.EstimateText, Does.EndWith("mins"));
     }
 
     private static readonly DrawingBoardSettings FullCanvas = new(0, 0, 0, 0, 320, 120);
@@ -646,11 +689,10 @@ public class DrawingBoardTests
         f.Vm.HeightText = height;
 
         await f.Vm.StartCommand.ExecuteAsync(null);
-        await f.Vm.EvaluateCommand.ExecuteAsync(null);
 
-        Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { expected, expected }));
+        Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { expected }));
         Assert.That(f.Vm.DrawTask, Is.Null);
-        Assert.That(f.Vm.EvaluateText, Is.EqualTo("耗时："));
+        Assert.That(f.Vm.EstimateText, Is.EqualTo("耗时：参数有误"));
     }
 
     [Test]
@@ -660,7 +702,7 @@ public class DrawingBoardTests
         await f.Vm.LoadPictureFileAsync("x.png");
         f.Vm.DurationText = "0";
 
-        await f.Vm.EvaluateCommand.ExecuteAsync(null);
+        await f.Vm.StartCommand.ExecuteAsync(null);
 
         Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "按键持续应为 1～10000 的整数" }));
     }
@@ -764,6 +806,10 @@ public class DrawingBoardTests
             dir = dir.Parent;
         return dir?.FullName ?? throw new DirectoryNotFoundException("找不到仓库根目录（EasyCon2.slnx）");
     }
+
+    /// <summary>从"耗时：X.XXmins"中取出分钟数。</summary>
+    private static double Minutes(string estimateText)
+        => double.Parse(Regex.Match(estimateText, @"[\d.]+").Value, System.Globalization.CultureInfo.CurrentCulture);
 
     private static PixelImage Filled(byte gray)
     {

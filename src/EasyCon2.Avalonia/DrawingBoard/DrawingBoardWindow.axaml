@@ -138,10 +138,6 @@
                         Command="{Binding StopCommand}"
                         VerticalAlignment="Stretch"
                         VerticalContentAlignment="Center"/>
-                <Button Content="{loc:Translate Text.DrawingBoard.Estimate}"
-                        Command="{Binding EvaluateCommand}"
-                        VerticalAlignment="Stretch"
-                        VerticalContentAlignment="Center"/>
             </StackPanel>
         </WrapPanel>
 
@@ -161,7 +157,8 @@
         <Grid Grid.Row="4" ColumnDefinitions="*,Auto" ColumnSpacing="16">
             <TextBlock Text="{loc:Translate Text.DrawingBoard.Tip}"
                        TextWrapping="Wrap"/>
-            <TextBlock Grid.Column="1" Text="{Binding EvaluateText}"/>
+            <!-- 估算耗时随图片与参数自动更新 -->
+            <TextBlock Grid.Column="1" Text="{Binding EstimateText}"/>
         </Grid>
     </Grid>
 </Window>

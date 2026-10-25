@@ -236,11 +236,11 @@
     <x:String x:Key="Text.DrawingBoard.Delay">Delay</x:String>
     <x:String x:Key="Text.DrawingBoard.Start">Start</x:String>
     <x:String x:Key="Text.DrawingBoard.Stop">Stop</x:String>
-    <x:String x:Key="Text.DrawingBoard.Estimate">Estimate</x:String>
     <x:String x:Key="Text.DrawingBoard.Tip">Before starting, open the drawing screen, pick the smallest brush and move the cursor to the top-left corner. Drawing goes from top-left to bottom-right.</x:String>
     <x:String x:Key="Text.DrawingBoard.CurPosNone">Position: click the preview</x:String>
     <x:String x:Key="Text.DrawingBoard.CurPos">Position: {0},{1}</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateNone">Time:</x:String>
+    <x:String x:Key="Text.DrawingBoard.EstimateInvalid">Time: invalid parameters</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateResult">Time: {0:0.00} min</x:String>
     <x:String x:Key="Text.DrawingBoard.LoadFailed">Failed to load the picture</x:String>
     <x:String x:Key="Text.DrawingBoard.Fit">Fit</x:String>
