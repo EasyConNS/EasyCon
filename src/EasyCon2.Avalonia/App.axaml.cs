@@ -98,7 +98,7 @@ public partial class App : Application
             });
             windowService.Register(WindowKeys.DrawingBoard, () =>
             {
-                DrawingBoardViewModel board = new(new DeviceDrawingPad(deviceService), dialogService,
+                DrawingBoardViewModel board = new(new DeviceDrawingRunner(deviceService.GetDevice()), dialogService,
                     new SkiaImageProcessor(), uiDispatcher, logService);
                 DrawingBoardWindow window = new() { DataContext = board };
                 window.Closed += (_, _) => board.Dispose();

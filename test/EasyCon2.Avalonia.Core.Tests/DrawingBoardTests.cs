@@ -1,20 +1,18 @@
+using EasyCon.Core.Capabilities;
 using EasyCon.Core.Maa;
 using EasyCon.Core.Services;
 using EasyCon2.Avalonia.DrawingBoard;
 using EasyCon2.Avalonia.Models;
 using EasyCon2.Avalonia.Services;
-using EasyDevice;
+using EasyScript;
 
 namespace EasyCon2.Avalonia.Core.Tests;
 
-/// <summary>喷射战士画板：断言与 1.6.3 WinForms 版 DrawingBoard 的行为一致（含旧版自身的取舍）。</summary>
+/// <summary>喷射战士画板：扫描与移动路径对齐 1.6.3 WinForms 版 DrawingBoard，并锁定其后修复的行为。</summary>
 [TestFixture]
 public class DrawingBoardTests
 {
-    private static readonly string A = ECKeyUtil.Button(SwitchButton.A).Name;
-    private static readonly string Down = ECKeyUtil.HAT(SwitchHAT.BOTTOM).Name;
-    private static readonly string Right = ECKeyUtil.HAT(SwitchHAT.RIGHT).Name;
-    private static readonly string Left = ECKeyUtil.HAT(SwitchHAT.LEFT).Name;
+    private const string LeaseRelease = "lease-release";
 
     private static readonly DrawingBoardSettings FullCanvas = new(0, 0, 0, 0, 320, 120, false);
 
@@ -99,25 +97,26 @@ public class DrawingBoardTests
     [Test]
     public void Estimate_SumsEveryWaitOfTheDrawSequence()
     {
-        // 13 次方向点按 × (50 + 45)，外加每次移动后 2 次、落笔后 1 次、抬笔后 1 次、收尾 1 次延迟，共 13 × 45
+        // 13 次方向点按 × (50 + 45)，外加每段线：两次移动后各 2 次、落笔后 1 次、抬笔后 1 次延迟，两段共 12 × 45
         List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Canvas((0, 5), (0, 6), (2, 1)), FullCanvas);
 
         TimeSpan elapsed = SplatoonDrawing.Estimate(rows, 45, 50);
 
-        Assert.That(elapsed, Is.EqualTo(TimeSpan.FromMilliseconds(13 * 95 + 13 * 45)));
+        Assert.That(elapsed, Is.EqualTo(TimeSpan.FromMilliseconds(13 * 95 + 12 * 45)));
     }
 
     [Test]
     public void Estimate_MatchesWaitsActuallyPerformedByDraw()
     {
         PixelImage image = Canvas((0, 5), (0, 6), (2, 1), (7, 300), (7, 302), (90, 0));
-        long performed = 0;
+        RecordingPad pad = new();
+        long waited = 0;
 
-        new SplatoonDrawing(new RecordingPad(), 45, 50, (milliseconds, _) => performed += milliseconds)
+        new SplatoonDrawing(pad, 45, 50, (milliseconds, _) => waited += milliseconds)
             .Draw(SplatoonDrawing.SearchLines(image, FullCanvas), CancellationToken.None);
         TimeSpan estimated = SplatoonDrawing.Estimate(SplatoonDrawing.SearchLines(image, FullCanvas), 45, 50);
 
-        Assert.That(estimated, Is.EqualTo(TimeSpan.FromMilliseconds(performed)));
+        Assert.That(estimated, Is.EqualTo(TimeSpan.FromMilliseconds(waited + pad.ClickDurations)));
     }
 
     [Test]
@@ -132,49 +131,43 @@ public class DrawingBoardTests
         List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Canvas((0, 5), (0, 6), (2, 1)), FullCanvas);
         RecordingPad pad = new();
 
-        bool completed = new SplatoonDrawing(pad, 0, 0).Draw(rows, CancellationToken.None);
+        new SplatoonDrawing(pad, 0, 0).Draw(rows, CancellationToken.None);
 
         List<string> expected = [];
-        expected.AddRange(Clicks(Right, 5));
-        expected.Add("down " + A);
-        expected.AddRange(Clicks(Right, 1));
-        expected.Add("reset");
+        expected.AddRange(Clicks(GamePadKey.RIGHT, 5));
+        expected.Add("press A");
+        expected.AddRange(Clicks(GamePadKey.RIGHT, 1));
+        expected.Add("release A");
         // 第二行：行先下移两格，再左移回第 1 列
-        expected.AddRange(Clicks(Down, 2));
-        expected.AddRange(Clicks(Left, 5));
-        expected.Add("down " + A);
-        expected.Add("reset");
-        expected.Add("reset");
-        expected.Add("reset");
-        Assert.That(completed, Is.True);
+        expected.AddRange(Clicks(GamePadKey.DOWN, 2));
+        expected.AddRange(Clicks(GamePadKey.LEFT, 5));
+        expected.Add("press A");
+        expected.Add("release A");
         Assert.That(pad.Events, Is.EqualTo(expected));
     }
 
     [Test]
-    public void Draw_CancelledBeforeStart_OnlyReleasesKeys()
+    public void Draw_CancelledBeforeStart_SendsNothing()
     {
         List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Canvas((0, 5)), FullCanvas);
         RecordingPad pad = new();
 
-        bool completed = new SplatoonDrawing(pad, 0, 0).Draw(rows, new CancellationToken(true));
-
-        Assert.That(completed, Is.False);
-        Assert.That(pad.Events, Is.EqualTo(new[] { "reset" }));
+        Assert.Throws<OperationCanceledException>(() => new SplatoonDrawing(pad, 0, 0).Draw(rows, new CancellationToken(true)));
+        Assert.That(pad.Events, Is.Empty);
     }
 
     [Test]
-    public void Draw_CancelledWhileKeyHeld_StopsPromptlyAndReleases()
+    public void Draw_CancelledWhileKeyHeld_StopsPromptly()
     {
         List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Canvas((0, 100), (0, 101)), FullCanvas);
         using CancellationTokenSource cts = new();
-        RecordingPad pad = new() { OnDown = cts.Cancel };
+        RecordingPad pad = new() { WaitForDuration = true, OnKey = cts.Cancel };
         System.Diagnostics.Stopwatch elapsed = System.Diagnostics.Stopwatch.StartNew();
 
-        bool completed = new SplatoonDrawing(pad, 0, 10_000).Draw(rows, cts.Token);
+        Assert.Throws<OperationCanceledException>(() => new SplatoonDrawing(pad, 0, 10_000).Draw(rows, cts.Token));
 
-        Assert.That(completed, Is.False);
         Assert.That(elapsed.ElapsedMilliseconds, Is.LessThan(2_000));
-        Assert.That(pad.Events, Is.EqualTo(new[] { "down " + Right, "reset" }));
+        Assert.That(pad.Events, Is.EqualTo(new[] { "click RIGHT" }));
     }
 
     [Test]
@@ -185,7 +178,8 @@ public class DrawingBoardTests
         f.Vm.DelayText = "0";
         f.Vm.DurationText = "10000";
         TaskCompletionSource firstKey = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        f.Pad.OnDown = () => firstKey.TrySetResult();
+        f.Pad.WaitForDuration = true;
+        f.Pad.OnKey = () => firstKey.TrySetResult();
 
         await f.Vm.StartCommand.ExecuteAsync(null);
         await firstKey.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -194,10 +188,11 @@ public class DrawingBoardTests
 
         Assert.That(f.Vm.DrawTask!.IsCompleted, Is.True);
         Assert.That(f.Vm.IsStartEnabled, Is.True);
+        Assert.That(f.Dialogs.Messages, Is.Empty, "用户停止不应弹错误");
         int count = f.Pad.Events.Count;
         await Task.Delay(100);
         Assert.That(f.Pad.Events, Has.Count.EqualTo(count), "停止后不应再有按键");
-        Assert.That(f.Pad.Events.Last(), Is.EqualTo("reset"));
+        Assert.That(f.Pad.Events.Last(), Is.EqualTo(LeaseRelease));
     }
 
     [TestCase(100, 50)]
@@ -218,7 +213,7 @@ public class DrawingBoardTests
     public async Task Start_Disconnected_Warns()
     {
         Fixture f = new(Canvas());
-        f.Pad.Connected = false;
+        f.Runner.Connected = false;
 
         await f.Vm.StartCommand.ExecuteAsync(null);
 
@@ -285,7 +280,8 @@ public class DrawingBoardTests
         await f.Vm.DrawTask!;
 
         Assert.That(f.Vm.PicturePng, Is.Not.Null);
-        Assert.That(f.Pad.Events, Does.Contain("down " + A));
+        Assert.That(f.Pad.Events, Does.Contain("press A"));
+        Assert.That(f.Pad.Events.Last(), Is.EqualTo(LeaseRelease));
         Assert.That(f.Vm.IsStartEnabled, Is.True);
     }
 
@@ -297,31 +293,47 @@ public class DrawingBoardTests
         f.Vm.DelayText = "0";
         f.Vm.DurationText = "10000";
         TaskCompletionSource firstKey = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        f.Pad.OnDown = () => firstKey.TrySetResult();
+        f.Pad.WaitForDuration = true;
+        f.Pad.OnKey = () => firstKey.TrySetResult();
 
         await f.Vm.StartCommand.ExecuteAsync(null);
         await firstKey.Task.WaitAsync(TimeSpan.FromSeconds(5));
         f.Vm.Dispose();
         await f.Vm.DrawTask!.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.That(f.Pad.Events.Last(), Is.EqualTo("reset"));
+        Assert.That(f.Pad.Events.Last(), Is.EqualTo(LeaseRelease));
     }
 
     [Test]
-    public async Task Start_DeviceError_ReportsAndReenablesStart()
+    public async Task Start_DeviceBusy_ReportsAndReenablesStart()
     {
         Fixture f = new(Canvas((0, 1)));
         await f.Vm.LoadPictureFileAsync("x.png");
-        f.Vm.DelayText = "0";
-        f.Vm.DurationText = "1";
-        f.Pad.OnDown = () => throw new ControllerOperationException("Busy", "设备正由其他运行使用");
+        f.Runner.Failure = new ControllerOperationException("Busy", "busy: 设备已有运行或正在收尾");
 
         await f.Vm.StartCommand.ExecuteAsync(null);
         await f.Vm.DrawTask!;
 
         Assert.That(f.Vm.IsStartEnabled, Is.True);
-        Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "画图中断: 设备正由其他运行使用" }));
-        Assert.That(f.Pad.Events.Last(), Is.EqualTo("reset"));
+        Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "画图中断: 手柄正被脚本或其他任务占用，请先停止后再画" }));
+        Assert.That(f.Pad.Events, Is.Empty);
+    }
+
+    [Test]
+    public async Task Start_DeviceLostMidDraw_ReportsDisconnect()
+    {
+        Fixture f = new(Canvas((0, 1)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.DelayText = "0";
+        f.Vm.DurationText = "1";
+        f.Pad.OnKey = () => throw new OperationCanceledException();
+
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        await f.Vm.DrawTask!;
+
+        Assert.That(f.Vm.IsStartEnabled, Is.True);
+        Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "画图中断: 手柄连接已断开" }));
+        Assert.That(f.Pad.Events.Last(), Is.EqualTo(LeaseRelease));
     }
 
     [TestCase(0, 0, "当前位置:0,0")]
@@ -339,8 +351,8 @@ public class DrawingBoardTests
 
     private static string Describe(DrawingLine line) => $"{line.start.X}:{line.start.Y}-{line.end.Y}";
 
-    private static IEnumerable<string> Clicks(string key, int count)
-        => Enumerable.Range(0, count).SelectMany(_ => new[] { "down " + key, "up " + key });
+    private static IEnumerable<string> Clicks(GamePadKey key, int count)
+        => Enumerable.Repeat("click " + key, count);
 
     private static byte[] White(int width, int height) => Enumerable.Repeat((byte)255, width * height * 4).ToArray();
 
@@ -369,19 +381,47 @@ public class DrawingBoardTests
     {
         public Fixture(PixelImage image)
         {
-            Vm = new DrawingBoardViewModel(Pad, Dialogs, new FakeImages(image), SynchronousUiDispatcher.Instance, new NullLog());
+            Runner = new FakeRunner(Pad);
+            Vm = new DrawingBoardViewModel(Runner, Dialogs, new FakeImages(image), SynchronousUiDispatcher.Instance, new NullLog());
         }
 
         public RecordingPad Pad { get; } = new();
+        public FakeRunner Runner { get; }
         public FakeDialogs Dialogs { get; } = new();
         public DrawingBoardViewModel Vm { get; }
     }
 
-    private sealed class RecordingPad : IDrawingPad
+    /// <summary>模拟运行租约：回调结束（含取消与异常）后记录一次中性释放。</summary>
+    private sealed class FakeRunner(RecordingPad pad) : IDrawingRunner
+    {
+        public bool Connected { get; set; } = true;
+        public Exception? Failure { get; set; }
+        public bool IsConnected => Connected;
+
+        public void Run(Action<IPadInput, CancellationToken> draw, CancellationToken token)
+        {
+            if (Failure != null)
+                throw Failure;
+            try
+            {
+                draw(pad, token);
+            }
+            finally
+            {
+                pad.Add(LeaseRelease);
+            }
+        }
+    }
+
+    private sealed class RecordingPad : IPadInput
     {
         private readonly List<string> _events = [];
-        public bool Connected { get; set; } = true;
-        public Action? OnDown { get; set; }
+        private long _clickDurations;
+
+        /// <summary>点按时真实等待按键持续（可被取消），模拟设备侧 pulse。</summary>
+        public bool WaitForDuration { get; set; }
+        public Action? OnKey { get; set; }
+        public long ClickDurations => Interlocked.Read(ref _clickDurations);
 
         public List<string> Events
         {
@@ -392,18 +432,27 @@ public class DrawingBoardTests
             }
         }
 
-        public bool IsConnected() => Connected;
-
-        public void Down(ECKey key)
+        public void ClickButtons(GamePadKey key, int duration, CancellationToken token)
         {
-            Add("down " + key.Name);
-            OnDown?.Invoke();
+            Add("click " + key);
+            Interlocked.Add(ref _clickDurations, duration);
+            OnKey?.Invoke();
+            if (WaitForDuration && token.WaitHandle.WaitOne(duration))
+                throw new OperationCanceledException(token);
         }
 
-        public void Up(ECKey key) => Add("up " + key.Name);
-        public void Reset() => Add("reset");
+        public void PressButtons(GamePadKey key)
+        {
+            Add("press " + key);
+            OnKey?.Invoke();
+        }
 
-        private void Add(string e)
+        public void ReleaseButtons(GamePadKey key) => Add("release " + key);
+        public void ClickStick(GamePadKey key, byte x, byte y, int duration, CancellationToken token) => Add("stick " + key);
+        public void SetStick(GamePadKey key, byte x, byte y) => Add("stick " + key);
+        public void ChangeAmiibo(uint index) { }
+
+        public void Add(string e)
         {
             lock (_events)
                 _events.Add(e);

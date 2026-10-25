@@ -3,7 +3,6 @@ using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core.Maa;
 using EasyCon2.Avalonia.Models;
 using EasyCon2.Avalonia.Services;
-using EasyDevice;
 using System.Diagnostics.CodeAnalysis;
 using ILogService = EasyCon.Core.Services.ILogService;
 
@@ -17,7 +16,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 {
     private const string MessageTitle = "画板";
 
-    private readonly IDrawingPad _pad;
+    private readonly IDrawingRunner _runner;
     private readonly IDialogService _dialogService;
     private readonly IImageProcessor _imageProcessor;
     private readonly IUiDispatcher _ui;
@@ -58,9 +57,9 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private string _curPosText = "当前坐标：100，40";
 
-    public DrawingBoardViewModel(IDrawingPad pad, IDialogService dialogService, IImageProcessor imageProcessor, IUiDispatcher ui, ILogService logService)
+    public DrawingBoardViewModel(IDrawingRunner runner, IDialogService dialogService, IImageProcessor imageProcessor, IUiDispatcher ui, ILogService logService)
     {
-        _pad = pad;
+        _runner = runner;
         _dialogService = dialogService;
         _imageProcessor = imageProcessor;
         _ui = ui;
@@ -103,7 +102,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task StartAsync()
     {
-        if (!_pad.IsConnected())
+        if (!_runner.IsConnected)
         {
             await _dialogService.ShowMessageAsync(MessageTitle, "串口未连接");
             return;
@@ -134,23 +133,18 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         try
         {
             List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, settings);
-            SplatoonDrawing drawing = new(_pad, settings.Wait, settings.Duration);
-            if (drawing.Draw(rows, token))
-                _ui.Post(() => IsStartEnabled = true);
+            _runner.Run((pad, runToken) => new SplatoonDrawing(pad, settings.Wait, settings.Duration).Draw(rows, runToken), token);
+            _ui.Post(() => IsStartEnabled = true);
+        }
+        catch (Exception) when (token.IsCancellationRequested)
+        {
+            // 用户停止或关闭窗口：按键已由运行租约释放，开始按钮由 StopAsync 恢复
         }
         catch (Exception ex)
         {
             // 旧版任务异常被静默吞掉，开始按钮一直禁用到点击停止，用户无从得知原因
-            string message = $"画图中断: {ex.Message}";
+            string message = "画图中断: " + DescribeError(ex);
             _logService.AddLog(message);
-            // 出错时 A 键可能仍按着；设备本身不可用时释放也会失败，只能忽略
-            try
-            {
-                _pad.Reset();
-            }
-            catch (ControllerOperationException)
-            {
-            }
             _ui.Post(() =>
             {
                 IsStartEnabled = true;
@@ -163,17 +157,9 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     private async Task StopAsync()
     {
         _source?.Cancel();
-        // 等后台绘制真正退出再释放按键、恢复开始按钮（旧版固定等 1 秒，期间绘制可能仍在发键）
+        // 等后台绘制真正退出（运行租约此时已释放按键）再恢复开始按钮；旧版固定等 1 秒，期间绘制可能仍在发键
         if (DrawTask != null)
             await DrawTask;
-        try
-        {
-            _pad.Reset();
-        }
-        catch (ControllerOperationException ex)
-        {
-            _logService.AddLog($"画图停止时释放按键失败: {ex.Message}");
-        }
         IsStartEnabled = true;
     }
 
@@ -210,7 +196,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         CurPosText = "当前位置:" + col.ToString() + "," + row.ToString();
     }
 
-    /// <summary>窗口关闭时调用：中止进行中的绘制（绘制线程收到取消后自行松开全部按键）。</summary>
+    /// <summary>窗口关闭时调用：中止进行中的绘制（运行租约结束时松开全部按键）。</summary>
     public void Dispose()
     {
         _source?.Cancel();
@@ -234,6 +220,15 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         return true;
     }
 
+    private static string DescribeError(Exception ex) => ex switch
+    {
+        ControllerOperationException { ErrorCode: "Busy" } => "手柄正被脚本或其他任务占用，请先停止后再画",
+        ControllerOperationException { ErrorCode: "InputDisconnected" } => "串口未连接",
+        // 未经用户停止的取消来自运行租约：设备断开或被接管
+        OperationCanceledException => "手柄连接已断开",
+        _ => ex.Message,
+    };
+
     private static bool TryParseField(string name, string text, int min, int max, out int value, [NotNullWhen(false)] out string? error)
     {
         if (int.TryParse(text.Trim(), out value) && value >= min && value <= max)
@@ -244,16 +239,4 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         error = $"{name}应为 {min}～{max} 的整数";
         return false;
     }
-}
-
-/// <summary>经设备会话的手动输入通道发键，与旧版直接调用 NintendoSwitch 的路径对应。</summary>
-public sealed class DeviceDrawingPad(IDeviceService deviceService) : IDrawingPad
-{
-    public bool IsConnected() => deviceService.IsConnected;
-
-    public void Down(ECKey key) => deviceService.GetDevice().Down(key);
-
-    public void Up(ECKey key) => deviceService.GetDevice().Up(key);
-
-    public void Reset() => deviceService.GetDevice().Reset();
 }

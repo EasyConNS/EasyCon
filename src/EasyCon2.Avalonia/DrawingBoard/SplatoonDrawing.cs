@@ -1,17 +1,9 @@
+using EasyCon.Core.Capabilities;
 using EasyCon2.Avalonia.Models;
-using EasyDevice;
+using EasyScript;
 using System.Drawing;
 
 namespace EasyCon2.Avalonia.DrawingBoard;
-
-/// <summary>画板用到的设备操作（旧版直接调用 NintendoSwitch.IsConnected/Down/Up/Reset）。</summary>
-public interface IDrawingPad
-{
-    bool IsConnected();
-    void Down(ECKey key);
-    void Up(ECKey key);
-    void Reset();
-}
 
 /// <summary>画板参数，对应旧版窗体上的各输入框。</summary>
 public sealed record DrawingBoardSettings(int Wait, int Duration, int StartRow, int StartCol, int Col, int Row, bool Reverse);
@@ -29,19 +21,20 @@ public class DrawingLine
 /// </summary>
 public sealed class SplatoonDrawing
 {
-    private readonly ECKey _a = ECKeyUtil.Button(SwitchButton.A);
-    private readonly ECKey _left = ECKeyUtil.HAT(SwitchHAT.LEFT);
-    private readonly ECKey _right = ECKeyUtil.HAT(SwitchHAT.RIGHT);
-    private readonly ECKey _up = ECKeyUtil.HAT(SwitchHAT.TOP);
-    private readonly ECKey _down = ECKeyUtil.HAT(SwitchHAT.BOTTOM);
-    private readonly IDrawingPad _ns;
+    private const GamePadKey _a = GamePadKey.A;
+    private const GamePadKey _left = GamePadKey.LEFT;
+    private const GamePadKey _right = GamePadKey.RIGHT;
+    private const GamePadKey _up = GamePadKey.TOP;
+    private const GamePadKey _down = GamePadKey.DOWN;
+    private readonly IPadInput _ns;
     private readonly int _duration;
     private readonly int _wait;
     private readonly Action<int, CancellationToken> _sleep;
     private Point _pos;
 
+    /// <param name="pad">运行租约下的手柄输入（与脚本运行同一条独占通道），见 <see cref="IDrawingRunner"/>。</param>
     /// <param name="sleep">等待实现；默认为可取消的真实等待，估算耗时时替换为累加器。</param>
-    public SplatoonDrawing(IDrawingPad pad, int wait, int duration, Action<int, CancellationToken>? sleep = null)
+    public SplatoonDrawing(IPadInput pad, int wait, int duration, Action<int, CancellationToken>? sleep = null)
     {
         _ns = pad;
         _wait = wait;
@@ -136,16 +129,16 @@ public sealed class SplatoonDrawing
     }
 
     /// <summary>
-    /// 估算耗时：以与 <see cref="Draw"/> 完全相同的发键序列空跑一遍，累加其中每一次等待。
+    /// 估算耗时：以与 <see cref="Draw"/> 完全相同的发键序列空跑一遍，累加其中每一次等待与按键持续。
     /// 旧版只累计列方向移动的格数再乘以 (延迟 + 按键持续)，漏算了行方向移动以及每次移动、落笔、抬笔后的等待。
     /// 注意 <see cref="Draw"/> 会就地调整各行线段顺序，估算与绘制应各用一份 <see cref="SearchLines"/> 结果。
     /// </summary>
     public static TimeSpan Estimate(List<List<DrawingLine>> rows, int wait, int duration)
     {
-        long total = 0;
-        SplatoonDrawing dryRun = new(NullPad.Instance, wait, duration, (milliseconds, _) => total += Math.Max(0, milliseconds));
+        TimingPad pad = new();
+        SplatoonDrawing dryRun = new(pad, wait, duration, (milliseconds, _) => pad.Total += Math.Max(0, milliseconds));
         dryRun.Draw(rows, CancellationToken.None);
-        return TimeSpan.FromMilliseconds(total);
+        return TimeSpan.FromMilliseconds(pad.Total);
     }
 
     public static string FormatEvaluation(TimeSpan elapsed)
@@ -154,48 +147,36 @@ public sealed class SplatoonDrawing
     }
 
     /// <summary>
-    /// 旧版 draw_task_opt 的绘制循环。被取消时返回 false。
-    /// 与旧版不同：每次按键等待都响应取消（旧版只在两段线之间检查），取消后立即 Reset 松开全部按键。
+    /// 旧版 draw_task_opt 的绘制循环。被取消时抛出 <see cref="OperationCanceledException"/>。
+    /// 与旧版不同：每次按键与等待都响应取消（旧版只在两段线之间检查）；
+    /// 取消、出错或画完后的按键释放由运行租约统一写出中性报告，这里不再 Reset。
     /// </summary>
-    public bool Draw(List<List<DrawingLine>> rows, CancellationToken token)
+    public void Draw(List<List<DrawingLine>> rows, CancellationToken token)
     {
         _pos = new Point(0, 0);
-        try
+        foreach (List<DrawingLine> Lines in rows)
         {
-            foreach (List<DrawingLine> Lines in rows)
-            {
-                // search nearest line
-                if (Math.Abs(_pos.Y - Lines[0].start.Y) > Math.Abs(_pos.Y - Lines.Last().end.Y))
-                    Lines.Reverse();
+            // search nearest line
+            if (Math.Abs(_pos.Y - Lines[0].start.Y) > Math.Abs(_pos.Y - Lines.Last().end.Y))
+                Lines.Reverse();
 
-                // draw line
-                foreach (DrawingLine line in Lines)
-                {
-                    token.ThrowIfCancellationRequested();
-                    if (Math.Abs(_pos.Y - line.start.Y) < Math.Abs(_pos.Y - line.end.Y))
-                        MoveTo(line.start.X, line.start.Y, token);
-                    else
-                        MoveTo(line.start.X, line.end.Y, token);
-                    _ns.Down(_a);
-                    _sleep(_wait, token);
-                    if (Math.Abs(_pos.Y - line.start.Y) < Math.Abs(_pos.Y - line.end.Y))
-                        MoveTo(line.end.X, line.end.Y, token);
-                    else
-                        MoveTo(line.end.X, line.start.Y, token);
-                    _ns.Reset();
-                    _sleep(_wait, token);
-                }
+            // draw line
+            foreach (DrawingLine line in Lines)
+            {
+                token.ThrowIfCancellationRequested();
+                if (Math.Abs(_pos.Y - line.start.Y) < Math.Abs(_pos.Y - line.end.Y))
+                    MoveTo(line.start.X, line.start.Y, token);
+                else
+                    MoveTo(line.start.X, line.end.Y, token);
+                _ns.PressButtons(_a);
+                _sleep(_wait, token);
+                if (Math.Abs(_pos.Y - line.start.Y) < Math.Abs(_pos.Y - line.end.Y))
+                    MoveTo(line.end.X, line.end.Y, token);
+                else
+                    MoveTo(line.end.X, line.start.Y, token);
+                _ns.ReleaseButtons(_a);
+                _sleep(_wait, token);
             }
-            _ns.Reset();
-            _sleep(_wait, token);
-            _ns.Reset();
-            return true;
-        }
-        catch (OperationCanceledException) when (token.IsCancellationRequested)
-        {
-            // 取消可能发生在 A 或方向键按住期间
-            _ns.Reset();
-            return false;
         }
     }
 
@@ -222,15 +203,11 @@ public sealed class SplatoonDrawing
         {
             if (_pos.X < x)
             {
-                _ns.Down(_down);
-                _sleep(_duration, token);
-                _ns.Up(_down);
+                _ns.ClickButtons(_down, _duration, token);
             }
             else
             {
-                _ns.Down(_up);
-                _sleep(_duration, token);
-                _ns.Up(_up);
+                _ns.ClickButtons(_up, _duration, token);
             }
             _sleep(_wait, token);
         }
@@ -246,15 +223,11 @@ public sealed class SplatoonDrawing
         {
             if (_pos.Y < y)
             {
-                _ns.Down(_right);
-                _sleep(_duration, token);
-                _ns.Up(_right);
+                _ns.ClickButtons(_right, _duration, token);
             }
             else
             {
-                _ns.Down(_left);
-                _sleep(_duration, token);
-                _ns.Up(_left);
+                _ns.ClickButtons(_left, _duration, token);
             }
             _sleep(_wait, token);
         }
@@ -264,12 +237,15 @@ public sealed class SplatoonDrawing
         _pos.Y = y;
     }
 
-    private sealed class NullPad : IDrawingPad
+    /// <summary>估算用的空跑手柄：不发键，只把方向点按的按键持续计入总耗时。</summary>
+    private sealed class TimingPad : IPadInput
     {
-        public static readonly NullPad Instance = new();
-        public bool IsConnected() => true;
-        public void Down(ECKey key) { }
-        public void Up(ECKey key) { }
-        public void Reset() { }
+        public long Total { get; set; }
+        public void ClickButtons(GamePadKey key, int duration, CancellationToken token) => Total += Math.Max(0, duration);
+        public void PressButtons(GamePadKey key) { }
+        public void ReleaseButtons(GamePadKey key) { }
+        public void ClickStick(GamePadKey key, byte x, byte y, int duration, CancellationToken token) => Total += Math.Max(0, duration);
+        public void SetStick(GamePadKey key, byte x, byte y) { }
+        public void ChangeAmiibo(uint index) { }
     }
 }
