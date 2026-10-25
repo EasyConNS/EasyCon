@@ -96,15 +96,8 @@ public partial class App : Application
                 window.Activated += (_, _) => matcher.RefreshLocalizedTexts();
                 return window;
             });
-            windowService.Register(WindowKeys.DrawingBoard, () =>
-            {
-                DrawingBoardViewModel board = new(new DeviceDrawingRunner(deviceService.GetDevice()), dialogService,
-                    new SkiaImageProcessor(), uiDispatcher, logService);
-                DrawingBoardWindow window = new() { DataContext = board };
-                window.Closed += (_, _) => board.Dispose();
-                window.Activated += (_, _) => board.RefreshLocalizedTexts();
-                return window;
-            });
+            windowService.Register(WindowKeys.DrawingBoard, () => DrawingBoardWindow.Create(
+                new DeviceDrawingRunner(deviceService.GetDevice()), new SkiaImageProcessor(), uiDispatcher, logService));
             var mainWindow = new MainWindow { DataContext = mainWindowViewModel };
             desktop.MainWindow = mainWindow;
             // 显式关停，不用 OnMainWindowClose：其 TryShutdown 会被关停瞬间仍在窗口列表里的

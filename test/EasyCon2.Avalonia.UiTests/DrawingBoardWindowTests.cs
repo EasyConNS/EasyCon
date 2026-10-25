@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Themes.Fluent;
+using Avalonia.Threading;
 using EasyCon.Core.Capabilities;
 using EasyCon2.Avalonia.DrawingBoard;
 using EasyCon2.Avalonia.Localization;
@@ -13,9 +14,9 @@ using EasyCon2.Avalonia.Services;
 
 namespace EasyCon2.Avalonia.UiTests;
 
-/// <summary>画板窗口在窄屏下不溢出：预览等比缩小、参数分组换行。</summary>
+/// <summary>画板窗口：窄屏下不溢出（预览等比缩小、参数分组换行），对话框归属画板窗口。</summary>
 [TestFixture]
-public class DrawingBoardWindowLayoutTests
+public class DrawingBoardWindowTests
 {
     private static bool _stylesInitialized;
 
@@ -92,6 +93,29 @@ public class DrawingBoardWindowLayoutTests
         {
             window.Close();
             L10nBridge.Resolver = null;
+        }
+    }
+
+    [Test]
+    public void Messages_AreOwnedByTheDrawingBoardWindow()
+    {
+        // 全程同步、停留在 UI 线程：await 之后的续体会跑到线程池上操作窗口
+        DrawingBoardWindow window = DrawingBoardWindow.Create(new DisconnectedRunner(), new SkiaImageProcessor(),
+            SynchronousUiDispatcher.Instance, new LogService());
+        window.Show();
+        try
+        {
+            Task start = ((DrawingBoardViewModel)window.DataContext!).StartCommand.ExecuteAsync(null);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.That(window.OwnedWindows, Has.Count.EqualTo(1), "未连接提示应以画板窗口为 Owner，不能被画板窗口挡住");
+            window.OwnedWindows[0].Close();
+            Dispatcher.UIThread.RunJobs();
+            Assert.That(start.IsCompleted, Is.True);
+        }
+        finally
+        {
+            window.Close();
         }
     }
 

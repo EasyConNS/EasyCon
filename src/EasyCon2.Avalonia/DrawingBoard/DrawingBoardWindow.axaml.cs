@@ -1,11 +1,28 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using EasyCon2.Avalonia.Services;
+using ILogService = EasyCon.Core.Services.ILogService;
 
 namespace EasyCon2.Avalonia.DrawingBoard;
 
 public partial class DrawingBoardWindow : Window
 {
+    /// <summary>
+    /// 组装画板窗口。对话框（提示框、文件选择）使用以本窗口为 Owner 的独立 <see cref="DialogService"/>：
+    /// 共用主窗口的实例时，对话框归属主窗口，可能被画板窗口挡住。
+    /// </summary>
+    public static DrawingBoardWindow Create(IDrawingRunner runner, IImageProcessor imageProcessor, IUiDispatcher ui, ILogService logService)
+    {
+        DialogService dialogs = new();
+        DrawingBoardViewModel board = new(runner, dialogs, imageProcessor, ui, logService);
+        DrawingBoardWindow window = new() { DataContext = board };
+        dialogs.Owner = window;
+        window.Closed += (_, _) => board.Dispose();
+        window.Activated += (_, _) => board.RefreshLocalizedTexts();
+        return window;
+    }
+
     public DrawingBoardWindow()
     {
         InitializeComponent();
