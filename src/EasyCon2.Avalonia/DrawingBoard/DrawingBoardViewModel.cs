@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core.Maa;
 using EasyCon2.Avalonia.Models;
 using EasyCon2.Avalonia.Services;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using ILogService = EasyCon.Core.Services.ILogService;
 
@@ -15,6 +16,10 @@ namespace EasyCon2.Avalonia.DrawingBoard;
 public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 {
     private const string MessageTitle = "画板";
+    /// <summary>进度刷新间隔：每格移动只有几十毫秒，逐次刷新会塞满 UI 队列。</summary>
+    private const int ProgressIntervalMs = 200;
+    /// <summary>实际用时超过此值后，剩余时间按实际速度校正（设备延迟会让实际比计划慢）。</summary>
+    private static readonly TimeSpan CalibrateAfter = TimeSpan.FromSeconds(5);
 
     private readonly IDrawingRunner _runner;
     private readonly IDialogService _dialogService;
@@ -56,6 +61,13 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty]
     private string _curPosText = "当前坐标：100，40";
+
+    /// <summary>绘制进度 0～100。</summary>
+    [ObservableProperty]
+    private double _progressValue;
+
+    [ObservableProperty]
+    private string _progressText = "";
 
     public DrawingBoardViewModel(IDrawingRunner runner, IDialogService dialogService, IImageProcessor imageProcessor, IUiDispatcher ui, ILogService logService)
     {
@@ -123,6 +135,8 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         _source = new CancellationTokenSource();
         CancellationToken token = _source.Token;
         PixelImage image = _image;
+        ProgressValue = 0;
+        ProgressText = "准备中…";
         //开启一个task执行任务
         DrawTask = Task.Run(() => DrawTaskOpt(image, settings, token));
         IsStartEnabled = false;
@@ -130,28 +144,89 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 
     private void DrawTaskOpt(PixelImage image, DrawingBoardSettings settings, CancellationToken token)
     {
+        long total = 0;
+        long done = 0;
+        Stopwatch clock = new();
         try
         {
             List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, settings);
-            _runner.Run((pad, runToken) => new SplatoonDrawing(pad, settings.Wait, settings.Duration).Draw(rows, runToken), token);
-            _ui.Post(() => IsStartEnabled = true);
+            // 估算会就地调整线段顺序，用另一份扫描结果
+            total = (long)SplatoonDrawing.Estimate(SplatoonDrawing.SearchLines(image, settings), settings.Wait, settings.Duration).TotalMilliseconds;
+            _runner.Run((pad, runToken) =>
+            {
+                // 取得手柄后才开始计时
+                clock.Start();
+                long lastReport = -ProgressIntervalMs;
+                PostProgress(0, total, TimeSpan.Zero);
+                SplatoonDrawing drawing = new(pad, settings.Wait, settings.Duration, progress: value =>
+                {
+                    done = value;
+                    long now = clock.ElapsedMilliseconds;
+                    if (now - lastReport < ProgressIntervalMs)
+                        return;
+                    lastReport = now;
+                    PostProgress(done, total, clock.Elapsed);
+                });
+                drawing.Draw(rows, runToken);
+            }, token);
+            string finished = "已完成 · 用时 " + FormatClock(clock.Elapsed);
+            _ui.Post(() =>
+            {
+                ProgressValue = 100;
+                ProgressText = finished;
+                IsStartEnabled = true;
+            });
         }
         catch (Exception) when (token.IsCancellationRequested)
         {
             // 用户停止或关闭窗口：按键已由运行租约释放，开始按钮由 StopAsync 恢复
+            string stopped = $"已停止 · 完成 {FormatPercent(done, total)}";
+            _ui.Post(() => ProgressText = stopped);
         }
         catch (Exception ex)
         {
             // 旧版任务异常被静默吞掉，开始按钮一直禁用到点击停止，用户无从得知原因
             string message = "画图中断: " + DescribeError(ex);
+            string interrupted = $"已中断 · 完成 {FormatPercent(done, total)}";
             _logService.AddLog(message);
             _ui.Post(() =>
             {
+                ProgressText = interrupted;
                 IsStartEnabled = true;
                 _ = _dialogService.ShowMessageAsync(MessageTitle, message);
             });
         }
     }
+
+    private void PostProgress(long done, long total, TimeSpan elapsed)
+    {
+        double percent = Percent(done, total);
+        string text = $"{FormatPercent(done, total)} · 已用 {FormatClock(elapsed)} · 剩余约 {FormatClock(EstimateRemaining(done, total, elapsed))}";
+        _ui.Post(() =>
+        {
+            ProgressValue = percent;
+            ProgressText = text;
+        });
+    }
+
+    private static double Percent(long done, long total) => total > 0 ? Math.Min(100, done * 100.0 / total) : 100;
+
+    /// <summary>向下取整，避免没画完就显示 100%。</summary>
+    private static string FormatPercent(long done, long total) => Math.Floor(Percent(done, total)) + "%";
+
+    /// <summary>
+    /// 剩余时间：起步阶段按计划耗时；实际用时超过 <see cref="CalibrateAfter"/> 后，按"实际用时 / 已完成计划耗时"的比例校正。
+    /// </summary>
+    internal static TimeSpan EstimateRemaining(long done, long total, TimeSpan elapsed)
+    {
+        long planned = Math.Max(0, total - done);
+        if (done <= 0 || elapsed < CalibrateAfter)
+            return TimeSpan.FromMilliseconds(planned);
+        return TimeSpan.FromMilliseconds(planned * elapsed.TotalMilliseconds / done);
+    }
+
+    internal static string FormatClock(TimeSpan time)
+        => time.TotalHours >= 1 ? (int)time.TotalHours + ":" + time.ToString(@"mm\:ss") : time.ToString(@"mm\:ss");
 
     [RelayCommand]
     private async Task StopAsync()

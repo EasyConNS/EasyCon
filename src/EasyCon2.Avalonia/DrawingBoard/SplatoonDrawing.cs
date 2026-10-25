@@ -30,16 +30,23 @@ public sealed class SplatoonDrawing
     private readonly int _duration;
     private readonly int _wait;
     private readonly Action<int, CancellationToken> _sleep;
+    private readonly Action<long>? _progress;
     private Point _pos;
+    private long _done;
 
     /// <param name="pad">运行租约下的手柄输入（与脚本运行同一条独占通道），见 <see cref="IDrawingRunner"/>。</param>
     /// <param name="sleep">等待实现；默认为可取消的真实等待，估算耗时时替换为累加器。</param>
-    public SplatoonDrawing(IPadInput pad, int wait, int duration, Action<int, CancellationToken>? sleep = null)
+    /// <param name="progress">
+    /// 每次点按或等待完成后回调已完成的计划耗时（毫秒），与 <see cref="Estimate"/> 同一口径，画完时恰好等于估算总耗时。
+    /// 在绘制线程上调用。
+    /// </param>
+    public SplatoonDrawing(IPadInput pad, int wait, int duration, Action<int, CancellationToken>? sleep = null, Action<long>? progress = null)
     {
         _ns = pad;
         _wait = wait;
         _duration = duration;
         _sleep = sleep ?? Sleep;
+        _progress = progress;
     }
 
     /// <summary>按行扫描图片，得到每行的墨点线段（旧版开始画图与估算耗时共用的同一段代码）。</summary>
@@ -129,16 +136,16 @@ public sealed class SplatoonDrawing
     }
 
     /// <summary>
-    /// 估算耗时：以与 <see cref="Draw"/> 完全相同的发键序列空跑一遍，累加其中每一次等待与按键持续。
+    /// 估算耗时：以与 <see cref="Draw"/> 完全相同的发键序列空跑一遍，取进度回调的最终值（每一次等待与按键持续之和）。
     /// 旧版只累计列方向移动的格数再乘以 (延迟 + 按键持续)，漏算了行方向移动以及每次移动、落笔、抬笔后的等待。
     /// 注意 <see cref="Draw"/> 会就地调整各行线段顺序，估算与绘制应各用一份 <see cref="SearchLines"/> 结果。
     /// </summary>
     public static TimeSpan Estimate(List<List<DrawingLine>> rows, int wait, int duration)
     {
-        TimingPad pad = new();
-        SplatoonDrawing dryRun = new(pad, wait, duration, (milliseconds, _) => pad.Total += Math.Max(0, milliseconds));
+        long total = 0;
+        SplatoonDrawing dryRun = new(NullPad.Instance, wait, duration, (_, _) => { }, done => total = done);
         dryRun.Draw(rows, CancellationToken.None);
-        return TimeSpan.FromMilliseconds(pad.Total);
+        return TimeSpan.FromMilliseconds(total);
     }
 
     public static string FormatEvaluation(TimeSpan elapsed)
@@ -154,6 +161,7 @@ public sealed class SplatoonDrawing
     public void Draw(List<List<DrawingLine>> rows, CancellationToken token)
     {
         _pos = new Point(0, 0);
+        _done = 0;
         foreach (List<DrawingLine> Lines in rows)
         {
             // search nearest line
@@ -169,15 +177,33 @@ public sealed class SplatoonDrawing
                 else
                     MoveTo(line.start.X, line.end.Y, token);
                 _ns.PressButtons(_a);
-                _sleep(_wait, token);
+                Wait(_wait, token);
                 if (Math.Abs(_pos.Y - line.start.Y) < Math.Abs(_pos.Y - line.end.Y))
                     MoveTo(line.end.X, line.end.Y, token);
                 else
                     MoveTo(line.end.X, line.start.Y, token);
                 _ns.ReleaseButtons(_a);
-                _sleep(_wait, token);
+                Wait(_wait, token);
             }
         }
+    }
+
+    private void Wait(int milliseconds, CancellationToken token)
+    {
+        _sleep(milliseconds, token);
+        Advance(milliseconds);
+    }
+
+    private void Click(GamePadKey key, CancellationToken token)
+    {
+        _ns.ClickButtons(key, _duration, token);
+        Advance(_duration);
+    }
+
+    private void Advance(int milliseconds)
+    {
+        _done += Math.Max(0, milliseconds);
+        _progress?.Invoke(_done);
     }
 
     private static void Sleep(int milliseconds, CancellationToken token)
@@ -203,15 +229,15 @@ public sealed class SplatoonDrawing
         {
             if (_pos.X < x)
             {
-                _ns.ClickButtons(_down, _duration, token);
+                Click(_down, token);
             }
             else
             {
-                _ns.ClickButtons(_up, _duration, token);
+                Click(_up, token);
             }
-            _sleep(_wait, token);
+            Wait(_wait, token);
         }
-        _sleep(_wait, token);
+        Wait(_wait, token);
 
         if (_pos.Y > y)
         {
@@ -223,28 +249,28 @@ public sealed class SplatoonDrawing
         {
             if (_pos.Y < y)
             {
-                _ns.ClickButtons(_right, _duration, token);
+                Click(_right, token);
             }
             else
             {
-                _ns.ClickButtons(_left, _duration, token);
+                Click(_left, token);
             }
-            _sleep(_wait, token);
+            Wait(_wait, token);
         }
-        _sleep(_wait, token);
+        Wait(_wait, token);
 
         _pos.X = x;
         _pos.Y = y;
     }
 
-    /// <summary>估算用的空跑手柄：不发键，只把方向点按的按键持续计入总耗时。</summary>
-    private sealed class TimingPad : IPadInput
+    /// <summary>估算用的空跑手柄：不发任何键。</summary>
+    private sealed class NullPad : IPadInput
     {
-        public long Total { get; set; }
-        public void ClickButtons(GamePadKey key, int duration, CancellationToken token) => Total += Math.Max(0, duration);
+        public static readonly NullPad Instance = new();
+        public void ClickButtons(GamePadKey key, int duration, CancellationToken token) { }
         public void PressButtons(GamePadKey key) { }
         public void ReleaseButtons(GamePadKey key) { }
-        public void ClickStick(GamePadKey key, byte x, byte y, int duration, CancellationToken token) => Total += Math.Max(0, duration);
+        public void ClickStick(GamePadKey key, byte x, byte y, int duration, CancellationToken token) { }
         public void SetStick(GamePadKey key, byte x, byte y) { }
         public void ChangeAmiibo(uint index) { }
     }

@@ -120,6 +120,39 @@ public class DrawingBoardTests
     }
 
     [Test]
+    public void Draw_ReportsMonotonicProgressEndingAtEstimate()
+    {
+        PixelImage image = Canvas((0, 5), (0, 6), (2, 1), (7, 300), (7, 302), (90, 0));
+        List<long> reports = [];
+
+        new SplatoonDrawing(new RecordingPad(), 45, 50, (_, _) => { }, reports.Add)
+            .Draw(SplatoonDrawing.SearchLines(image, FullCanvas), CancellationToken.None);
+        TimeSpan estimated = SplatoonDrawing.Estimate(SplatoonDrawing.SearchLines(image, FullCanvas), 45, 50);
+
+        Assert.That(reports, Is.Ordered);
+        Assert.That(reports.Last(), Is.EqualTo((long)estimated.TotalMilliseconds));
+    }
+
+    [Test]
+    public void EstimateRemaining_UsesPlanFirstThenActualPace()
+    {
+        Assert.That(DrawingBoardViewModel.EstimateRemaining(0, 10_000, TimeSpan.Zero), Is.EqualTo(TimeSpan.FromSeconds(10)));
+        Assert.That(DrawingBoardViewModel.EstimateRemaining(2_000, 10_000, TimeSpan.FromSeconds(3)), Is.EqualTo(TimeSpan.FromSeconds(8)));
+        // 实际用时是计划的 2 倍：剩余 8 s 计划按 2 倍校正
+        Assert.That(DrawingBoardViewModel.EstimateRemaining(5_000, 13_000, TimeSpan.FromSeconds(10)), Is.EqualTo(TimeSpan.FromSeconds(16)));
+        Assert.That(DrawingBoardViewModel.EstimateRemaining(10_000, 10_000, TimeSpan.FromSeconds(30)), Is.EqualTo(TimeSpan.Zero));
+    }
+
+    [TestCase(65, "01:05")]
+    [TestCase(3599, "59:59")]
+    [TestCase(3725, "1:02:05")]
+    [TestCase(36000, "10:00:00")]
+    public void FormatClock_ShowsHoursOnlyWhenNeeded(int seconds, string expected)
+    {
+        Assert.That(DrawingBoardViewModel.FormatClock(TimeSpan.FromSeconds(seconds)), Is.EqualTo(expected));
+    }
+
+    [Test]
     public void FormatEvaluation_UsesMinutes()
     {
         Assert.That(SplatoonDrawing.FormatEvaluation(TimeSpan.FromSeconds(95)), Is.EqualTo("耗时：" + 1.583.ToString("0.00") + "mins"));
@@ -184,7 +217,9 @@ public class DrawingBoardTests
         await f.Vm.StartCommand.ExecuteAsync(null);
         await firstKey.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.That(f.Vm.IsStartEnabled, Is.False);
+        Assert.That(f.Vm.ProgressText, Does.StartWith("0% · 已用 00:00 · 剩余约 "));
         await f.Vm.StopCommand.ExecuteAsync(null).WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.That(f.Vm.ProgressText, Does.StartWith("已停止 · 完成 "));
 
         Assert.That(f.Vm.DrawTask!.IsCompleted, Is.True);
         Assert.That(f.Vm.IsStartEnabled, Is.True);
@@ -283,6 +318,8 @@ public class DrawingBoardTests
         Assert.That(f.Pad.Events, Does.Contain("press A"));
         Assert.That(f.Pad.Events.Last(), Is.EqualTo(LeaseRelease));
         Assert.That(f.Vm.IsStartEnabled, Is.True);
+        Assert.That(f.Vm.ProgressValue, Is.EqualTo(100));
+        Assert.That(f.Vm.ProgressText, Does.StartWith("已完成 · 用时 "));
     }
 
     [Test]
@@ -317,6 +354,7 @@ public class DrawingBoardTests
         Assert.That(f.Vm.IsStartEnabled, Is.True);
         Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "画图中断: 手柄正被脚本或其他任务占用，请先停止后再画" }));
         Assert.That(f.Pad.Events, Is.Empty);
+        Assert.That(f.Vm.ProgressText, Is.EqualTo("已中断 · 完成 0%"));
     }
 
     [Test]
@@ -333,6 +371,7 @@ public class DrawingBoardTests
 
         Assert.That(f.Vm.IsStartEnabled, Is.True);
         Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "画图中断: 手柄连接已断开" }));
+        Assert.That(f.Vm.ProgressText, Does.StartWith("已中断 · 完成 "));
         Assert.That(f.Pad.Events.Last(), Is.EqualTo(LeaseRelease));
     }
 

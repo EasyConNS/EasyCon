@@ -9,7 +9,7 @@
         CanResize="False"
         WindowStartupLocation="CenterScreen">
 
-    <!-- 布局对照 1.6.3 WinForms 版 DrawingBoard：预览图 / 坐标说明 / 参数与按钮 / 提示与耗时 -->
+    <!-- 布局对照 1.6.3 WinForms 版 DrawingBoard：预览图 / 坐标说明 / 参数与按钮 / 进度（新增）/ 提示与耗时 -->
     <StackPanel Margin="16" Spacing="8">
         <Border x:Name="PictureFrame"
                 Background="Transparent"
@@ -77,6 +77,17 @@
                         VerticalAlignment="Stretch"
                         VerticalContentAlignment="Center"/>
             </StackPanel>
+        </Grid>
+
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <ProgressBar Minimum="0"
+                         Maximum="100"
+                         Value="{Binding ProgressValue}"
+                         VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1"
+                       MinWidth="260"
+                       Text="{Binding ProgressText}"
+                       VerticalAlignment="Center"/>
         </Grid>
 
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
