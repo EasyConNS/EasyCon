@@ -138,9 +138,8 @@ public sealed class SplatoonDrawing
     /// <summary>
     /// 估算耗时：以与 <see cref="Draw"/> 完全相同的发键序列空跑一遍，取进度回调的最终值（每一次等待与按键持续之和）。
     /// 旧版只累计列方向移动的格数再乘以 (延迟 + 按键持续)，漏算了行方向移动以及每次移动、落笔、抬笔后的等待。
-    /// 注意 <see cref="Draw"/> 会就地调整各行线段顺序，估算与绘制应各用一份 <see cref="SearchLines"/> 结果。
     /// </summary>
-    public static TimeSpan Estimate(List<List<DrawingLine>> rows, int wait, int duration)
+    public static TimeSpan Estimate(IReadOnlyList<IReadOnlyList<DrawingLine>> rows, int wait, int duration)
     {
         long total = 0;
         SplatoonDrawing dryRun = new(NullPad.Instance, wait, duration, (_, _) => { }, done => total = done);
@@ -157,19 +156,21 @@ public sealed class SplatoonDrawing
     /// 旧版 draw_task_opt 的绘制循环。被取消时抛出 <see cref="OperationCanceledException"/>。
     /// 与旧版不同：每次按键与等待都响应取消（旧版只在两段线之间检查）；
     /// 取消、出错或画完后的按键释放由运行租约统一写出中性报告，这里不再 Reset。
+    /// 不修改 <paramref name="rows"/>（旧版就地 Reverse 各行），同一份扫描结果可先估算再绘制、或重复绘制。
     /// </summary>
-    public void Draw(List<List<DrawingLine>> rows, CancellationToken token)
+    public void Draw(IReadOnlyList<IReadOnlyList<DrawingLine>> rows, CancellationToken token)
     {
         _pos = new Point(0, 0);
         _done = 0;
-        foreach (List<DrawingLine> Lines in rows)
+        foreach (IReadOnlyList<DrawingLine> Lines in rows)
         {
             // search nearest line
-            if (Math.Abs(_pos.Y - Lines[0].start.Y) > Math.Abs(_pos.Y - Lines.Last().end.Y))
-                Lines.Reverse();
+            IEnumerable<DrawingLine> ordered = Math.Abs(_pos.Y - Lines[0].start.Y) > Math.Abs(_pos.Y - Lines[^1].end.Y)
+                ? Lines.Reverse()
+                : Lines;
 
             // draw line
-            foreach (DrawingLine line in Lines)
+            foreach (DrawingLine line in ordered)
             {
                 token.ThrowIfCancellationRequested();
                 if (Math.Abs(_pos.Y - line.start.Y) < Math.Abs(_pos.Y - line.end.Y))

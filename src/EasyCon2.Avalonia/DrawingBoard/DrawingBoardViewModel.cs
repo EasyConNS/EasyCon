@@ -150,8 +150,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         try
         {
             List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, settings);
-            // 估算会就地调整线段顺序，用另一份扫描结果
-            total = (long)SplatoonDrawing.Estimate(SplatoonDrawing.SearchLines(image, settings), settings.Wait, settings.Duration).TotalMilliseconds;
+            total = (long)SplatoonDrawing.Estimate(rows, settings.Wait, settings.Duration).TotalMilliseconds;
             _runner.Run((pad, runToken) =>
             {
                 // 取得手柄后才开始计时

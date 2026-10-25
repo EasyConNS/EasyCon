@@ -112,9 +112,9 @@ public class DrawingBoardTests
         RecordingPad pad = new();
         long waited = 0;
 
-        new SplatoonDrawing(pad, 45, 50, (milliseconds, _) => waited += milliseconds)
-            .Draw(SplatoonDrawing.SearchLines(image, FullCanvas), CancellationToken.None);
-        TimeSpan estimated = SplatoonDrawing.Estimate(SplatoonDrawing.SearchLines(image, FullCanvas), 45, 50);
+        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas);
+        TimeSpan estimated = SplatoonDrawing.Estimate(rows, 45, 50);
+        new SplatoonDrawing(pad, 45, 50, (milliseconds, _) => waited += milliseconds).Draw(rows, CancellationToken.None);
 
         Assert.That(estimated, Is.EqualTo(TimeSpan.FromMilliseconds(waited + pad.ClickDurations)));
     }
@@ -125,9 +125,9 @@ public class DrawingBoardTests
         PixelImage image = Canvas((0, 5), (0, 6), (2, 1), (7, 300), (7, 302), (90, 0));
         List<long> reports = [];
 
-        new SplatoonDrawing(new RecordingPad(), 45, 50, (_, _) => { }, reports.Add)
-            .Draw(SplatoonDrawing.SearchLines(image, FullCanvas), CancellationToken.None);
-        TimeSpan estimated = SplatoonDrawing.Estimate(SplatoonDrawing.SearchLines(image, FullCanvas), 45, 50);
+        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas);
+        TimeSpan estimated = SplatoonDrawing.Estimate(rows, 45, 50);
+        new SplatoonDrawing(new RecordingPad(), 45, 50, (_, _) => { }, reports.Add).Draw(rows, CancellationToken.None);
 
         Assert.That(reports, Is.Ordered);
         Assert.That(reports.Last(), Is.EqualTo((long)estimated.TotalMilliseconds));
@@ -177,6 +177,30 @@ public class DrawingBoardTests
         expected.Add("press A");
         expected.Add("release A");
         Assert.That(pad.Events, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void Draw_DoesNotMutateRows_SoOneScanServesEstimateAndRepeatedDraws()
+    {
+        // 第 0 行先画，结束于第 302 列；第 7 行两段线需从右往左画，旧版会就地 Reverse 该行
+        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Canvas((0, 302), (7, 5), (7, 300)), FullCanvas);
+        string[] before = rows.SelectMany(r => r).Select(Describe).ToArray();
+        RecordingPad first = new();
+        RecordingPad second = new();
+
+        TimeSpan estimated = SplatoonDrawing.Estimate(rows, 0, 0);
+        new SplatoonDrawing(first, 0, 0).Draw(rows, CancellationToken.None);
+        new SplatoonDrawing(second, 0, 0).Draw(rows, CancellationToken.None);
+
+        Assert.That(rows.SelectMany(r => r).Select(Describe), Is.EqualTo(before));
+        Assert.That(second.Events, Is.EqualTo(first.Events));
+        Assert.That(first.Events, Is.EqualTo(Clicks(GamePadKey.RIGHT, 302)
+            .Append("press A").Append("release A")
+            .Concat(Clicks(GamePadKey.DOWN, 7)).Concat(Clicks(GamePadKey.LEFT, 2))
+            .Append("press A").Append("release A")
+            .Concat(Clicks(GamePadKey.LEFT, 295))
+            .Append("press A").Append("release A")));
+        Assert.That(estimated, Is.EqualTo(TimeSpan.Zero));
     }
 
     [Test]
