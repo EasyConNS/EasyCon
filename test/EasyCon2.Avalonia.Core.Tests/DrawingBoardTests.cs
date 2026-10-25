@@ -407,16 +407,30 @@ public class DrawingBoardTests
 
     [TestCase(100, 50)]
     [TestCase(320, 100)]
-    [TestCase(300, 120)]
-    public async Task Load_WrongSize_IsRejected(int width, int height)
+    [TestCase(640, 480)]
+    public async Task Load_AnySize_IsFittedToCanvas(int width, int height)
     {
         Fixture f = new(new PixelImage(width, height, White(width, height)));
 
         await f.Vm.LoadPictureFileAsync("x.png");
-        await f.Vm.EvaluateCommand.ExecuteAsync(null);
 
-        Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "图片不是320*120大小，请重新修改", "未加载图片" }));
-        Assert.That(f.Vm.Preview, Is.Null);
+        Assert.That(f.Dialogs.Messages, Is.Empty);
+        Assert.That(f.Images.Fits, Is.EqualTo(new[] { ImageFit.Contain }), "默认等比留白");
+        Assert.That(f.Vm.Mask, Has.Property("Width").EqualTo(320).And.Property("Height").EqualTo(120));
+        Assert.That(f.Vm.SourceSizeText, Is.EqualTo($"原图 {width}×{height}"));
+    }
+
+    [Test]
+    public async Task FitMode_RefitsFromTheDecodedSourceWithoutReloading()
+    {
+        Fixture f = new(new PixelImage(640, 480, White(640, 480)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+
+        f.Vm.FitModeIndex = 1;
+        f.Vm.FitModeIndex = 2;
+
+        Assert.That(f.Images.Fits, Is.EqualTo(new[] { ImageFit.Contain, ImageFit.Cover, ImageFit.Stretch }));
+        Assert.That(f.Images.Decodes, Is.EqualTo(1));
     }
 
     [Test]
@@ -708,6 +722,15 @@ public class DrawingBoardTests
         {
             Decodes++;
             return image;
+        }
+
+        public List<ImageFit> Fits { get; } = [];
+
+        /// <summary>记录适配方式；尺寸已一致时原样返回（与真实实现相同），否则给一张同尺寸白图。</summary>
+        public PixelImage FitTo(PixelImage source, int width, int height, ImageFit fit)
+        {
+            Fits.Add(fit);
+            return source.Width == width && source.Height == height ? source : new PixelImage(width, height, White(width, height));
         }
     }
 

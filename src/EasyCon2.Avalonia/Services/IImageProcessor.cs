@@ -17,4 +17,10 @@ public interface IImageProcessor
 
     /// <summary>从文件解码为 RGBA 非预乘像素（供逐像素读取）；失败返回 null。</summary>
     PixelImage? LoadPixels(string filePath);
+
+    /// <summary>
+    /// 按 <paramref name="fit"/> 把图片缩放进 <paramref name="width"/>×<paramref name="height"/> 的画布，未覆盖处透明。
+    /// 尺寸已一致时原样返回，不做重采样。
+    /// </summary>
+    PixelImage FitTo(PixelImage source, int width, int height, ImageFit fit);
 }

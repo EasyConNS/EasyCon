@@ -28,9 +28,15 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     private readonly IImageProcessor _imageProcessor;
     private readonly IUiDispatcher _ui;
     private readonly ILogService _logService;
-    private CancellationTokenSource? _source;
+    private CancellationTokenSource? _drawCancellation;
 
-    /// <summary>已载入的画布图片（只解码一次）；绘制前按阈值转成 <see cref="Mask"/>。</summary>
+    /// <summary>适配方式下拉框的顺序。</summary>
+    private static readonly ImageFit[] FitModes = [ImageFit.Contain, ImageFit.Cover, ImageFit.Stretch];
+
+    /// <summary>载入的原图（只解码一次）；切换适配方式时从它重新缩放。</summary>
+    private PixelImage? _source;
+
+    /// <summary>适配到 320×120 后的画布图片；按阈值转成 <see cref="Mask"/>。</summary>
     private PixelImage? _canvas;
 
     /// <summary>预览框显示的图片：默认是二值化结果（黑 = 要画的点），勾选"显示原图"时为原图。</summary>
@@ -65,6 +71,14 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _showOriginal;
 
+    /// <summary>适配方式在 <see cref="FitModes"/> 中的下标；默认等比留白，整张图不变形。</summary>
+    [ObservableProperty]
+    private int _fitModeIndex;
+
+    /// <summary>原图尺寸，例如"原图 640×480"；未载入时为空。</summary>
+    [ObservableProperty]
+    private string _sourceSizeText = "";
+
     [ObservableProperty]
     private bool _isStartEnabled = true;
 
@@ -97,6 +111,15 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     partial void OnThresholdPercentChanged(int value) => UpdateMask();
 
     partial void OnShowOriginalChanged(bool value) => UpdateMask();
+
+    partial void OnFitModeIndexChanged(int value) => UpdateCanvas();
+
+    private void UpdateCanvas()
+    {
+        _canvas = _source == null ? null : _imageProcessor.FitTo(_source, SplatoonDrawing.CanvasWidth, SplatoonDrawing.CanvasHeight,
+            FitModes[Math.Clamp(FitModeIndex, 0, FitModes.Length - 1)]);
+        UpdateMask();
+    }
 
     private void UpdateMask()
     {
@@ -141,15 +164,10 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
             await ShowMessageAsync(T("Text.DrawingBoard.LoadFailed"));
             return;
         }
-        // 旧版用 && 判断（宽高都不对才提示），且提示后仍会用该图绘制，小图会在绘制中途越界
-        if (image.Width != SplatoonDrawing.CanvasWidth || image.Height != SplatoonDrawing.CanvasHeight)
-        {
-            await ShowMessageAsync(T("Text.DrawingBoard.WrongSize"));
-            return;
-        }
-
-        _canvas = image;
-        UpdateMask();
+        // 任意尺寸都按适配方式缩放到 320×120（旧版只接受 320×120，且尺寸检查用 && 写错了）
+        _source = image;
+        SourceSizeText = Format("Text.DrawingBoard.SourceSize", image.Width, image.Height);
+        UpdateCanvas();
     }
 
     [RelayCommand]
@@ -173,8 +191,8 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        _source = new CancellationTokenSource();
-        CancellationToken token = _source.Token;
+        _drawCancellation = new CancellationTokenSource();
+        CancellationToken token = _drawCancellation.Token;
         // 取开始时的掩码快照：绘制过程中调整阈值等参数不影响正在画的图
         InkMask mask = Mask;
         SetProgress(0, "Text.DrawingBoard.Preparing");
@@ -275,7 +293,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task StopAsync()
     {
-        _source?.Cancel();
+        _drawCancellation?.Cancel();
         // 等后台绘制真正退出（运行租约此时已释放按键）再恢复开始按钮；旧版固定等 1 秒，期间绘制可能仍在发键
         if (DrawTask != null)
             await DrawTask;
@@ -319,7 +337,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     /// <summary>窗口关闭时调用：中止进行中的绘制（运行租约结束时松开全部按键）。</summary>
     public void Dispose()
     {
-        _source?.Cancel();
+        _drawCancellation?.Cancel();
     }
 
     /// <summary>

@@ -234,7 +234,11 @@
     <x:String x:Key="Text.DrawingBoard.EstimateNone">耗时：</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateResult">耗时：{0:0.00}mins</x:String>
     <x:String x:Key="Text.DrawingBoard.LoadFailed">图片加载失败</x:String>
-    <x:String x:Key="Text.DrawingBoard.WrongSize">图片不是320*120大小，请重新修改</x:String>
+    <x:String x:Key="Text.DrawingBoard.Fit">适配</x:String>
+    <x:String x:Key="Text.DrawingBoard.FitContain">等比留白</x:String>
+    <x:String x:Key="Text.DrawingBoard.FitCover">等比裁切</x:String>
+    <x:String x:Key="Text.DrawingBoard.FitStretch">拉伸</x:String>
+    <x:String x:Key="Text.DrawingBoard.SourceSize">原图 {0}×{1}</x:String>
     <x:String x:Key="Text.DrawingBoard.NotConnected">串口未连接</x:String>
     <x:String x:Key="Text.DrawingBoard.NoPicture">未加载图片</x:String>
     <x:String x:Key="Text.DrawingBoard.InvalidField">{0}应为 {1}～{2} 的整数</x:String>

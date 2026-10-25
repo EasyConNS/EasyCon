@@ -42,7 +42,17 @@
                     VerticalContentAlignment="Center"
                     HorizontalContentAlignment="Center"/>
 
-            <!-- 图片处理：阈值决定哪些点算墨点，预览显示的就是将要画的结果 -->
+            <!-- 图片处理：适配方式把任意尺寸的图放进 320×120；阈值决定哪些点算墨点，预览显示的就是将要画的结果 -->
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock Text="{loc:Translate Text.DrawingBoard.Fit}" VerticalAlignment="Center"/>
+                <ComboBox SelectedIndex="{Binding FitModeIndex}" VerticalAlignment="Center">
+                    <ComboBoxItem Content="{loc:Translate Text.DrawingBoard.FitContain}"/>
+                    <ComboBoxItem Content="{loc:Translate Text.DrawingBoard.FitCover}"/>
+                    <ComboBoxItem Content="{loc:Translate Text.DrawingBoard.FitStretch}"/>
+                </ComboBox>
+                <TextBlock Text="{Binding SourceSizeText}" VerticalAlignment="Center"/>
+            </StackPanel>
+
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <TextBlock Text="{loc:Translate Text.DrawingBoard.Threshold}" VerticalAlignment="Center"/>
                 <Slider Width="120"

@@ -234,7 +234,11 @@
     <x:String x:Key="Text.DrawingBoard.EstimateNone">Time:</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateResult">Time: {0:0.00} min</x:String>
     <x:String x:Key="Text.DrawingBoard.LoadFailed">Failed to load the picture</x:String>
-    <x:String x:Key="Text.DrawingBoard.WrongSize">The picture must be 320×120. Please resize it.</x:String>
+    <x:String x:Key="Text.DrawingBoard.Fit">Fit</x:String>
+    <x:String x:Key="Text.DrawingBoard.FitContain">Fit (letterbox)</x:String>
+    <x:String x:Key="Text.DrawingBoard.FitCover">Fill (crop)</x:String>
+    <x:String x:Key="Text.DrawingBoard.FitStretch">Stretch</x:String>
+    <x:String x:Key="Text.DrawingBoard.SourceSize">Source {0}×{1}</x:String>
     <x:String x:Key="Text.DrawingBoard.NotConnected">Serial port not connected</x:String>
     <x:String x:Key="Text.DrawingBoard.NoPicture">No picture loaded</x:String>
     <x:String x:Key="Text.DrawingBoard.InvalidField">{0} must be an integer from {1} to {2}</x:String>

@@ -88,4 +88,42 @@ public sealed class SkiaImageProcessor : IImageProcessor
             return null;
         }
     }
+
+    public PixelImage FitTo(PixelImage source, int width, int height, ImageFit fit)
+    {
+        if (source.Width == width && source.Height == height)
+            return source;
+
+        SKImageInfo sourceInfo = new(source.Width, source.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+        using SKImage image = SKImage.FromPixelCopy(sourceInfo, source.Rgba);
+        // 光栅 Surface 只支持预乘；读回时再转成非预乘，与 LoadPixels 的约定一致
+        using SKSurface surface = SKSurface.Create(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul));
+        surface.Canvas.Clear(SKColors.Transparent);
+        surface.Canvas.DrawImage(image, Destination(source.Width, source.Height, width, height, fit),
+            new SKSamplingOptions(SKCubicResampler.Mitchell));
+
+        SKImageInfo targetInfo = new(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+        byte[] rgba = new byte[width * height * 4];
+        using SKImage snapshot = surface.Snapshot();
+        unsafe
+        {
+            fixed (byte* pixels = rgba)
+                snapshot.ReadPixels(targetInfo, (IntPtr)pixels, width * 4, 0, 0);
+        }
+        return new PixelImage(width, height, rgba);
+    }
+
+    private static SKRect Destination(int sourceWidth, int sourceHeight, int width, int height, ImageFit fit)
+    {
+        if (fit == ImageFit.Stretch)
+            return new SKRect(0, 0, width, height);
+        float scaleX = (float)width / sourceWidth;
+        float scaleY = (float)height / sourceHeight;
+        float scale = fit == ImageFit.Contain ? Math.Min(scaleX, scaleY) : Math.Max(scaleX, scaleY);
+        float drawWidth = sourceWidth * scale;
+        float drawHeight = sourceHeight * scale;
+        float left = (width - drawWidth) / 2;
+        float top = (height - drawHeight) / 2;
+        return new SKRect(left, top, left + drawWidth, top + drawHeight);
+    }
 }
