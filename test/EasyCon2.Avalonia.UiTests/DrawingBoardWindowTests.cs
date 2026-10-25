@@ -100,7 +100,10 @@ public class DrawingBoardWindowTests
     [Test]
     public void Messages_AreOwnedByTheDrawingBoardWindow()
     {
-        // 全程同步、停留在 UI 线程：await 之后的续体会跑到线程池上操作窗口
+        // 全程同步、停留在 UI 线程，并换上 Avalonia 的同步上下文：否则提示框关闭后命令的续体会经 NUnit 的
+        // 同步上下文跑到线程池上，AsyncRelayCommand 在那里刷新按钮状态，间歇性触发跨线程异常
+        SynchronizationContext? previous = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(new AvaloniaSynchronizationContext());
         DrawingBoardWindow window = DrawingBoardWindow.Create(new DisconnectedRunner(), new SkiaImageProcessor(),
             SynchronousUiDispatcher.Instance, new LogService());
         window.Show();
@@ -117,6 +120,7 @@ public class DrawingBoardWindowTests
         finally
         {
             window.Close();
+            SynchronizationContext.SetSynchronizationContext(previous);
         }
     }
 
