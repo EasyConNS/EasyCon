@@ -220,7 +220,14 @@
     <x:String x:Key="Text.DrawingBoard.Threshold">阈值</x:String>
     <x:String x:Key="Text.DrawingBoard.ShowOriginal">显示原图</x:String>
     <x:String x:Key="Text.DrawingBoard.Dither">抖动</x:String>
-    <x:String x:Key="Text.DrawingBoard.DitherTip">用点的疏密表现明暗，灰度照片效果更好，但墨点更碎、绘制更久</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherTip">用点的疏密表现明暗，灰度照片效果更好，但墨点更碎、绘制更久。Atkinson 点最少、画得最快；蛇形扫描可减少斜纹；Bayer 图案规整</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherNone">关闭</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherFloydSteinberg">Floyd–Steinberg</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherFloydSteinbergSerpentine">Floyd–Steinberg（蛇形）</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherAtkinson">Atkinson（点少、对比强）</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherJarvisJudiceNinke">Jarvis–Judice–Ninke（最平滑）</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherStucki">Stucki</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherBayer">Bayer 有序（规则网格）</x:String>
     <x:String x:Key="Text.DrawingBoard.StartCol">起始列</x:String>
     <x:String x:Key="Text.DrawingBoard.StartRow">起始行</x:String>
     <x:String x:Key="Text.DrawingBoard.ColCount">列数</x:String>

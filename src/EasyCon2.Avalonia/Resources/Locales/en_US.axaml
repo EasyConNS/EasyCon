@@ -220,7 +220,14 @@
     <x:String x:Key="Text.DrawingBoard.Threshold">Threshold</x:String>
     <x:String x:Key="Text.DrawingBoard.ShowOriginal">Show original</x:String>
     <x:String x:Key="Text.DrawingBoard.Dither">Dither</x:String>
-    <x:String x:Key="Text.DrawingBoard.DitherTip">Represents shades with dot density. Better for grayscale photos, but dots are scattered and drawing takes longer.</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherTip">Represents shades with dot density. Better for grayscale photos, but dots are scattered and drawing takes longer. Atkinson uses the fewest dots and draws fastest; serpentine reduces diagonal streaks; Bayer gives a regular pattern.</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherNone">Off</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherFloydSteinberg">Floyd–Steinberg</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherFloydSteinbergSerpentine">Floyd–Steinberg (serpentine)</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherAtkinson">Atkinson (fewer dots, more contrast)</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherJarvisJudiceNinke">Jarvis–Judice–Ninke (smoothest)</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherStucki">Stucki</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherBayer">Bayer ordered (regular grid)</x:String>
     <x:String x:Key="Text.DrawingBoard.StartCol">Start col</x:String>
     <x:String x:Key="Text.DrawingBoard.StartRow">Start row</x:String>
     <x:String x:Key="Text.DrawingBoard.ColCount">Columns</x:String>

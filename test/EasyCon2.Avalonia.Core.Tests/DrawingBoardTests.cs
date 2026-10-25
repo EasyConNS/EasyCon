@@ -176,33 +176,35 @@ public class DrawingBoardTests
         Assert.That(mask[1, 0], Is.EqualTo(reverse && percent < 100), "纯白只在反转时可能成为墨点");
     }
 
-    [Test]
-    public void Dither_TurnsMidGrayIntoAboutHalfDots()
+    private static readonly DitherMode[] DitherModes = Enum.GetValues<DitherMode>().Where(m => m != DitherMode.None).ToArray();
+
+    [TestCaseSource(nameof(DitherModes))]
+    public void Dither_TurnsMidGrayIntoAboutHalfDots(DitherMode mode)
     {
         PixelImage gray = Filled(128);
 
         double plain = InkFraction(InkMask.Binarize(gray, new BinarizeOptions(50, false)));
-        double dithered = InkFraction(InkMask.Binarize(gray, new BinarizeOptions(50, false, Dither: true)));
+        double dithered = InkFraction(InkMask.Binarize(gray, new BinarizeOptions(50, false, mode)));
 
         Assert.That(plain, Is.Zero, "不抖动时灰度 128 略亮于分界，整片留空");
-        Assert.That(dithered, Is.InRange(0.45, 0.55));
+        Assert.That(dithered, Is.InRange(0.4, 0.6));
     }
 
-    [Test]
-    public void Dither_LeavesPureBlackAndWhiteUnchanged()
+    [TestCaseSource(nameof(DitherModes))]
+    public void Dither_LeavesPureBlackAndWhiteUnchanged(DitherMode mode)
     {
         PixelImage image = Canvas((5, 5), (5, 6), (60, 200), (119, 319));
 
         InkMask plain = InkMask.Binarize(image, new BinarizeOptions(50, false));
-        InkMask dithered = InkMask.Binarize(image, new BinarizeOptions(50, false, Dither: true));
-        InkMask reversed = InkMask.Binarize(image, new BinarizeOptions(50, true, Dither: true));
+        InkMask dithered = InkMask.Binarize(image, new BinarizeOptions(50, false, mode));
+        InkMask reversed = InkMask.Binarize(image, new BinarizeOptions(50, true, mode));
 
         Assert.That(Cells(dithered), Is.EqualTo(Cells(plain)));
         Assert.That(Cells(reversed), Is.EqualTo(Cells(plain).Select(ink => !ink)));
     }
 
-    [Test]
-    public void Dither_DotDensityFollowsBrightness()
+    [TestCaseSource(nameof(DitherModes))]
+    public void Dither_DotDensityFollowsBrightness(DitherMode mode)
     {
         byte[] rgba = White(320, 120);
         for (int row = 0; row < 120; row++)
@@ -212,12 +214,52 @@ public class DrawingBoardTests
                 SetPixel(rgba, row, col, value, value, value, 255);
             }
 
-        InkMask mask = InkMask.Binarize(new PixelImage(320, 120, rgba), new BinarizeOptions(50, false, Dither: true));
+        InkMask mask = InkMask.Binarize(new PixelImage(320, 120, rgba), new BinarizeOptions(50, false, mode));
 
-        double darkQuarter = InkFraction(mask, 0, 80);
-        double lightQuarter = InkFraction(mask, 240, 320);
-        Assert.That(darkQuarter, Is.GreaterThan(0.75));
-        Assert.That(lightQuarter, Is.LessThan(0.25));
+        Assert.That(InkFraction(mask, 0, 80), Is.GreaterThan(0.75));
+        Assert.That(InkFraction(mask, 240, 320), Is.LessThan(0.25));
+    }
+
+    [Test]
+    public void Atkinson_UsesFewerDotsInLightAreasThanFloydSteinberg()
+    {
+        PixelImage light = Filled(200);
+
+        double floyd = InkFraction(InkMask.Binarize(light, new BinarizeOptions(50, false, DitherMode.FloydSteinberg)));
+        double atkinson = InkFraction(InkMask.Binarize(light, new BinarizeOptions(50, false, DitherMode.Atkinson)));
+
+        Assert.That(atkinson, Is.LessThan(floyd * 0.8));
+    }
+
+    [Test]
+    public void Serpentine_ChangesThePatternButNotTheDensity()
+    {
+        PixelImage gray = Filled(90);
+
+        InkMask raster = InkMask.Binarize(gray, new BinarizeOptions(50, false, DitherMode.FloydSteinberg));
+        InkMask serpentine = InkMask.Binarize(gray, new BinarizeOptions(50, false, DitherMode.FloydSteinbergSerpentine));
+
+        Assert.That(Cells(serpentine), Is.Not.EqualTo(Cells(raster)));
+        Assert.That(InkFraction(serpentine), Is.EqualTo(InkFraction(raster)).Within(0.02));
+    }
+
+    [Test]
+    public void Bayer_RepeatsOnAnEightByEightGrid()
+    {
+        InkMask mask = InkMask.Binarize(Filled(100), new BinarizeOptions(50, false, DitherMode.Bayer));
+
+        for (int row = 0; row < 112; row++)
+            for (int col = 0; col < 312; col++)
+                Assert.That(mask[col, row], Is.EqualTo(mask[col + 8, row]).And.EqualTo(mask[col, row + 8]), $"({col},{row})");
+    }
+
+    [Test]
+    public void DitherDropdown_ListsEveryModeInEnumOrder()
+    {
+        string axaml = File.ReadAllText(Path.Combine(RepoRoot(), "src", "EasyCon2.Avalonia", "DrawingBoard", "DrawingBoardWindow.axaml"));
+        string[] items = Regex.Matches(axaml, @"Text\.DrawingBoard\.Dither(\w+)}""/>").Select(m => m.Groups[1].Value).ToArray();
+
+        Assert.That(items, Is.EqualTo(Enum.GetNames<DitherMode>()));
     }
 
     [Test]
@@ -227,9 +269,11 @@ public class DrawingBoardTests
         await f.Vm.LoadPictureFileAsync("x.png");
         Assert.That(InkFraction(f.Vm.Mask!), Is.Zero);
 
-        f.Vm.Dither = true;
+        f.Vm.DitherModeIndex = (int)DitherMode.Atkinson;
+        Assert.That(InkFraction(f.Vm.Mask!), Is.InRange(0.4, 0.6));
 
-        Assert.That(InkFraction(f.Vm.Mask!), Is.InRange(0.45, 0.55));
+        f.Vm.DitherModeIndex = 99;
+        Assert.That(InkFraction(f.Vm.Mask!), Is.Zero, "越界的下标按不抖动处理");
     }
 
     [Test]
