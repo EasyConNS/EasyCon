@@ -2,9 +2,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:EasyCon2.Avalonia.DrawingBoard"
         xmlns:conv="using:EasyCon2.Avalonia.Converters"
+        xmlns:loc="using:EasyCon2.Avalonia.Markup"
         x:Class="EasyCon2.Avalonia.DrawingBoard.DrawingBoardWindow"
         x:DataType="vm:DrawingBoardViewModel"
-        Title="画板"
+        Title="{loc:Translate Text.DrawingBoard.Title}"
         SizeToContent="WidthAndHeight"
         CanResize="False"
         WindowStartupLocation="CenterScreen">
@@ -24,12 +25,12 @@
         </Border>
 
         <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="（左上角0，0，右下角320，120）绘制起点        绘制大小"/>
+            <TextBlock Text="{loc:Translate Text.DrawingBoard.Region}"/>
             <TextBlock Grid.Column="1" Text="{Binding CurPosText}"/>
         </Grid>
 
         <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto" ColumnSpacing="16">
-            <Button Content="加载图片"
+            <Button Content="{loc:Translate Text.DrawingBoard.LoadPicture}"
                     Command="{Binding LoadPictureCommand}"
                     MinWidth="110"
                     VerticalAlignment="Stretch"
@@ -37,42 +38,42 @@
                     HorizontalContentAlignment="Center"/>
 
             <CheckBox Grid.Column="1"
-                      Content="反转黑白"
+                      Content="{loc:Translate Text.DrawingBoard.Reverse}"
                       IsChecked="{Binding Reverse}"
                       VerticalAlignment="Bottom"/>
 
             <Grid Grid.Column="2" ColumnDefinitions="Auto,64" RowDefinitions="Auto,Auto" ColumnSpacing="6" RowSpacing="6">
-                <TextBlock Text="起始列" VerticalAlignment="Center"/>
+                <TextBlock Text="{loc:Translate Text.DrawingBoard.StartCol}" VerticalAlignment="Center"/>
                 <TextBox Grid.Column="1" Text="{Binding StartPosXText}"/>
-                <TextBlock Grid.Row="1" Text="起始行" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="1" Text="{loc:Translate Text.DrawingBoard.StartRow}" VerticalAlignment="Center"/>
                 <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding StartPosYText}"/>
             </Grid>
 
             <Grid Grid.Column="3" ColumnDefinitions="Auto,64" RowDefinitions="Auto,Auto" ColumnSpacing="6" RowSpacing="6">
-                <TextBlock Text="列数" VerticalAlignment="Center"/>
+                <TextBlock Text="{loc:Translate Text.DrawingBoard.ColCount}" VerticalAlignment="Center"/>
                 <TextBox Grid.Column="1" Text="{Binding WidthText}"/>
-                <TextBlock Grid.Row="1" Text="行数" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="1" Text="{loc:Translate Text.DrawingBoard.RowCount}" VerticalAlignment="Center"/>
                 <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding HeightText}"/>
             </Grid>
 
             <Grid Grid.Column="4" ColumnDefinitions="Auto,64" RowDefinitions="Auto,Auto" ColumnSpacing="6" RowSpacing="6">
-                <TextBlock Text="按键持续" VerticalAlignment="Center"/>
+                <TextBlock Text="{loc:Translate Text.DrawingBoard.Duration}" VerticalAlignment="Center"/>
                 <TextBox Grid.Column="1" Text="{Binding DurationText}"/>
-                <TextBlock Grid.Row="1" Text="延迟" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                <TextBlock Grid.Row="1" Text="{loc:Translate Text.DrawingBoard.Delay}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
                 <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding DelayText}"/>
             </Grid>
 
             <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="8">
-                <Button Content="开始画图"
+                <Button Content="{loc:Translate Text.DrawingBoard.Start}"
                         Command="{Binding StartCommand}"
                         IsEnabled="{Binding IsStartEnabled}"
                         VerticalAlignment="Stretch"
                         VerticalContentAlignment="Center"/>
-                <Button Content="停止"
+                <Button Content="{loc:Translate Text.DrawingBoard.Stop}"
                         Command="{Binding StopCommand}"
                         VerticalAlignment="Stretch"
                         VerticalContentAlignment="Center"/>
-                <Button Content="估算耗时"
+                <Button Content="{loc:Translate Text.DrawingBoard.Estimate}"
                         Command="{Binding EvaluateCommand}"
                         VerticalAlignment="Stretch"
                         VerticalContentAlignment="Center"/>
@@ -91,7 +92,7 @@
         </Grid>
 
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-            <TextBlock Text="开始前，请先进入画画页面，笔刷调整到最小，光标移动到左上角，绘制是从左上到右下"
+            <TextBlock Text="{loc:Translate Text.DrawingBoard.Tip}"
                        TextTrimming="CharacterEllipsis"/>
             <TextBlock Grid.Column="1" Text="{Binding EvaluateText}"/>
         </Grid>

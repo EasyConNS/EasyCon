@@ -2,17 +2,77 @@ using EasyCon.Core.Capabilities;
 using EasyCon.Core.Maa;
 using EasyCon.Core.Services;
 using EasyCon2.Avalonia.DrawingBoard;
+using EasyCon2.Avalonia.Localization;
 using EasyCon2.Avalonia.Models;
 using EasyCon2.Avalonia.Services;
 using EasyScript;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace EasyCon2.Avalonia.Core.Tests;
 
 /// <summary>喷射战士画板：扫描与移动路径对齐 1.6.3 WinForms 版 DrawingBoard，并锁定其后修复的行为。</summary>
 [TestFixture]
+[NonParallelizable]
 public class DrawingBoardTests
 {
     private const string LeaseRelease = "lease-release";
+
+    /// <summary>文案断言按真实的 zh_CN 资源进行（L10nBridge 未接宿主时只回显键名）。</summary>
+    [SetUp]
+    public void UseChineseLocale() => L10nBridge.Resolver = Locale("zh_CN").GetValueOrDefault;
+
+    [TearDown]
+    public void ResetLocale() => L10nBridge.Resolver = null;
+
+    [Test]
+    public void LocaleKeys_UsedByDrawingBoard_ExistInBothLanguages()
+    {
+        string drawingBoard = Path.Combine(RepoRoot(), "src", "EasyCon2.Avalonia", "DrawingBoard");
+        string sources = string.Concat(Directory.GetFiles(drawingBoard).Select(File.ReadAllText))
+            + File.ReadAllText(Path.Combine(RepoRoot(), "src", "EasyCon2.Avalonia", "Shell", "FeatureCenterPage.axaml"));
+        string[] used = Regex.Matches(sources, @"Text\.(?:DrawingBoard\.\w+|Feature\.(?:Splatoon|FreeDraw))")
+            .Select(m => m.Value).Distinct().ToArray();
+        Dictionary<string, string> zh = Locale("zh_CN");
+        Dictionary<string, string> en = Locale("en_US");
+
+        Assert.That(used, Has.Length.GreaterThan(20));
+        Assert.That(used.Where(key => !zh.ContainsKey(key)), Is.Empty, "zh_CN 缺少键");
+        Assert.That(used.Where(key => !en.ContainsKey(key)), Is.Empty, "en_US 缺少键");
+        Assert.That(en.Keys.Where(k => k.StartsWith("Text.DrawingBoard.")).Order(),
+            Is.EqualTo(zh.Keys.Where(k => k.StartsWith("Text.DrawingBoard.")).Order()));
+    }
+
+    [Test]
+    public async Task StatusTexts_FollowLanguageSwitch()
+    {
+        Fixture f = new(Canvas((0, 1)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.OnPicturePressed(411, 141, 822, 282);
+        await f.Vm.EvaluateCommand.ExecuteAsync(null);
+        List<string> changed = [];
+        f.Vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName!);
+
+        L10nBridge.Resolver = Locale("en_US").GetValueOrDefault;
+        f.Vm.RefreshLocalizedTexts();
+
+        Assert.That(changed, Is.SupersetOf(new[] { "CurPosText", "EvaluateText", "ProgressText" }));
+        Assert.That(f.Vm.CurPosText, Is.EqualTo("Position: 160,60"));
+        Assert.That(f.Vm.EvaluateText, Does.StartWith("Time: ").And.EndWith(" min"));
+    }
+
+    [Test]
+    public async Task Evaluate_ShowsMinutes()
+    {
+        Fixture f = new(Canvas((0, 1)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        Assert.That(f.Vm.EvaluateText, Is.EqualTo("耗时："));
+
+        await f.Vm.EvaluateCommand.ExecuteAsync(null);
+
+        // 1 次点按 × (50 + 45) + 落笔前后两次移动各 2 次延迟 + 落笔、抬笔各 1 次延迟 = 95 + 6 × 45 = 365 ms
+        Assert.That(f.Vm.EvaluateText, Is.EqualTo("耗时：" + (365 / 60000.0).ToString("0.00") + "mins"));
+    }
 
     private static readonly DrawingBoardSettings FullCanvas = new(0, 0, 0, 0, 320, 120, false);
 
@@ -165,12 +225,6 @@ public class DrawingBoardTests
     public void FormatClock_ShowsHoursOnlyWhenNeeded(int seconds, string expected)
     {
         Assert.That(DrawingBoardViewModel.FormatClock(TimeSpan.FromSeconds(seconds)), Is.EqualTo(expected));
-    }
-
-    [Test]
-    public void FormatEvaluation_UsesMinutes()
-    {
-        Assert.That(SplatoonDrawing.FormatEvaluation(TimeSpan.FromSeconds(95)), Is.EqualTo("耗时：" + 1.583.ToString("0.00") + "mins"));
     }
 
     [Test]
@@ -437,6 +491,21 @@ public class DrawingBoardTests
         f.Vm.OnPicturePressed(x, y, 822, 282);
 
         Assert.That(f.Vm.CurPosText, Is.EqualTo(expected));
+    }
+
+    private static Dictionary<string, string> Locale(string name)
+    {
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        XDocument doc = XDocument.Load(Path.Combine(RepoRoot(), "src", "EasyCon2.Avalonia", "Resources", "Locales", name + ".axaml"));
+        return doc.Root!.Elements(x + "String").ToDictionary(e => (string)e.Attribute(x + "Key")!, e => e.Value);
+    }
+
+    private static string RepoRoot()
+    {
+        DirectoryInfo? dir = new(TestContext.CurrentContext.TestDirectory);
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "EasyCon2.slnx")))
+            dir = dir.Parent;
+        return dir?.FullName ?? throw new DirectoryNotFoundException("找不到仓库根目录（EasyCon2.slnx）");
     }
 
     private static string Describe(DrawingLine line) => $"{line.Row}:{line.StartCol}-{line.EndCol}";

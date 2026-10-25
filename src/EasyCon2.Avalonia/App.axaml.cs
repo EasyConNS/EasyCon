@@ -102,6 +102,7 @@ public partial class App : Application
                     new SkiaImageProcessor(), uiDispatcher, logService);
                 DrawingBoardWindow window = new() { DataContext = board };
                 window.Closed += (_, _) => board.Dispose();
+                window.Activated += (_, _) => board.RefreshLocalizedTexts();
                 return window;
             });
             var mainWindow = new MainWindow { DataContext = mainWindowViewModel };

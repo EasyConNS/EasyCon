@@ -109,11 +109,6 @@ public sealed class SplatoonDrawing
         return TimeSpan.FromMilliseconds(total);
     }
 
-    public static string FormatEvaluation(TimeSpan elapsed)
-    {
-        return "耗时：" + elapsed.TotalMinutes.ToString("0.00") + "mins";
-    }
-
     /// <summary>
     /// 从画布左上角出发逐行绘制。被取消时抛出 <see cref="OperationCanceledException"/>。
     /// 与旧版不同：每次按键与等待都响应取消（旧版只在两段线之间检查）；

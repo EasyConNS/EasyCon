@@ -1,21 +1,23 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core.Maa;
+using EasyCon2.Avalonia.Localization;
 using EasyCon2.Avalonia.Models;
 using EasyCon2.Avalonia.Services;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using ILogService = EasyCon.Core.Services.ILogService;
 
 namespace EasyCon2.Avalonia.DrawingBoard;
 
 /// <summary>
-/// 喷射战士画板（移植自 1.6.3 WinForms 版 DrawingBoard 窗体）。
-/// 输入框默认值、提示文案与按钮启用时机均与旧版一致；算法见 <see cref="SplatoonDrawing"/>。
+/// 喷射战士画板（移植自 1.6.3 WinForms 版 DrawingBoard 窗体）。算法见 <see cref="SplatoonDrawing"/>。
+/// 文案经 <see cref="L10nBridge"/> 取自 Text.DrawingBoard.*；状态类文本（坐标/耗时/进度）只保存状态，
+/// 读取时按当前语言生成，窗口激活时经 <see cref="RefreshLocalizedTexts"/> 刷新。
 /// </summary>
 public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 {
-    private const string MessageTitle = "画板";
     /// <summary>进度刷新间隔：每格移动只有几十毫秒，逐次刷新会塞满 UI 队列。</summary>
     private const int ProgressIntervalMs = 200;
     /// <summary>实际用时超过此值后，剩余时间按实际速度校正（设备延迟会让实际比计划慢）。</summary>
@@ -56,18 +58,14 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _isStartEnabled = true;
 
-    [ObservableProperty]
-    private string _evaluateText = "耗时：";
-
-    [ObservableProperty]
-    private string _curPosText = "当前坐标：100，40";
-
     /// <summary>绘制进度 0～100。</summary>
     [ObservableProperty]
     private double _progressValue;
 
-    [ObservableProperty]
-    private string _progressText = "";
+    private (int Col, int Row)? _curPos;
+    private TimeSpan? _estimate;
+    private string? _progressKey;
+    private object[] _progressArgs = [];
 
     public DrawingBoardViewModel(IDrawingRunner runner, IDialogService dialogService, IImageProcessor imageProcessor, IUiDispatcher ui, ILogService logService)
     {
@@ -81,11 +79,29 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     /// <summary>最近一次开始画图的后台任务（测试用于等待绘制结束）。</summary>
     internal Task? DrawTask { get; private set; }
 
+    public string CurPosText => _curPos is { } pos
+        ? Format("Text.DrawingBoard.CurPos", pos.Col, pos.Row)
+        : T("Text.DrawingBoard.CurPosNone");
+
+    public string EvaluateText => _estimate is { } estimate
+        ? Format("Text.DrawingBoard.EstimateResult", estimate.TotalMinutes)
+        : T("Text.DrawingBoard.EstimateNone");
+
+    public string ProgressText => _progressKey == null ? "" : Format(_progressKey, _progressArgs);
+
+    /// <summary>语言切换后由窗口激活时调用，重新生成状态类文本。</summary>
+    public void RefreshLocalizedTexts()
+    {
+        OnPropertyChanged(nameof(CurPosText));
+        OnPropertyChanged(nameof(EvaluateText));
+        OnPropertyChanged(nameof(ProgressText));
+    }
+
     [RelayCommand]
     private async Task LoadPictureAsync()
     {
-        IReadOnlyList<string> files = await _dialogService.OpenFilesAsync("加载图片",
-            [new FileDialogFilter("Files", ["*.png", "*.jpg"])],
+        IReadOnlyList<string> files = await _dialogService.OpenFilesAsync(T("Text.DrawingBoard.LoadPicture"),
+            [new FileDialogFilter(T("Text.DrawingBoard.ImageFilter"), ["*.png", "*.jpg"])],
             Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
         if (files.Count == 0)
             return;
@@ -97,13 +113,13 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         PixelImage? image = _imageProcessor.LoadPixels(filePath);
         if (image == null)
         {
-            await _dialogService.ShowMessageAsync(MessageTitle, "图片加载失败");
+            await ShowMessageAsync(T("Text.DrawingBoard.LoadFailed"));
             return;
         }
         // 旧版用 && 判断（宽高都不对才提示），且提示后仍会用该图绘制，小图会在绘制中途越界
         if (image.Width != SplatoonDrawing.CanvasWidth || image.Height != SplatoonDrawing.CanvasHeight)
         {
-            await _dialogService.ShowMessageAsync(MessageTitle, "图片不是320*120大小，请重新修改");
+            await ShowMessageAsync(T("Text.DrawingBoard.WrongSize"));
             return;
         }
 
@@ -115,27 +131,26 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     {
         if (!_runner.IsConnected)
         {
-            await _dialogService.ShowMessageAsync(MessageTitle, "串口未连接");
+            await ShowMessageAsync(T("Text.DrawingBoard.NotConnected"));
             return;
         }
         if (DrawTask is { IsCompleted: false })
             return;
         if (Picture == null)
         {
-            await _dialogService.ShowMessageAsync(MessageTitle, "未加载图片");
+            await ShowMessageAsync(T("Text.DrawingBoard.NoPicture"));
             return;
         }
         if (!TryParseSettings(out DrawingBoardSettings? settings, out string? error))
         {
-            await _dialogService.ShowMessageAsync(MessageTitle, error);
+            await ShowMessageAsync(error);
             return;
         }
 
         _source = new CancellationTokenSource();
         CancellationToken token = _source.Token;
         PixelImage image = Picture;
-        ProgressValue = 0;
-        ProgressText = "准备中…";
+        SetProgress(0, "Text.DrawingBoard.Preparing");
         DrawTask = Task.Run(() => RunDraw(image, settings, token));
         IsStartEnabled = false;
     }
@@ -166,31 +181,32 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
                 });
                 drawing.Draw(rows, runToken);
             }, token);
-            string finished = "已完成 · 用时 " + FormatClock(clock.Elapsed);
+            string took = FormatClock(clock.Elapsed);
             _ui.Post(() =>
             {
-                ProgressValue = 100;
-                ProgressText = finished;
+                SetProgress(100, "Text.DrawingBoard.Finished", took);
                 IsStartEnabled = true;
             });
         }
         catch (Exception) when (token.IsCancellationRequested)
         {
             // 用户停止或关闭窗口：按键已由运行租约释放，开始按钮由 StopAsync 恢复
-            string stopped = $"已停止 · 完成 {FormatPercent(done, total)}";
-            _ui.Post(() => ProgressText = stopped);
+            double percent = Percent(done, total);
+            string reached = FormatPercent(done, total);
+            _ui.Post(() => SetProgress(percent, "Text.DrawingBoard.Stopped", reached));
         }
         catch (Exception ex)
         {
             // 旧版任务异常被静默吞掉，开始按钮一直禁用到点击停止，用户无从得知原因
-            string message = "画图中断: " + DescribeError(ex);
-            string interrupted = $"已中断 · 完成 {FormatPercent(done, total)}";
+            string message = Format("Text.DrawingBoard.Error", DescribeError(ex));
+            double percent = Percent(done, total);
+            string reached = FormatPercent(done, total);
             _logService.AddLog(message);
             _ui.Post(() =>
             {
-                ProgressText = interrupted;
+                SetProgress(percent, "Text.DrawingBoard.Interrupted", reached);
                 IsStartEnabled = true;
-                _ = _dialogService.ShowMessageAsync(MessageTitle, message);
+                _ = ShowMessageAsync(message);
             });
         }
     }
@@ -198,12 +214,16 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     private void PostProgress(long done, long total, TimeSpan elapsed)
     {
         double percent = Percent(done, total);
-        string text = $"{FormatPercent(done, total)} · 已用 {FormatClock(elapsed)} · 剩余约 {FormatClock(EstimateRemaining(done, total, elapsed))}";
-        _ui.Post(() =>
-        {
-            ProgressValue = percent;
-            ProgressText = text;
-        });
+        object[] args = [FormatPercent(done, total), FormatClock(elapsed), FormatClock(EstimateRemaining(done, total, elapsed))];
+        _ui.Post(() => SetProgress(percent, "Text.DrawingBoard.Progress", args));
+    }
+
+    private void SetProgress(double value, string key, params object[] args)
+    {
+        ProgressValue = value;
+        _progressKey = key;
+        _progressArgs = args;
+        OnPropertyChanged(nameof(ProgressText));
     }
 
     private static double Percent(long done, long total) => total > 0 ? Math.Min(100, done * 100.0 / total) : 100;
@@ -240,19 +260,19 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     {
         if (Picture == null)
         {
-            await _dialogService.ShowMessageAsync(MessageTitle, "未加载图片");
+            await ShowMessageAsync(T("Text.DrawingBoard.NoPicture"));
             return;
         }
 
         if (!TryParseSettings(out DrawingBoardSettings? settings, out string? error))
         {
-            await _dialogService.ShowMessageAsync(MessageTitle, error);
+            await ShowMessageAsync(error);
             return;
         }
 
         List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Picture, settings);
-        TimeSpan elapsed = SplatoonDrawing.Estimate(rows, settings.Wait, settings.Duration);
-        EvaluateText = SplatoonDrawing.FormatEvaluation(elapsed);
+        _estimate = SplatoonDrawing.Estimate(rows, settings.Wait, settings.Duration);
+        OnPropertyChanged(nameof(EvaluateText));
     }
 
     /// <summary>
@@ -265,7 +285,8 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
             return;
         int col = Math.Clamp((int)(x * SplatoonDrawing.CanvasWidth / width), 0, SplatoonDrawing.CanvasWidth - 1);
         int row = Math.Clamp((int)(y * SplatoonDrawing.CanvasHeight / height), 0, SplatoonDrawing.CanvasHeight - 1);
-        CurPosText = "当前位置:" + col.ToString() + "," + row.ToString();
+        _curPos = (col, row);
+        OnPropertyChanged(nameof(CurPosText));
     }
 
     /// <summary>窗口关闭时调用：中止进行中的绘制（运行租约结束时松开全部按键）。</summary>
@@ -281,12 +302,12 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     private bool TryParseSettings([NotNullWhen(true)] out DrawingBoardSettings? settings, [NotNullWhen(false)] out string? error)
     {
         settings = null;
-        if (!TryParseField("延迟", DelayText, 0, 10000, out int wait, out error)
-            || !TryParseField("按键持续", DurationText, 1, 10000, out int duration, out error)
-            || !TryParseField("起始行", StartPosYText, 0, SplatoonDrawing.CanvasHeight - 1, out int startRow, out error)
-            || !TryParseField("起始列", StartPosXText, 0, SplatoonDrawing.CanvasWidth - 1, out int startCol, out error)
-            || !TryParseField("列数", WidthText, 1, SplatoonDrawing.CanvasWidth, out int colCount, out error)
-            || !TryParseField("行数", HeightText, 1, SplatoonDrawing.CanvasHeight, out int rowCount, out error))
+        if (!TryParseField("Text.DrawingBoard.Delay", DelayText, 0, 10000, out int wait, out error)
+            || !TryParseField("Text.DrawingBoard.Duration", DurationText, 1, 10000, out int duration, out error)
+            || !TryParseField("Text.DrawingBoard.StartRow", StartPosYText, 0, SplatoonDrawing.CanvasHeight - 1, out int startRow, out error)
+            || !TryParseField("Text.DrawingBoard.StartCol", StartPosXText, 0, SplatoonDrawing.CanvasWidth - 1, out int startCol, out error)
+            || !TryParseField("Text.DrawingBoard.ColCount", WidthText, 1, SplatoonDrawing.CanvasWidth, out int colCount, out error)
+            || !TryParseField("Text.DrawingBoard.RowCount", HeightText, 1, SplatoonDrawing.CanvasHeight, out int rowCount, out error))
             return false;
         settings = new DrawingBoardSettings(wait, duration, startRow, startCol, colCount, rowCount, Reverse);
         return true;
@@ -294,21 +315,27 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 
     private static string DescribeError(Exception ex) => ex switch
     {
-        ControllerOperationException { ErrorCode: "Busy" } => "手柄正被脚本或其他任务占用，请先停止后再画",
-        ControllerOperationException { ErrorCode: "InputDisconnected" } => "串口未连接",
+        ControllerOperationException { ErrorCode: "Busy" } => T("Text.DrawingBoard.Busy"),
+        ControllerOperationException { ErrorCode: "InputDisconnected" } => T("Text.DrawingBoard.NotConnected"),
         // 未经用户停止的取消来自运行租约：设备断开或被接管
-        OperationCanceledException => "手柄连接已断开",
+        OperationCanceledException => T("Text.DrawingBoard.Disconnected"),
         _ => ex.Message,
     };
 
-    private static bool TryParseField(string name, string text, int min, int max, out int value, [NotNullWhen(false)] out string? error)
+    private static bool TryParseField(string nameKey, string text, int min, int max, out int value, [NotNullWhen(false)] out string? error)
     {
         if (int.TryParse(text.Trim(), out value) && value >= min && value <= max)
         {
             error = null;
             return true;
         }
-        error = $"{name}应为 {min}～{max} 的整数";
+        error = Format("Text.DrawingBoard.InvalidField", T(nameKey), min, max);
         return false;
     }
+
+    private Task ShowMessageAsync(string message) => _dialogService.ShowMessageAsync(T("Text.DrawingBoard.Title"), message);
+
+    private static string T(string key) => L10nBridge.T(key);
+
+    private static string Format(string key, params object[] args) => string.Format(CultureInfo.CurrentCulture, T(key), args);
 }
