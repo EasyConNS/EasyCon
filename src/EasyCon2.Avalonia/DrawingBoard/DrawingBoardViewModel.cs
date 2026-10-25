@@ -26,11 +26,11 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     private readonly IImageProcessor _imageProcessor;
     private readonly IUiDispatcher _ui;
     private readonly ILogService _logService;
-    private PixelImage? _image;
     private CancellationTokenSource? _source;
 
+    /// <summary>已载入的画布图片：既是绘制的像素来源，也直接用于预览（只解码一次）。</summary>
     [ObservableProperty]
-    private byte[]? _picturePng;
+    private PixelImage? _picture;
 
     [ObservableProperty]
     private string _startPosXText = "0";
@@ -107,8 +107,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        _image = image;
-        PicturePng = _imageProcessor.LoadAsPng(filePath);
+        Picture = image;
     }
 
     [RelayCommand]
@@ -121,7 +120,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         }
         if (DrawTask is { IsCompleted: false })
             return;
-        if (_image == null)
+        if (Picture == null)
         {
             await _dialogService.ShowMessageAsync(MessageTitle, "未加载图片");
             return;
@@ -134,7 +133,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 
         _source = new CancellationTokenSource();
         CancellationToken token = _source.Token;
-        PixelImage image = _image;
+        PixelImage image = Picture;
         ProgressValue = 0;
         ProgressText = "准备中…";
         DrawTask = Task.Run(() => RunDraw(image, settings, token));
@@ -239,7 +238,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task EvaluateAsync()
     {
-        if (_image == null)
+        if (Picture == null)
         {
             await _dialogService.ShowMessageAsync(MessageTitle, "未加载图片");
             return;
@@ -251,7 +250,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(_image, settings);
+        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Picture, settings);
         TimeSpan elapsed = SplatoonDrawing.Estimate(rows, settings.Wait, settings.Duration);
         EvaluateText = SplatoonDrawing.FormatEvaluation(elapsed);
     }

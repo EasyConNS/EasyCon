@@ -20,7 +20,7 @@
                    Width="822"
                    Height="282"
                    Stretch="Fill"
-                   Source="{Binding PicturePng, Converter={x:Static conv:PngBytesToBitmapConverter.Instance}}"/>
+                   Source="{Binding Picture, Converter={x:Static conv:PixelImageToBitmapConverter.Instance}}"/>
         </Border>
 
         <Grid ColumnDefinitions="*,Auto">

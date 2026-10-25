@@ -269,6 +269,18 @@ public class DrawingBoardTests
         Assert.That(f.Pad.Events.Last(), Is.EqualTo(LeaseRelease));
     }
 
+    [Test]
+    public async Task Load_DecodesOnceAndPreviewsTheSamePixels()
+    {
+        PixelImage image = Canvas((0, 1));
+        Fixture f = new(image);
+
+        await f.Vm.LoadPictureFileAsync("x.png");
+
+        Assert.That(f.Images.Decodes, Is.EqualTo(1));
+        Assert.That(f.Vm.Picture, Is.SameAs(image));
+    }
+
     [TestCase(100, 50)]
     [TestCase(320, 100)]
     [TestCase(300, 120)]
@@ -280,7 +292,7 @@ public class DrawingBoardTests
         await f.Vm.EvaluateCommand.ExecuteAsync(null);
 
         Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "图片不是320*120大小，请重新修改", "未加载图片" }));
-        Assert.That(f.Vm.PicturePng, Is.Null);
+        Assert.That(f.Vm.Picture, Is.Null);
     }
 
     [Test]
@@ -353,7 +365,7 @@ public class DrawingBoardTests
         await f.Vm.StartCommand.ExecuteAsync(null);
         await f.Vm.DrawTask!;
 
-        Assert.That(f.Vm.PicturePng, Is.Not.Null);
+        Assert.That(f.Vm.Picture, Is.Not.Null);
         Assert.That(f.Pad.Events, Does.Contain("press A"));
         Assert.That(f.Pad.Events.Last(), Is.EqualTo(LeaseRelease));
         Assert.That(f.Vm.IsStartEnabled, Is.True);
@@ -460,9 +472,11 @@ public class DrawingBoardTests
         public Fixture(PixelImage image)
         {
             Runner = new FakeRunner(Pad);
-            Vm = new DrawingBoardViewModel(Runner, Dialogs, new FakeImages(image), SynchronousUiDispatcher.Instance, new NullLog());
+            Images = new FakeImages(image);
+            Vm = new DrawingBoardViewModel(Runner, Dialogs, Images, SynchronousUiDispatcher.Instance, new NullLog());
         }
 
+        public FakeImages Images { get; }
         public RecordingPad Pad { get; } = new();
         public FakeRunner Runner { get; }
         public FakeDialogs Dialogs { get; } = new();
@@ -539,9 +553,20 @@ public class DrawingBoardTests
 
     private sealed class FakeImages(PixelImage image) : IImageProcessor
     {
+        public int Decodes { get; private set; }
         public byte[]? Crop(byte[] sourceBytes, int x, int y, int width, int height) => null;
-        public byte[]? LoadAsPng(string filePath) => [1];
-        public PixelImage? LoadPixels(string filePath) => image;
+
+        public byte[]? LoadAsPng(string filePath)
+        {
+            Decodes++;
+            return [1];
+        }
+
+        public PixelImage? LoadPixels(string filePath)
+        {
+            Decodes++;
+            return image;
+        }
     }
 
     private sealed class FakeDialogs : IDialogService

@@ -23,6 +23,9 @@ public sealed class PixelImage
 
     public int Height { get; }
 
+    /// <summary>逐行紧密排列的 RGBA8888（非预乘）像素。</summary>
+    public ReadOnlySpan<byte> Rgba => _rgba.AsSpan(0, Width * Height * 4);
+
     public Color GetPixel(int x, int y)
     {
         if (x < 0 || x >= Width)
