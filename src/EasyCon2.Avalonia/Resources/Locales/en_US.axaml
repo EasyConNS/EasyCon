@@ -213,7 +213,7 @@
     <x:String x:Key="Text.Feature.Splatoon">Splatoon</x:String>
     <x:String x:Key="Text.Feature.FreeDraw">Free Drawing</x:String>
     <x:String x:Key="Text.DrawingBoard.Title">Drawing Board</x:String>
-    <x:String x:Key="Text.DrawingBoard.Region">(Top-left 0,0; bottom-right 320,120)  Start position        Size</x:String>
+    <x:String x:Key="Text.DrawingBoard.Region">Canvas coordinates: top-left 0,0, bottom-right 319,119</x:String>
     <x:String x:Key="Text.DrawingBoard.LoadPicture">Load Picture</x:String>
     <x:String x:Key="Text.DrawingBoard.ImageFilter">Images</x:String>
     <x:String x:Key="Text.DrawingBoard.Reverse">Invert</x:String>

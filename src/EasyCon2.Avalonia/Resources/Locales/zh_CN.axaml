@@ -213,7 +213,7 @@
     <x:String x:Key="Text.Feature.Splatoon">喷射战士</x:String>
     <x:String x:Key="Text.Feature.FreeDraw">自由画板</x:String>
     <x:String x:Key="Text.DrawingBoard.Title">画板</x:String>
-    <x:String x:Key="Text.DrawingBoard.Region">（左上角0，0，右下角320，120）绘制起点        绘制大小</x:String>
+    <x:String x:Key="Text.DrawingBoard.Region">画布坐标：左上角 0,0，右下角 319,119</x:String>
     <x:String x:Key="Text.DrawingBoard.LoadPicture">加载图片</x:String>
     <x:String x:Key="Text.DrawingBoard.ImageFilter">图片</x:String>
     <x:String x:Key="Text.DrawingBoard.Reverse">反转黑白</x:String>
