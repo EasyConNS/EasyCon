@@ -35,4 +35,39 @@ public sealed class PixelImage
         int i = (y * Width + x) * 4;
         return Color.FromArgb(_rgba[i + 3], _rgba[i], _rgba[i + 1], _rgba[i + 2]);
     }
+
+    /// <summary>
+    /// 先顺时针旋转 <paramref name="quarterTurns"/> 个 90°，再按旋转后的方向水平/垂直翻转。
+    /// 只搬动像素、不重采样；无需变换时原样返回。
+    /// </summary>
+    public PixelImage Orient(int quarterTurns, bool flipHorizontal, bool flipVertical)
+    {
+        int turns = ((quarterTurns % 4) + 4) % 4;
+        if (turns == 0 && !flipHorizontal && !flipVertical)
+            return this;
+
+        bool swap = turns % 2 == 1;
+        int width = swap ? Height : Width;
+        int height = swap ? Width : Height;
+        byte[] rgba = new byte[width * height * 4];
+        for (int y = 0; y < Height; y++)
+        {
+            for (int x = 0; x < Width; x++)
+            {
+                (int tx, int ty) = turns switch
+                {
+                    1 => (Height - 1 - y, x),
+                    2 => (Width - 1 - x, Height - 1 - y),
+                    3 => (y, Width - 1 - x),
+                    _ => (x, y),
+                };
+                if (flipHorizontal)
+                    tx = width - 1 - tx;
+                if (flipVertical)
+                    ty = height - 1 - ty;
+                Array.Copy(_rgba, (y * Width + x) * 4, rgba, (ty * width + tx) * 4, 4);
+            }
+        }
+        return new PixelImage(width, height, rgba);
+    }
 }

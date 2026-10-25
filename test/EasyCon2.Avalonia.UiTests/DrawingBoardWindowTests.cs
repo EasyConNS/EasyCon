@@ -62,7 +62,7 @@ public class DrawingBoardWindowTests
     [Test]
     public void Preview_ScalesWithWindowInBothDirections()
     {
-        double normal = PreviewWidthAt(900, 500);
+        double normal = PreviewWidthAt(900, 560);
         double larger = PreviewWidthAt(1400, 900);
         double wideButShort = PreviewWidthAt(1400, 480);
 

@@ -248,6 +248,10 @@
     <x:String x:Key="Text.DrawingBoard.FitCover">Fill (crop)</x:String>
     <x:String x:Key="Text.DrawingBoard.FitStretch">Stretch</x:String>
     <x:String x:Key="Text.DrawingBoard.SourceSize">Source {0}×{1}</x:String>
+    <x:String x:Key="Text.DrawingBoard.Rotate">Rotate</x:String>
+    <x:String x:Key="Text.DrawingBoard.RotateTip">Rotate the picture clockwise; flips apply to the rotated picture</x:String>
+    <x:String x:Key="Text.DrawingBoard.FlipHorizontal">Flip horizontally</x:String>
+    <x:String x:Key="Text.DrawingBoard.FlipVertical">Flip vertically</x:String>
     <x:String x:Key="Text.DrawingBoard.NotConnected">Serial port not connected</x:String>
     <x:String x:Key="Text.DrawingBoard.NoPicture">No picture loaded</x:String>
     <x:String x:Key="Text.DrawingBoard.InvalidField">{0} must be an integer from {1} to {2}</x:String>

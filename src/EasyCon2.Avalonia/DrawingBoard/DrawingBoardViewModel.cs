@@ -79,6 +79,18 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private int _fitModeIndex;
 
+    /// <summary>原图顺时针旋转的 90° 次数（0～3），对应下拉框 0°/90°/180°/270°。</summary>
+    [ObservableProperty]
+    private int _rotationIndex;
+
+    /// <summary>按旋转后的方向左右翻转。</summary>
+    [ObservableProperty]
+    private bool _flipHorizontal;
+
+    /// <summary>按旋转后的方向上下翻转。</summary>
+    [ObservableProperty]
+    private bool _flipVertical;
+
     /// <summary>原图尺寸，例如"原图 640×480"；未载入时为空。</summary>
     [ObservableProperty]
     private string _sourceSizeText = "";
@@ -122,10 +134,17 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 
     partial void OnFitModeIndexChanged(int value) => UpdateCanvas();
 
+    partial void OnRotationIndexChanged(int value) => UpdateCanvas();
+
+    partial void OnFlipHorizontalChanged(bool value) => UpdateCanvas();
+
+    partial void OnFlipVerticalChanged(bool value) => UpdateCanvas();
+
+    /// <summary>原图 → 旋转/翻转 → 适配到 320×120 → 二值化。均从已解码的原图重新计算，不重新读文件。</summary>
     private void UpdateCanvas()
     {
-        _canvas = _source == null ? null : _imageProcessor.FitTo(_source, SplatoonDrawing.CanvasWidth, SplatoonDrawing.CanvasHeight,
-            FitModes[Math.Clamp(FitModeIndex, 0, FitModes.Length - 1)]);
+        _canvas = _source == null ? null : _imageProcessor.FitTo(_source.Orient(RotationIndex, FlipHorizontal, FlipVertical),
+            SplatoonDrawing.CanvasWidth, SplatoonDrawing.CanvasHeight, FitModes[Math.Clamp(FitModeIndex, 0, FitModes.Length - 1)]);
         UpdateMask();
     }
 

@@ -248,6 +248,10 @@
     <x:String x:Key="Text.DrawingBoard.FitCover">等比裁切</x:String>
     <x:String x:Key="Text.DrawingBoard.FitStretch">拉伸</x:String>
     <x:String x:Key="Text.DrawingBoard.SourceSize">原图 {0}×{1}</x:String>
+    <x:String x:Key="Text.DrawingBoard.Rotate">旋转</x:String>
+    <x:String x:Key="Text.DrawingBoard.RotateTip">顺时针旋转原图；翻转按旋转后的方向进行</x:String>
+    <x:String x:Key="Text.DrawingBoard.FlipHorizontal">水平翻转</x:String>
+    <x:String x:Key="Text.DrawingBoard.FlipVertical">垂直翻转</x:String>
     <x:String x:Key="Text.DrawingBoard.NotConnected">串口未连接</x:String>
     <x:String x:Key="Text.DrawingBoard.NoPicture">未加载图片</x:String>
     <x:String x:Key="Text.DrawingBoard.InvalidField">{0}应为 {1}～{2} 的整数</x:String>

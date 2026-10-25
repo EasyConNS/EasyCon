@@ -276,6 +276,79 @@ public class DrawingBoardTests
         Assert.That(InkFraction(f.Vm.Mask!), Is.Zero, "越界的下标按不抖动处理");
     }
 
+    // 3×2 原图，像素按编号：
+    //   0 1 2
+    //   3 4 5
+    [TestCase(0, false, false, 3, "0 1 2|3 4 5")]
+    [TestCase(1, false, false, 2, "3 0|4 1|5 2")]
+    [TestCase(2, false, false, 3, "5 4 3|2 1 0")]
+    [TestCase(3, false, false, 2, "2 5|1 4|0 3")]
+    [TestCase(0, true, false, 3, "2 1 0|5 4 3")]
+    [TestCase(0, false, true, 3, "3 4 5|0 1 2")]
+    [TestCase(0, true, true, 3, "5 4 3|2 1 0")]
+    [TestCase(1, true, false, 2, "0 3|1 4|2 5")]
+    [TestCase(1, false, true, 2, "5 2|4 1|3 0")]
+    [TestCase(-1, false, false, 2, "2 5|1 4|0 3")]
+    public void Orient_RotatesClockwiseThenFlips(int quarterTurns, bool flipHorizontal, bool flipVertical, int width, string expected)
+    {
+        byte[] rgba = new byte[3 * 2 * 4];
+        for (int i = 0; i < 6; i++)
+        {
+            rgba[i * 4] = (byte)i;
+            rgba[i * 4 + 3] = 255;
+        }
+
+        PixelImage oriented = new PixelImage(3, 2, rgba).Orient(quarterTurns, flipHorizontal, flipVertical);
+
+        Assert.That(oriented.Width, Is.EqualTo(width));
+        string actual = string.Join("|", Enumerable.Range(0, oriented.Height)
+            .Select(y => string.Join(" ", Enumerable.Range(0, oriented.Width).Select(x => oriented.GetPixel(x, y).R))));
+        Assert.That(actual, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void Orient_WithoutChange_ReturnsTheSameImage()
+    {
+        PixelImage image = Canvas((0, 0));
+
+        Assert.That(image.Orient(0, false, false), Is.SameAs(image));
+        Assert.That(image.Orient(4, false, false), Is.SameAs(image));
+    }
+
+    [Test]
+    public async Task RotateAndFlip_MoveWhatGetsDrawn()
+    {
+        Fixture f = new(Canvas((0, 0)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        Assert.That(f.Vm.Mask![0, 0], Is.True);
+
+        f.Vm.FlipHorizontal = true;
+        Assert.That(f.Vm.Mask![319, 0], Is.True);
+        Assert.That(f.Vm.Mask![0, 0], Is.False);
+
+        f.Vm.FlipVertical = true;
+        Assert.That(f.Vm.Mask![319, 119], Is.True);
+
+        f.Vm.FlipHorizontal = false;
+        f.Vm.FlipVertical = false;
+        f.Vm.RotationIndex = 2;
+        Assert.That(f.Vm.Mask![319, 119], Is.True, "旋转 180° 与同时水平、垂直翻转等效");
+
+        Assert.That(f.Images.Decodes, Is.EqualTo(1), "旋转/翻转不重新读文件");
+        Assert.That(f.Vm.SourceSizeText, Is.EqualTo("原图 320×120"), "显示的是原图尺寸");
+    }
+
+    [Test]
+    public async Task Rotate90_FitsThePortraitPicture()
+    {
+        Fixture f = new(new PixelImage(640, 480, White(640, 480)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+
+        f.Vm.RotationIndex = 1;
+
+        Assert.That(f.Images.FittedSizes, Is.EqualTo(new[] { (640, 480), (480, 640) }));
+    }
+
     [Test]
     public void MaskPreview_IsBlackWhereInk()
     {
@@ -849,9 +922,12 @@ public class DrawingBoardTests
         public List<ImageFit> Fits { get; } = [];
 
         /// <summary>记录适配方式；尺寸已一致时原样返回（与真实实现相同），否则给一张同尺寸白图。</summary>
+        public List<(int Width, int Height)> FittedSizes { get; } = [];
+
         public PixelImage FitTo(PixelImage source, int width, int height, ImageFit fit)
         {
             Fits.Add(fit);
+            FittedSizes.Add((source.Width, source.Height));
             return source.Width == width && source.Height == height ? source : new PixelImage(width, height, White(width, height));
         }
     }

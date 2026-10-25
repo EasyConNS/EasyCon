@@ -7,7 +7,7 @@
         x:DataType="vm:DrawingBoardViewModel"
         Title="{loc:Translate Text.DrawingBoard.Title}"
         Width="900"
-        Height="500"
+        Height="560"
         MinWidth="480"
         MinHeight="480"
         WindowStartupLocation="CenterScreen">
@@ -51,6 +51,25 @@
                     <ComboBoxItem Content="{loc:Translate Text.DrawingBoard.FitStretch}"/>
                 </ComboBox>
                 <TextBlock Text="{Binding SourceSizeText}" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- 原图方向：先顺时针旋转，再按旋转后的方向翻转 -->
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock Text="{loc:Translate Text.DrawingBoard.Rotate}" VerticalAlignment="Center"/>
+                <ComboBox SelectedIndex="{Binding RotationIndex}"
+                          ToolTip.Tip="{loc:Translate Text.DrawingBoard.RotateTip}"
+                          VerticalAlignment="Center">
+                    <ComboBoxItem Content="0°"/>
+                    <ComboBoxItem Content="90°"/>
+                    <ComboBoxItem Content="180°"/>
+                    <ComboBoxItem Content="270°"/>
+                </ComboBox>
+                <CheckBox Content="{loc:Translate Text.DrawingBoard.FlipHorizontal}"
+                          IsChecked="{Binding FlipHorizontal}"
+                          VerticalAlignment="Center"/>
+                <CheckBox Content="{loc:Translate Text.DrawingBoard.FlipVertical}"
+                          IsChecked="{Binding FlipVertical}"
+                          VerticalAlignment="Center"/>
             </StackPanel>
 
             <!-- 抖动：顺序与 DitherMode 一致 -->
