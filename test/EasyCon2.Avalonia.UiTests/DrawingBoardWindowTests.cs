@@ -14,7 +14,7 @@ using EasyCon2.Avalonia.Services;
 
 namespace EasyCon2.Avalonia.UiTests;
 
-/// <summary>画板窗口：窄屏下不溢出（预览等比缩小、参数分组换行），对话框归属画板窗口。</summary>
+/// <summary>画板窗口：预览随窗口等比缩放、最小尺寸下不溢出，对话框归属画板窗口。</summary>
 [TestFixture]
 public class DrawingBoardWindowTests
 {
@@ -36,20 +36,22 @@ public class DrawingBoardWindowTests
     }
 
     [Test]
-    public void NarrowWindow_NothingOverflowsHorizontally()
+    public void MinimumSize_NothingOverflows()
     {
-        DrawingBoardWindow window = Show(520);
+        DrawingBoardWindow window = Show(480, 480);
         try
         {
-            double clientWidth = window.ClientSize.Width;
+            Assert.That(window.ClientSize, Is.EqualTo(new Size(window.MinWidth, window.MinHeight)));
+            Size client = window.ClientSize;
             string[] overflowing = window.GetLogicalDescendants().OfType<Control>()
                 .Where(c => c.IsEffectivelyVisible && c.Bounds.Width > 0)
-                .Where(c => c.TranslatePoint(new Point(c.Bounds.Width, 0), window) is { } right && right.X > clientWidth + 0.5)
+                .Where(c => c.TranslatePoint(new Point(c.Bounds.Width, c.Bounds.Height), window) is { } corner
+                    && (corner.X > client.Width + 0.5 || corner.Y > client.Height + 0.5))
                 .Select(c => c.GetType().Name + (c.Name is { } name ? "#" + name : ""))
                 .ToArray();
 
             Assert.That(overflowing, Is.Empty);
-            Assert.That(RenderedWidth(window.FindControl<Image>("PictureBox")!, window), Is.GreaterThan(400).And.LessThan(822));
+            Assert.That(PreviewWidth(window), Is.GreaterThan(150), "最小尺寸下预览仍应可用");
         }
         finally
         {
@@ -58,24 +60,23 @@ public class DrawingBoardWindowTests
     }
 
     [Test]
-    public void DefaultWidth_ShowsPreviewAtFullSize()
+    public void Preview_ScalesWithWindowInBothDirections()
     {
-        DrawingBoardWindow window = Show(900);
-        try
-        {
-            Assert.That(RenderedWidth(window.FindControl<Image>("PictureBox")!, window), Is.EqualTo(822).Within(0.5));
-        }
-        finally
-        {
-            window.Close();
-        }
+        double normal = PreviewWidthAt(900, 500);
+        double larger = PreviewWidthAt(1400, 900);
+        double wideButShort = PreviewWidthAt(1400, 480);
+
+        Assert.That(normal, Is.GreaterThan(800), "默认尺寸下预览应接近填满宽度");
+        Assert.That(larger, Is.GreaterThan(normal * 1.3), "窗口放大时预览应跟着放大");
+        Assert.That(wideButShort, Is.LessThan(larger * 0.8), "同样宽度下窗口变矮，预览应受高度限制等比缩小");
     }
 
-    [Test]
-    public void ScaledPreview_ClickMapsToCanvasCoordinates()
+    [TestCase(480, 480)]
+    [TestCase(1400, 900)]
+    public void ScaledPreview_ClickMapsToCanvasCoordinates(double width, double height)
     {
         L10nBridge.Resolver = key => key == "Text.DrawingBoard.CurPos" ? "{0},{1}" : null;
-        DrawingBoardWindow window = Show(520);
+        DrawingBoardWindow window = Show(width, height);
         try
         {
             Image picture = window.FindControl<Image>("PictureBox")!;
@@ -119,14 +120,29 @@ public class DrawingBoardWindowTests
         }
     }
 
-    private static DrawingBoardWindow Show(double width)
+    private static double PreviewWidthAt(double width, double height)
+    {
+        DrawingBoardWindow window = Show(width, height);
+        try
+        {
+            return PreviewWidth(window);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    private static double PreviewWidth(DrawingBoardWindow window) => RenderedWidth(window.FindControl<Image>("PictureBox")!, window);
+
+    private static DrawingBoardWindow Show(double width, double height)
     {
         DrawingBoardViewModel vm = new(new DisconnectedRunner(), new DialogService(), new SkiaImageProcessor(),
             SynchronousUiDispatcher.Instance, new LogService())
         {
             Picture = new PixelImage(320, 120, Enumerable.Repeat((byte)255, 320 * 120 * 4).ToArray()),
         };
-        DrawingBoardWindow window = new() { DataContext = vm, Width = width };
+        DrawingBoardWindow window = new() { DataContext = vm, Width = width, Height = height };
         window.Show();
         _ = window.CaptureRenderedFrame();
         return window;

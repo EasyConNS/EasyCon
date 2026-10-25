@@ -31,7 +31,7 @@ public partial class DrawingBoardWindow : Window
         Opened += (_, _) => FitToScreen();
     }
 
-    // 布局：默认宽度在小屏上可能超出可用区域，打开时收进屏幕工作区
+    // 布局：默认尺寸在小屏上可能超出可用区域，打开时收进屏幕工作区
     private void FitToScreen()
     {
         if (Screens.ScreenFromWindow(this) is not { } screen)
@@ -40,11 +40,8 @@ public partial class DrawingBoardWindow : Window
         double maxHeight = screen.WorkingArea.Height / screen.Scaling;
         if (Width > maxWidth)
             Width = Math.Max(MinWidth, maxWidth * 0.95);
-        if (Bounds.Height > maxHeight)
-        {
-            SizeToContent = SizeToContent.Manual;
+        if (Height > maxHeight)
             Height = Math.Max(MinHeight, maxHeight * 0.95);
-        }
     }
 
     // 指针坐标与控件尺寸属于视觉树信息，只在此取出后交给 ViewModel 换算
