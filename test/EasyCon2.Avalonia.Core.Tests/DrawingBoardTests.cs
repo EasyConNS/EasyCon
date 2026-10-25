@@ -53,7 +53,7 @@ public class DrawingBoardTests
     {
         PixelImage image = Canvas((0, 3), (0, 4), (0, 5));
 
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas with { Col = 5 });
+        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas with { ColCount = 5 });
 
         Assert.That(rows[0].Select(Describe), Is.EqualTo(new[] { "0:3-4" }));
     }
@@ -63,7 +63,7 @@ public class DrawingBoardTests
     {
         PixelImage image = Canvas((5, 10));
 
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas with { Row = 1, Col = 3, Reverse = true });
+        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas with { RowCount = 1, ColCount = 3, Reverse = true });
 
         Assert.That(rows[0].Select(Describe), Is.EqualTo(new[] { "0:0-2" }));
     }
@@ -78,10 +78,25 @@ public class DrawingBoardTests
         PixelImage image = new(320, 120, rgba);
 
         List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas);
-        List<List<DrawingLine>> reversed = SplatoonDrawing.SearchLines(image, FullCanvas with { Col = 8, Reverse = true });
+        List<List<DrawingLine>> reversed = SplatoonDrawing.SearchLines(image, FullCanvas with { ColCount = 8, Reverse = true });
 
         Assert.That(rows[0].Select(Describe), Is.EqualTo(new[] { "0:2-2", "0:6-6" }));
         Assert.That(reversed[0].Select(Describe), Is.EqualTo(new[] { "0:0-1", "0:3-5", "0:7-7" }));
+    }
+
+    [Test]
+    public void SearchLines_PixelExactlyAtThreshold_KeepsCurrentState()
+    {
+        // R+G+B 恰好 382：既不开始也不结束线段（沿用旧版的严格比较）
+        byte[] rgba = White(320, 120);
+        SetPixel(rgba, 0, 1, 127, 127, 128, 255);
+        SetPixel(rgba, 0, 3, 0, 0, 0, 255);
+        SetPixel(rgba, 0, 4, 127, 127, 128, 255);
+        PixelImage image = new(320, 120, rgba);
+
+        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas);
+
+        Assert.That(rows[0].Select(Describe), Is.EqualTo(new[] { "0:3-4" }));
     }
 
     [Test]
@@ -412,7 +427,7 @@ public class DrawingBoardTests
         Assert.That(f.Vm.CurPosText, Is.EqualTo(expected));
     }
 
-    private static string Describe(DrawingLine line) => $"{line.start.X}:{line.start.Y}-{line.end.Y}";
+    private static string Describe(DrawingLine line) => $"{line.Row}:{line.StartCol}-{line.EndCol}";
 
     private static IEnumerable<string> Clicks(GamePadKey key, int count)
         => Enumerable.Repeat("click " + key, count);

@@ -92,23 +92,23 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         await LoadPictureFileAsync(files[0]);
     }
 
-    internal async Task LoadPictureFileAsync(string filepath)
+    internal async Task LoadPictureFileAsync(string filePath)
     {
-        PixelImage? image = _imageProcessor.LoadPixels(filepath);
+        PixelImage? image = _imageProcessor.LoadPixels(filePath);
         if (image == null)
         {
             await _dialogService.ShowMessageAsync(MessageTitle, "图片加载失败");
             return;
         }
         // 旧版用 && 判断（宽高都不对才提示），且提示后仍会用该图绘制，小图会在绘制中途越界
-        if (image.Width != 320 || image.Height != 120)
+        if (image.Width != SplatoonDrawing.CanvasWidth || image.Height != SplatoonDrawing.CanvasHeight)
         {
             await _dialogService.ShowMessageAsync(MessageTitle, "图片不是320*120大小，请重新修改");
             return;
         }
 
         _image = image;
-        PicturePng = _imageProcessor.LoadAsPng(filepath);
+        PicturePng = _imageProcessor.LoadAsPng(filePath);
     }
 
     [RelayCommand]
@@ -137,12 +137,11 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         PixelImage image = _image;
         ProgressValue = 0;
         ProgressText = "准备中…";
-        //开启一个task执行任务
-        DrawTask = Task.Run(() => DrawTaskOpt(image, settings, token));
+        DrawTask = Task.Run(() => RunDraw(image, settings, token));
         IsStartEnabled = false;
     }
 
-    private void DrawTaskOpt(PixelImage image, DrawingBoardSettings settings, CancellationToken token)
+    private void RunDraw(PixelImage image, DrawingBoardSettings settings, CancellationToken token)
     {
         long total = 0;
         long done = 0;
@@ -265,8 +264,8 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     {
         if (width <= 0 || height <= 0)
             return;
-        int col = Math.Clamp((int)(x * 320 / width), 0, 319);
-        int row = Math.Clamp((int)(y * 120 / height), 0, 119);
+        int col = Math.Clamp((int)(x * SplatoonDrawing.CanvasWidth / width), 0, SplatoonDrawing.CanvasWidth - 1);
+        int row = Math.Clamp((int)(y * SplatoonDrawing.CanvasHeight / height), 0, SplatoonDrawing.CanvasHeight - 1);
         CurPosText = "当前位置:" + col.ToString() + "," + row.ToString();
     }
 
@@ -285,12 +284,12 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         settings = null;
         if (!TryParseField("延迟", DelayText, 0, 10000, out int wait, out error)
             || !TryParseField("按键持续", DurationText, 1, 10000, out int duration, out error)
-            || !TryParseField("起始行", StartPosYText, 0, 119, out int start_row, out error)
-            || !TryParseField("起始列", StartPosXText, 0, 319, out int start_col, out error)
-            || !TryParseField("列数", WidthText, 1, 320, out int col, out error)
-            || !TryParseField("行数", HeightText, 1, 120, out int row, out error))
+            || !TryParseField("起始行", StartPosYText, 0, SplatoonDrawing.CanvasHeight - 1, out int startRow, out error)
+            || !TryParseField("起始列", StartPosXText, 0, SplatoonDrawing.CanvasWidth - 1, out int startCol, out error)
+            || !TryParseField("列数", WidthText, 1, SplatoonDrawing.CanvasWidth, out int colCount, out error)
+            || !TryParseField("行数", HeightText, 1, SplatoonDrawing.CanvasHeight, out int rowCount, out error))
             return false;
-        settings = new DrawingBoardSettings(wait, duration, start_row, start_col, col, row, Reverse);
+        settings = new DrawingBoardSettings(wait, duration, startRow, startCol, colCount, rowCount, Reverse);
         return true;
     }
 
