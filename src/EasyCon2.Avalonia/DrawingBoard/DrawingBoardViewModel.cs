@@ -71,6 +71,10 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _showOriginal;
 
+    /// <summary>误差扩散抖动：灰度图效果更好，但墨点更碎、绘制更久；默认关闭。</summary>
+    [ObservableProperty]
+    private bool _dither;
+
     /// <summary>适配方式在 <see cref="FitModes"/> 中的下标；默认等比留白，整张图不变形。</summary>
     [ObservableProperty]
     private int _fitModeIndex;
@@ -112,6 +116,8 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 
     partial void OnShowOriginalChanged(bool value) => UpdateMask();
 
+    partial void OnDitherChanged(bool value) => UpdateMask();
+
     partial void OnFitModeIndexChanged(int value) => UpdateCanvas();
 
     private void UpdateCanvas()
@@ -123,7 +129,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 
     private void UpdateMask()
     {
-        Mask = _canvas == null ? null : InkMask.Binarize(_canvas, new BinarizeOptions(ThresholdPercent, Reverse));
+        Mask = _canvas == null ? null : InkMask.Binarize(_canvas, new BinarizeOptions(ThresholdPercent, Reverse, Dither));
         Preview = ShowOriginal ? _canvas : Mask?.ToPreview();
     }
 

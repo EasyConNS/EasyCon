@@ -219,6 +219,8 @@
     <x:String x:Key="Text.DrawingBoard.Reverse">反转黑白</x:String>
     <x:String x:Key="Text.DrawingBoard.Threshold">阈值</x:String>
     <x:String x:Key="Text.DrawingBoard.ShowOriginal">显示原图</x:String>
+    <x:String x:Key="Text.DrawingBoard.Dither">抖动</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherTip">用点的疏密表现明暗，灰度照片效果更好，但墨点更碎、绘制更久</x:String>
     <x:String x:Key="Text.DrawingBoard.StartCol">起始列</x:String>
     <x:String x:Key="Text.DrawingBoard.StartRow">起始行</x:String>
     <x:String x:Key="Text.DrawingBoard.ColCount">列数</x:String>

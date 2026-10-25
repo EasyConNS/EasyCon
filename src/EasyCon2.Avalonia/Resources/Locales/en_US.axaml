@@ -219,6 +219,8 @@
     <x:String x:Key="Text.DrawingBoard.Reverse">Invert</x:String>
     <x:String x:Key="Text.DrawingBoard.Threshold">Threshold</x:String>
     <x:String x:Key="Text.DrawingBoard.ShowOriginal">Show original</x:String>
+    <x:String x:Key="Text.DrawingBoard.Dither">Dither</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherTip">Represents shades with dot density. Better for grayscale photos, but dots are scattered and drawing takes longer.</x:String>
     <x:String x:Key="Text.DrawingBoard.StartCol">Start col</x:String>
     <x:String x:Key="Text.DrawingBoard.StartRow">Start row</x:String>
     <x:String x:Key="Text.DrawingBoard.ColCount">Columns</x:String>

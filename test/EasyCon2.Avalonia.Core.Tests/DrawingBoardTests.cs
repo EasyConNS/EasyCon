@@ -177,6 +177,62 @@ public class DrawingBoardTests
     }
 
     [Test]
+    public void Dither_TurnsMidGrayIntoAboutHalfDots()
+    {
+        PixelImage gray = Filled(128);
+
+        double plain = InkFraction(InkMask.Binarize(gray, new BinarizeOptions(50, false)));
+        double dithered = InkFraction(InkMask.Binarize(gray, new BinarizeOptions(50, false, Dither: true)));
+
+        Assert.That(plain, Is.Zero, "不抖动时灰度 128 略亮于分界，整片留空");
+        Assert.That(dithered, Is.InRange(0.45, 0.55));
+    }
+
+    [Test]
+    public void Dither_LeavesPureBlackAndWhiteUnchanged()
+    {
+        PixelImage image = Canvas((5, 5), (5, 6), (60, 200), (119, 319));
+
+        InkMask plain = InkMask.Binarize(image, new BinarizeOptions(50, false));
+        InkMask dithered = InkMask.Binarize(image, new BinarizeOptions(50, false, Dither: true));
+        InkMask reversed = InkMask.Binarize(image, new BinarizeOptions(50, true, Dither: true));
+
+        Assert.That(Cells(dithered), Is.EqualTo(Cells(plain)));
+        Assert.That(Cells(reversed), Is.EqualTo(Cells(plain).Select(ink => !ink)));
+    }
+
+    [Test]
+    public void Dither_DotDensityFollowsBrightness()
+    {
+        byte[] rgba = White(320, 120);
+        for (int row = 0; row < 120; row++)
+            for (int col = 0; col < 320; col++)
+            {
+                byte value = (byte)(255 * col / 319);
+                SetPixel(rgba, row, col, value, value, value, 255);
+            }
+
+        InkMask mask = InkMask.Binarize(new PixelImage(320, 120, rgba), new BinarizeOptions(50, false, Dither: true));
+
+        double darkQuarter = InkFraction(mask, 0, 80);
+        double lightQuarter = InkFraction(mask, 240, 320);
+        Assert.That(darkQuarter, Is.GreaterThan(0.75));
+        Assert.That(lightQuarter, Is.LessThan(0.25));
+    }
+
+    [Test]
+    public async Task DitherOption_UpdatesMaskImmediately()
+    {
+        Fixture f = new(Filled(128));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        Assert.That(InkFraction(f.Vm.Mask!), Is.Zero);
+
+        f.Vm.Dither = true;
+
+        Assert.That(InkFraction(f.Vm.Mask!), Is.InRange(0.45, 0.55));
+    }
+
+    [Test]
     public void MaskPreview_IsBlackWhereInk()
     {
         InkMask mask = new(2, 1, [true, false]);
@@ -590,6 +646,28 @@ public class DrawingBoardTests
         while (dir != null && !File.Exists(Path.Combine(dir.FullName, "EasyCon2.slnx")))
             dir = dir.Parent;
         return dir?.FullName ?? throw new DirectoryNotFoundException("找不到仓库根目录（EasyCon2.slnx）");
+    }
+
+    private static PixelImage Filled(byte gray)
+    {
+        byte[] rgba = White(320, 120);
+        for (int row = 0; row < 120; row++)
+            for (int col = 0; col < 320; col++)
+                SetPixel(rgba, row, col, gray, gray, gray, 255);
+        return new PixelImage(320, 120, rgba);
+    }
+
+    private static IEnumerable<bool> Cells(InkMask mask)
+        => Enumerable.Range(0, mask.Height).SelectMany(row => Enumerable.Range(0, mask.Width).Select(col => mask[col, row]));
+
+    private static double InkFraction(InkMask mask, int fromCol = 0, int toCol = 320)
+    {
+        int ink = 0;
+        for (int row = 0; row < mask.Height; row++)
+            for (int col = fromCol; col < toCol; col++)
+                if (mask[col, row])
+                    ink++;
+        return (double)ink / (mask.Height * (toCol - fromCol));
     }
 
     private static List<List<DrawingLine>> Scan(PixelImage image, DrawingBoardSettings settings, bool reverse = false)
