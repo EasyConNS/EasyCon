@@ -217,6 +217,8 @@
     <x:String x:Key="Text.DrawingBoard.LoadPicture">Load Picture</x:String>
     <x:String x:Key="Text.DrawingBoard.ImageFilter">Images</x:String>
     <x:String x:Key="Text.DrawingBoard.Reverse">Invert</x:String>
+    <x:String x:Key="Text.DrawingBoard.Threshold">Threshold</x:String>
+    <x:String x:Key="Text.DrawingBoard.ShowOriginal">Show original</x:String>
     <x:String x:Key="Text.DrawingBoard.StartCol">Start col</x:String>
     <x:String x:Key="Text.DrawingBoard.StartRow">Start row</x:String>
     <x:String x:Key="Text.DrawingBoard.ColCount">Columns</x:String>

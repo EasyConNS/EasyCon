@@ -1,12 +1,10 @@
 using EasyCon.Core.Capabilities;
-using EasyCon2.Avalonia.Models;
 using EasyScript;
-using System.Drawing;
 
 namespace EasyCon2.Avalonia.DrawingBoard;
 
 /// <summary>画板参数，对应窗体上的各输入框。</summary>
-public sealed record DrawingBoardSettings(int Wait, int Duration, int StartRow, int StartCol, int ColCount, int RowCount, bool Reverse);
+public sealed record DrawingBoardSettings(int Wait, int Duration, int StartRow, int StartCol, int ColCount, int RowCount);
 
 /// <summary>扫描出的一段连续墨点：第 <paramref name="Row"/> 行的 <paramref name="StartCol"/>～<paramref name="EndCol"/> 列（含两端）。</summary>
 public readonly record struct DrawingLine(int Row, int StartCol, int EndCol);
@@ -19,8 +17,6 @@ public sealed class SplatoonDrawing
 {
     public const int CanvasWidth = 320;
     public const int CanvasHeight = 120;
-    /// <summary>R+G+B 的明暗分界；恰好等于分界时保持当前状态（沿用旧版的严格比较）。</summary>
-    private const int InkThreshold = 255 * 3 / 2;
     private const GamePadKey PenKey = GamePadKey.A;
 
     private readonly IPadInput _pad;
@@ -48,9 +44,9 @@ public sealed class SplatoonDrawing
     }
 
     /// <summary>
-    /// 按行扫描绘制区域（超出画布的部分截掉），得到每行的墨点线段；没有墨点的行不出现在结果中。
+    /// 按行扫描掩码的绘制区域（超出画布的部分截掉），得到每行的墨点线段；没有墨点的行不出现在结果中。
     /// </summary>
-    public static List<List<DrawingLine>> SearchLines(PixelImage image, DrawingBoardSettings settings)
+    public static List<List<DrawingLine>> SearchLines(InkMask mask, DrawingBoardSettings settings)
     {
         int endRow = settings.StartRow + Math.Min(settings.RowCount, CanvasHeight - settings.StartRow);
         int endCol = settings.StartCol + Math.Min(settings.ColCount, CanvasWidth - settings.StartCol);
@@ -61,14 +57,12 @@ public sealed class SplatoonDrawing
             int? runStart = null;
             for (int col = settings.StartCol; col < endCol; col++)
             {
-                int brightness = Brightness(image.GetPixel(col, row));
-                bool ink = settings.Reverse ? brightness > InkThreshold : brightness < InkThreshold;
-                bool paper = settings.Reverse ? brightness < InkThreshold : brightness > InkThreshold;
+                bool ink = mask[col, row];
                 if (runStart == null && ink)
                 {
                     runStart = col;
                 }
-                else if (runStart != null && paper)
+                else if (runStart != null && !ink)
                 {
                     lines.Add(new DrawingLine(row, runStart.Value, col - 1));
                     runStart = null;
@@ -84,17 +78,6 @@ public sealed class SplatoonDrawing
                 rows.Add(lines);
         }
         return rows;
-    }
-
-    /// <summary>
-    /// 像素按白底合成后的 R+G+B。旧版直接读 RGB，透明 PNG 的透明区域 RGB 通常为 0，整片背景被当成墨点；
-    /// 不透明像素（含所有 JPG）结果与旧版相同。
-    /// </summary>
-    private static int Brightness(Color color)
-    {
-        int alpha = color.A;
-        int OverWhite(int channel) => (channel * alpha + 255 * (255 - alpha)) / 255;
-        return OverWhite(color.R) + OverWhite(color.G) + OverWhite(color.B);
     }
 
     /// <summary>

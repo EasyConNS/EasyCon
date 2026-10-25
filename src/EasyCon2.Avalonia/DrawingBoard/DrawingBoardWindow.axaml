@@ -25,7 +25,7 @@
                        Width="822"
                        Height="282"
                        Stretch="Fill"
-                       Source="{Binding Picture, Converter={x:Static conv:PixelImageToBitmapConverter.Instance}}"/>
+                       Source="{Binding Preview, Converter={x:Static conv:PixelImageToBitmapConverter.Instance}}"/>
             </Border>
         </Viewbox>
 
@@ -42,9 +42,26 @@
                     VerticalContentAlignment="Center"
                     HorizontalContentAlignment="Center"/>
 
-            <CheckBox Content="{loc:Translate Text.DrawingBoard.Reverse}"
-                      IsChecked="{Binding Reverse}"
-                      VerticalAlignment="Center"/>
+            <!-- 图片处理：阈值决定哪些点算墨点，预览显示的就是将要画的结果 -->
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock Text="{loc:Translate Text.DrawingBoard.Threshold}" VerticalAlignment="Center"/>
+                <Slider Width="120"
+                        Minimum="0"
+                        Maximum="100"
+                        TickFrequency="1"
+                        IsSnapToTickEnabled="True"
+                        Value="{Binding ThresholdPercent}"
+                        VerticalAlignment="Center"/>
+                <TextBlock MinWidth="36"
+                           Text="{Binding ThresholdPercent, StringFormat={}{0}%}"
+                           VerticalAlignment="Center"/>
+                <CheckBox Content="{loc:Translate Text.DrawingBoard.Reverse}"
+                          IsChecked="{Binding Reverse}"
+                          VerticalAlignment="Center"/>
+                <CheckBox Content="{loc:Translate Text.DrawingBoard.ShowOriginal}"
+                          IsChecked="{Binding ShowOriginal}"
+                          VerticalAlignment="Center"/>
+            </StackPanel>
 
             <Grid ColumnDefinitions="Auto,64" RowDefinitions="Auto,Auto" ColumnSpacing="6" RowSpacing="6">
                 <TextBlock Text="{loc:Translate Text.DrawingBoard.StartCol}" VerticalAlignment="Center"/>

@@ -217,6 +217,8 @@
     <x:String x:Key="Text.DrawingBoard.LoadPicture">加载图片</x:String>
     <x:String x:Key="Text.DrawingBoard.ImageFilter">图片</x:String>
     <x:String x:Key="Text.DrawingBoard.Reverse">反转黑白</x:String>
+    <x:String x:Key="Text.DrawingBoard.Threshold">阈值</x:String>
+    <x:String x:Key="Text.DrawingBoard.ShowOriginal">显示原图</x:String>
     <x:String x:Key="Text.DrawingBoard.StartCol">起始列</x:String>
     <x:String x:Key="Text.DrawingBoard.StartRow">起始行</x:String>
     <x:String x:Key="Text.DrawingBoard.ColCount">列数</x:String>

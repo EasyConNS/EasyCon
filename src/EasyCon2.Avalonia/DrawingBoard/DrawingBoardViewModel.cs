@@ -30,9 +30,12 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     private readonly ILogService _logService;
     private CancellationTokenSource? _source;
 
-    /// <summary>已载入的画布图片：既是绘制的像素来源，也直接用于预览（只解码一次）。</summary>
+    /// <summary>已载入的画布图片（只解码一次）；绘制前按阈值转成 <see cref="Mask"/>。</summary>
+    private PixelImage? _canvas;
+
+    /// <summary>预览框显示的图片：默认是二值化结果（黑 = 要画的点），勾选"显示原图"时为原图。</summary>
     [ObservableProperty]
-    private PixelImage? _picture;
+    private PixelImage? _preview;
 
     [ObservableProperty]
     private string _startPosXText = "0";
@@ -54,6 +57,13 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 
     [ObservableProperty]
     private bool _reverse;
+
+    /// <summary>明暗分界，占最大亮度的百分比；50 与旧版写死的分界一致。</summary>
+    [ObservableProperty]
+    private int _thresholdPercent = 50;
+
+    [ObservableProperty]
+    private bool _showOriginal;
 
     [ObservableProperty]
     private bool _isStartEnabled = true;
@@ -78,6 +88,21 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 
     /// <summary>最近一次开始画图的后台任务（测试用于等待绘制结束）。</summary>
     internal Task? DrawTask { get; private set; }
+
+    /// <summary>当前图片按阈值/反转得到的墨点掩码；未载入图片时为 null。</summary>
+    public InkMask? Mask { get; private set; }
+
+    partial void OnReverseChanged(bool value) => UpdateMask();
+
+    partial void OnThresholdPercentChanged(int value) => UpdateMask();
+
+    partial void OnShowOriginalChanged(bool value) => UpdateMask();
+
+    private void UpdateMask()
+    {
+        Mask = _canvas == null ? null : InkMask.Binarize(_canvas, new BinarizeOptions(ThresholdPercent, Reverse));
+        Preview = ShowOriginal ? _canvas : Mask?.ToPreview();
+    }
 
     public string CurPosText => _curPos is { } pos
         ? Format("Text.DrawingBoard.CurPos", pos.Col, pos.Row)
@@ -123,7 +148,8 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        Picture = image;
+        _canvas = image;
+        UpdateMask();
     }
 
     [RelayCommand]
@@ -136,7 +162,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         }
         if (DrawTask is { IsCompleted: false })
             return;
-        if (Picture == null)
+        if (Mask == null)
         {
             await ShowMessageAsync(T("Text.DrawingBoard.NoPicture"));
             return;
@@ -149,20 +175,21 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 
         _source = new CancellationTokenSource();
         CancellationToken token = _source.Token;
-        PixelImage image = Picture;
+        // 取开始时的掩码快照：绘制过程中调整阈值等参数不影响正在画的图
+        InkMask mask = Mask;
         SetProgress(0, "Text.DrawingBoard.Preparing");
-        DrawTask = Task.Run(() => RunDraw(image, settings, token));
+        DrawTask = Task.Run(() => RunDraw(mask, settings, token));
         IsStartEnabled = false;
     }
 
-    private void RunDraw(PixelImage image, DrawingBoardSettings settings, CancellationToken token)
+    private void RunDraw(InkMask mask, DrawingBoardSettings settings, CancellationToken token)
     {
         long total = 0;
         long done = 0;
         Stopwatch clock = new();
         try
         {
-            List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, settings);
+            List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(mask, settings);
             total = (long)SplatoonDrawing.Estimate(rows, settings.Wait, settings.Duration).TotalMilliseconds;
             _runner.Run((pad, runToken) =>
             {
@@ -258,7 +285,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task EvaluateAsync()
     {
-        if (Picture == null)
+        if (Mask == null)
         {
             await ShowMessageAsync(T("Text.DrawingBoard.NoPicture"));
             return;
@@ -270,7 +297,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Picture, settings);
+        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Mask, settings);
         _estimate = SplatoonDrawing.Estimate(rows, settings.Wait, settings.Duration);
         OnPropertyChanged(nameof(EvaluateText));
     }
@@ -309,7 +336,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
             || !TryParseField("Text.DrawingBoard.ColCount", WidthText, 1, SplatoonDrawing.CanvasWidth, out int colCount, out error)
             || !TryParseField("Text.DrawingBoard.RowCount", HeightText, 1, SplatoonDrawing.CanvasHeight, out int rowCount, out error))
             return false;
-        settings = new DrawingBoardSettings(wait, duration, startRow, startCol, colCount, rowCount, Reverse);
+        settings = new DrawingBoardSettings(wait, duration, startRow, startCol, colCount, rowCount);
         return true;
     }
 

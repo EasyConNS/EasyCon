@@ -74,14 +74,14 @@ public class DrawingBoardTests
         Assert.That(f.Vm.EvaluateText, Is.EqualTo("耗时：" + (365 / 60000.0).ToString("0.00") + "mins"));
     }
 
-    private static readonly DrawingBoardSettings FullCanvas = new(0, 0, 0, 0, 320, 120, false);
+    private static readonly DrawingBoardSettings FullCanvas = new(0, 0, 0, 0, 320, 120);
 
     [Test]
     public void SearchLines_SplitsDarkRunsPerRow()
     {
         PixelImage image = Canvas((1, 2), (1, 3), (1, 7));
 
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas);
+        List<List<DrawingLine>> rows = Scan(image, FullCanvas);
 
         Assert.That(rows, Has.Count.EqualTo(1));
         Assert.That(rows[0].Select(Describe), Is.EqualTo(new[] { "1:2-3", "1:7-7" }));
@@ -92,7 +92,7 @@ public class DrawingBoardTests
     {
         PixelImage image = Canvas((0, 318), (0, 319));
 
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas);
+        List<List<DrawingLine>> rows = Scan(image, FullCanvas);
 
         Assert.That(rows[0].Select(Describe), Is.EqualTo(new[] { "0:318-319" }));
     }
@@ -103,7 +103,7 @@ public class DrawingBoardTests
         // 旧版用 end.Y == 0 判断"线段延续到行尾"，第 0 列的单个墨点会被画成整行
         PixelImage image = Canvas((0, 0));
 
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas);
+        List<List<DrawingLine>> rows = Scan(image, FullCanvas);
 
         Assert.That(rows[0].Select(Describe), Is.EqualTo(new[] { "0:0-0" }));
     }
@@ -113,7 +113,7 @@ public class DrawingBoardTests
     {
         PixelImage image = Canvas((0, 3), (0, 4), (0, 5));
 
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas with { ColCount = 5 });
+        List<List<DrawingLine>> rows = Scan(image, FullCanvas with { ColCount = 5 });
 
         Assert.That(rows[0].Select(Describe), Is.EqualTo(new[] { "0:3-4" }));
     }
@@ -123,7 +123,7 @@ public class DrawingBoardTests
     {
         PixelImage image = Canvas((5, 10));
 
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas with { RowCount = 1, ColCount = 3, Reverse = true });
+        List<List<DrawingLine>> rows = Scan(image, FullCanvas with { RowCount = 1, ColCount = 3 }, reverse: true);
 
         Assert.That(rows[0].Select(Describe), Is.EqualTo(new[] { "0:0-2" }));
     }
@@ -137,26 +137,94 @@ public class DrawingBoardTests
         SetPixel(rgba, 0, 6, 0, 0, 0, 200);   // 大部分不透明的黑：仍是墨点
         PixelImage image = new(320, 120, rgba);
 
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas);
-        List<List<DrawingLine>> reversed = SplatoonDrawing.SearchLines(image, FullCanvas with { ColCount = 8, Reverse = true });
+        List<List<DrawingLine>> rows = Scan(image, FullCanvas);
+        List<List<DrawingLine>> reversed = Scan(image, FullCanvas with { ColCount = 8 }, reverse: true);
 
         Assert.That(rows[0].Select(Describe), Is.EqualTo(new[] { "0:2-2", "0:6-6" }));
         Assert.That(reversed[0].Select(Describe), Is.EqualTo(new[] { "0:0-1", "0:3-5", "0:7-7" }));
     }
 
     [Test]
-    public void SearchLines_PixelExactlyAtThreshold_KeepsCurrentState()
+    public void Binarize_DefaultThreshold_MatchesLegacyBoundary()
     {
-        // R+G+B 恰好 382：既不开始也不结束线段（沿用旧版的严格比较）
+        // 50% = R+G+B 382.5：381 为墨点、383 为空白，与旧版一致；旧版恰好 382 时"保持当前状态"，现在按墨点处理
         byte[] rgba = White(320, 120);
+        SetPixel(rgba, 0, 0, 127, 127, 127, 255);
         SetPixel(rgba, 0, 1, 127, 127, 128, 255);
-        SetPixel(rgba, 0, 3, 0, 0, 0, 255);
-        SetPixel(rgba, 0, 4, 127, 127, 128, 255);
+        SetPixel(rgba, 0, 2, 127, 128, 128, 255);
+
+        InkMask mask = InkMask.Binarize(new PixelImage(320, 120, rgba), new BinarizeOptions(50, false));
+
+        Assert.That(new[] { mask[0, 0], mask[1, 0], mask[2, 0] }, Is.EqualTo(new[] { true, true, false }));
+    }
+
+    [TestCase(0, false, false)]
+    [TestCase(30, false, false)]
+    [TestCase(50, false, true)]
+    [TestCase(100, false, true)]
+    [TestCase(30, true, true)]
+    [TestCase(50, true, false)]
+    public void Binarize_ThresholdDecidesWhatIsInk(int percent, bool reverse, bool grayIsInk)
+    {
+        // 灰度 100（R+G+B = 300，约 39%）
+        byte[] rgba = White(320, 120);
+        SetPixel(rgba, 0, 0, 100, 100, 100, 255);
+
+        InkMask mask = InkMask.Binarize(new PixelImage(320, 120, rgba), new BinarizeOptions(percent, reverse));
+
+        Assert.That(mask[0, 0], Is.EqualTo(grayIsInk));
+        Assert.That(mask[1, 0], Is.EqualTo(reverse && percent < 100), "纯白只在反转时可能成为墨点");
+    }
+
+    [Test]
+    public void MaskPreview_IsBlackWhereInk()
+    {
+        InkMask mask = new(2, 1, [true, false]);
+
+        PixelImage preview = mask.ToPreview();
+
+        Assert.That(preview.GetPixel(0, 0).ToArgb(), Is.EqualTo(System.Drawing.Color.Black.ToArgb()));
+        Assert.That(preview.GetPixel(1, 0).ToArgb(), Is.EqualTo(System.Drawing.Color.White.ToArgb()));
+    }
+
+    [Test]
+    public async Task Preview_FollowsThresholdReverseAndShowOriginal()
+    {
+        byte[] rgba = White(320, 120);
+        SetPixel(rgba, 0, 0, 100, 100, 100, 255);
         PixelImage image = new(320, 120, rgba);
+        Fixture f = new(image);
+        await f.Vm.LoadPictureFileAsync("x.png");
+        Assert.That(f.Vm.Preview!.GetPixel(0, 0).R, Is.EqualTo(0), "默认阈值下灰度 100 是墨点");
 
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas);
+        f.Vm.ThresholdPercent = 30;
+        Assert.That(f.Vm.Mask![0, 0], Is.False);
+        Assert.That(f.Vm.Preview!.GetPixel(0, 0).R, Is.EqualTo(255));
 
-        Assert.That(rows[0].Select(Describe), Is.EqualTo(new[] { "0:3-4" }));
+        f.Vm.Reverse = true;
+        Assert.That(f.Vm.Mask![0, 0], Is.True);
+
+        f.Vm.ShowOriginal = true;
+        Assert.That(f.Vm.Preview, Is.SameAs(image));
+        f.Vm.ShowOriginal = false;
+        Assert.That(f.Vm.Preview, Is.Not.SameAs(image));
+    }
+
+    [Test]
+    public async Task Threshold_ChangesWhatGetsDrawn()
+    {
+        byte[] rgba = White(320, 120);
+        SetPixel(rgba, 0, 3, 100, 100, 100, 255);
+        Fixture f = new(new PixelImage(320, 120, rgba));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.DelayText = "0";
+        f.Vm.DurationText = "1";
+        f.Vm.ThresholdPercent = 30;
+
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        await f.Vm.DrawTask!;
+
+        Assert.That(f.Pad.Events, Does.Not.Contain("press A"), "阈值 30% 时灰度 100 不画");
     }
 
     [Test]
@@ -164,7 +232,7 @@ public class DrawingBoardTests
     {
         PixelImage image = Canvas((119, 319), (100, 300));
 
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas with { StartRow = 100, StartCol = 300 });
+        List<List<DrawingLine>> rows = Scan(image, FullCanvas with { StartRow = 100, StartCol = 300 });
 
         Assert.That(rows.SelectMany(r => r).Select(Describe), Is.EqualTo(new[] { "100:300-300", "119:319-319" }));
     }
@@ -173,7 +241,7 @@ public class DrawingBoardTests
     public void Estimate_SumsEveryWaitOfTheDrawSequence()
     {
         // 13 次方向点按 × (50 + 45)，外加每段线：两次移动后各 2 次、落笔后 1 次、抬笔后 1 次延迟，两段共 12 × 45
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Canvas((0, 5), (0, 6), (2, 1)), FullCanvas);
+        List<List<DrawingLine>> rows = Scan(Canvas((0, 5), (0, 6), (2, 1)), FullCanvas);
 
         TimeSpan elapsed = SplatoonDrawing.Estimate(rows, 45, 50);
 
@@ -187,7 +255,7 @@ public class DrawingBoardTests
         RecordingPad pad = new();
         long waited = 0;
 
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas);
+        List<List<DrawingLine>> rows = Scan(image, FullCanvas);
         TimeSpan estimated = SplatoonDrawing.Estimate(rows, 45, 50);
         new SplatoonDrawing(pad, 45, 50, (milliseconds, _) => waited += milliseconds).Draw(rows, CancellationToken.None);
 
@@ -200,7 +268,7 @@ public class DrawingBoardTests
         PixelImage image = Canvas((0, 5), (0, 6), (2, 1), (7, 300), (7, 302), (90, 0));
         List<long> reports = [];
 
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(image, FullCanvas);
+        List<List<DrawingLine>> rows = Scan(image, FullCanvas);
         TimeSpan estimated = SplatoonDrawing.Estimate(rows, 45, 50);
         new SplatoonDrawing(new RecordingPad(), 45, 50, (_, _) => { }, reports.Add).Draw(rows, CancellationToken.None);
 
@@ -230,7 +298,7 @@ public class DrawingBoardTests
     [Test]
     public void Draw_EmitsLegacyKeySequence()
     {
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Canvas((0, 5), (0, 6), (2, 1)), FullCanvas);
+        List<List<DrawingLine>> rows = Scan(Canvas((0, 5), (0, 6), (2, 1)), FullCanvas);
         RecordingPad pad = new();
 
         new SplatoonDrawing(pad, 0, 0).Draw(rows, CancellationToken.None);
@@ -252,7 +320,7 @@ public class DrawingBoardTests
     public void Draw_DoesNotMutateRows_SoOneScanServesEstimateAndRepeatedDraws()
     {
         // 第 0 行先画，结束于第 302 列；第 7 行两段线需从右往左画，旧版会就地 Reverse 该行
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Canvas((0, 302), (7, 5), (7, 300)), FullCanvas);
+        List<List<DrawingLine>> rows = Scan(Canvas((0, 302), (7, 5), (7, 300)), FullCanvas);
         string[] before = rows.SelectMany(r => r).Select(Describe).ToArray();
         RecordingPad first = new();
         RecordingPad second = new();
@@ -275,7 +343,7 @@ public class DrawingBoardTests
     [Test]
     public void Draw_CancelledBeforeStart_SendsNothing()
     {
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Canvas((0, 5)), FullCanvas);
+        List<List<DrawingLine>> rows = Scan(Canvas((0, 5)), FullCanvas);
         RecordingPad pad = new();
 
         Assert.Throws<OperationCanceledException>(() => new SplatoonDrawing(pad, 0, 0).Draw(rows, new CancellationToken(true)));
@@ -285,7 +353,7 @@ public class DrawingBoardTests
     [Test]
     public void Draw_CancelledWhileKeyHeld_StopsPromptly()
     {
-        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(Canvas((0, 100), (0, 101)), FullCanvas);
+        List<List<DrawingLine>> rows = Scan(Canvas((0, 100), (0, 101)), FullCanvas);
         using CancellationTokenSource cts = new();
         RecordingPad pad = new() { WaitForDuration = true, OnKey = cts.Cancel };
         System.Diagnostics.Stopwatch elapsed = System.Diagnostics.Stopwatch.StartNew();
@@ -332,7 +400,9 @@ public class DrawingBoardTests
         await f.Vm.LoadPictureFileAsync("x.png");
 
         Assert.That(f.Images.Decodes, Is.EqualTo(1));
-        Assert.That(f.Vm.Picture, Is.SameAs(image));
+        Assert.That(f.Vm.Mask, Is.Not.Null);
+        f.Vm.ShowOriginal = true;
+        Assert.That(f.Vm.Preview, Is.SameAs(image));
     }
 
     [TestCase(100, 50)]
@@ -346,7 +416,7 @@ public class DrawingBoardTests
         await f.Vm.EvaluateCommand.ExecuteAsync(null);
 
         Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "图片不是320*120大小，请重新修改", "未加载图片" }));
-        Assert.That(f.Vm.Picture, Is.Null);
+        Assert.That(f.Vm.Preview, Is.Null);
     }
 
     [Test]
@@ -419,7 +489,7 @@ public class DrawingBoardTests
         await f.Vm.StartCommand.ExecuteAsync(null);
         await f.Vm.DrawTask!;
 
-        Assert.That(f.Vm.Picture, Is.Not.Null);
+        Assert.That(f.Vm.Preview, Is.Not.Null);
         Assert.That(f.Pad.Events, Does.Contain("press A"));
         Assert.That(f.Pad.Events.Last(), Is.EqualTo(LeaseRelease));
         Assert.That(f.Vm.IsStartEnabled, Is.True);
@@ -507,6 +577,9 @@ public class DrawingBoardTests
             dir = dir.Parent;
         return dir?.FullName ?? throw new DirectoryNotFoundException("找不到仓库根目录（EasyCon2.slnx）");
     }
+
+    private static List<List<DrawingLine>> Scan(PixelImage image, DrawingBoardSettings settings, bool reverse = false)
+        => SplatoonDrawing.SearchLines(InkMask.Binarize(image, new BinarizeOptions(50, reverse)), settings);
 
     private static string Describe(DrawingLine line) => $"{line.Row}:{line.StartCol}-{line.EndCol}";
 

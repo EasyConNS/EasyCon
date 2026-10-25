@@ -140,7 +140,7 @@ public class DrawingBoardWindowTests
         DrawingBoardViewModel vm = new(new DisconnectedRunner(), new DialogService(), new SkiaImageProcessor(),
             SynchronousUiDispatcher.Instance, new LogService())
         {
-            Picture = new PixelImage(320, 120, Enumerable.Repeat((byte)255, 320 * 120 * 4).ToArray()),
+            Preview = new PixelImage(320, 120, Enumerable.Repeat((byte)255, 320 * 120 * 4).ToArray()),
         };
         DrawingBoardWindow window = new() { DataContext = vm, Width = width, Height = height };
         window.Show();
