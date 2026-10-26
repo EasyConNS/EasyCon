@@ -126,6 +126,32 @@ public class DrawingBoardWindowTests
     }
 
     [Test]
+    public void DraggingOnThePreview_SelectsTheRegion()
+    {
+        L10nBridge.Resolver = key => key == "Text.DrawingBoard.RegionRange" ? "{0}-{1},{2}-{3}" : null;
+        DrawingBoardWindow window = Show(1400, 900);
+        try
+        {
+            DrawingBoardViewModel vm = (DrawingBoardViewModel)window.DataContext!;
+            vm.SelectRegion = true;
+            Image picture = window.FindControl<Image>("PictureBox")!;
+            // 逻辑坐标（822×282 坐标系）→ 窗口坐标；画布列 = x × 320 / 822
+            Point Canvas(int col, int row) => picture.TranslatePoint(new Point((col + 0.5) * 822 / 320, (row + 0.5) * 282 / 120), window)!.Value;
+
+            window.MouseDown(Canvas(10, 5), MouseButton.Left);
+            window.MouseMove(Canvas(100, 40), RawInputModifiers.LeftMouseButton);
+            window.MouseUp(Canvas(100, 40), MouseButton.Left);
+
+            Assert.That(vm.RegionText, Is.EqualTo("10-100,5-40"));
+        }
+        finally
+        {
+            window.Close();
+            L10nBridge.Resolver = null;
+        }
+    }
+
+    [Test]
     public void DroppingFiles_IsWiredToTheBoard()
     {
         DrawingBoardWindow window = Show(900, 560);

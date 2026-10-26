@@ -195,4 +195,81 @@ public class SplatoonDrawingTests : DrawingBoardTestBase
         Assert.That(elapsed.ElapsedMilliseconds, Is.LessThan(2_000));
         Assert.That(pad.Events, Is.EqualTo(new[] { "click RIGHT" }));
     }
+
+    [Test]
+    public void Draw_PausedWhilePenDown_LiftsAndRepressesThePen()
+    {
+        List<List<DrawingLine>> rows = Scan(Canvas((0, 5), (0, 6)), FullCanvas);
+        RecordingPad pad = new();
+        DrawPause pause = new();
+        bool paused = false;
+        pad.OnKey = () =>
+        {
+            if (paused || pad.Events.Last() != "press A")
+                return;
+            paused = true;
+            pause.Pause();
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(100);
+                pause.Resume();
+            });
+        };
+
+        new SplatoonDrawing(pad, 0, 0, pause: pause).Draw(rows, CancellationToken.None);
+
+        // 落笔后暂停：下一次按键前先松开画笔，继续后原位重新按下再走
+        List<string> expected = [.. Clicks(GamePadKey.RIGHT, 5), "press A", "release A", "press A", "click RIGHT", "release A"];
+        Assert.That(pad.Events, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void Draw_PausedDoesNotChangePlannedProgress()
+    {
+        List<List<DrawingLine>> rows = Scan(Canvas((0, 5), (0, 6), (2, 1)), FullCanvas);
+        TimeSpan estimated = SplatoonDrawing.Estimate(rows, 45, 50);
+        DrawPause pause = new();
+        pause.Pause();
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(100);
+            pause.Resume();
+        });
+        long last = 0;
+
+        new SplatoonDrawing(new RecordingPad(), 45, 50, (_, _) => { }, value => last = value, pause: pause)
+            .Draw(rows, CancellationToken.None);
+
+        Assert.That(last, Is.EqualTo((long)estimated.TotalMilliseconds));
+    }
+
+    [Test]
+    public void Draw_CancelledWhilePaused_StopsPromptly()
+    {
+        List<List<DrawingLine>> rows = Scan(Canvas((0, 5)), FullCanvas);
+        DrawPause pause = new();
+        pause.Pause();
+        using CancellationTokenSource cts = new(TimeSpan.FromMilliseconds(100));
+        System.Diagnostics.Stopwatch elapsed = System.Diagnostics.Stopwatch.StartNew();
+
+        Assert.Throws<OperationCanceledException>(() => new SplatoonDrawing(new RecordingPad(), 0, 0, pause: pause).Draw(rows, cts.Token));
+        Assert.That(elapsed.ElapsedMilliseconds, Is.LessThan(2_000));
+    }
+
+    [Test]
+    public void Draw_ReportsEveryStepWithThePenState()
+    {
+        List<List<DrawingLine>> rows = Scan(Canvas((0, 2), (0, 3), (1, 1)), FullCanvas);
+        List<(int Row, int Col, bool PenDown)> steps = [];
+
+        new SplatoonDrawing(new RecordingPad(), 0, 0, step: (row, col, pen) => steps.Add((row, col, pen))).Draw(rows, CancellationToken.None);
+
+        Assert.That(steps, Is.EqualTo(new[]
+        {
+            (0, 1, false), (0, 2, false),           // 抬笔右移到第 2 列
+            (0, 2, true), (0, 3, true), (0, 3, false), // 落笔画到第 3 列，抬笔
+            (1, 3, false), (1, 2, false), (1, 1, false), // 下移一行，左移到第 1 列
+            (1, 1, true), (1, 1, false),            // 单点
+        }));
+    }
 }

@@ -3,7 +3,7 @@ using EasyScript;
 
 namespace EasyCon2.Avalonia.DrawingBoard;
 
-/// <summary>画板参数，对应窗体上的各输入框。</summary>
+/// <summary>画板参数：按键时序与绘制区域（默认整张画布）。</summary>
 public sealed record DrawingBoardSettings(int Wait, int Duration, int StartRow, int StartCol, int ColCount, int RowCount);
 
 /// <summary>扫描出的一段连续墨点：第 <paramref name="Row"/> 行的 <paramref name="StartCol"/>～<paramref name="EndCol"/> 列（含两端）。</summary>
@@ -24,8 +24,11 @@ public sealed class SplatoonDrawing
     private readonly Action<int, CancellationToken> _sleep;
     private readonly Action<long>? _progress;
     private readonly GamePadKey _penKey;
+    private readonly DrawPause? _pause;
+    private readonly Action<int, int, bool>? _step;
     private int _row;
     private int _col;
+    private bool _penDown;
     private long _done;
 
     /// <param name="pad">运行租约下的手柄输入（与脚本运行同一条独占通道），见 <see cref="IDrawingRunner"/>。</param>
@@ -35,8 +38,10 @@ public sealed class SplatoonDrawing
     /// 在绘制线程上调用。
     /// </param>
     /// <param name="penKey">按住它走过的格子被处理：A 为画笔，B 为橡皮擦（见画板的橡皮擦模式）。</param>
+    /// <param name="pause">暂停开关；每次按键前检查，暂停时若正按着画笔会先松开，继续时原位重新按下。</param>
+    /// <param name="step">光标每走一格、每次落笔/抬笔后回调（行, 列, 画笔是否按下），用于在预览上标出已画部分与光标；在绘制线程上调用。</param>
     public SplatoonDrawing(IPadInput pad, int wait, int duration, Action<int, CancellationToken>? sleep = null, Action<long>? progress = null,
-        GamePadKey penKey = GamePadKey.A)
+        GamePadKey penKey = GamePadKey.A, DrawPause? pause = null, Action<int, int, bool>? step = null)
     {
         _pad = pad;
         _wait = wait;
@@ -44,6 +49,8 @@ public sealed class SplatoonDrawing
         _sleep = sleep ?? Sleep;
         _progress = progress;
         _penKey = penKey;
+        _pause = pause;
+        _step = step;
     }
 
     /// <summary>
@@ -105,6 +112,7 @@ public sealed class SplatoonDrawing
     {
         _row = 0;
         _col = 0;
+        _penDown = false;
         _done = 0;
         foreach (IReadOnlyList<DrawingLine> lines in rows)
         {
@@ -118,10 +126,15 @@ public sealed class SplatoonDrawing
                 token.ThrowIfCancellationRequested();
                 // 在线段离光标近的一端落笔，按住 A 走到另一端
                 MoveTo(line.Row, NearerStart(line) ? line.StartCol : line.EndCol, token);
+                CheckPause(token);
                 _pad.PressButtons(_penKey);
+                _penDown = true;
+                _step?.Invoke(_row, _col, true);
                 Wait(_wait, token);
                 MoveTo(line.Row, NearerStart(line) ? line.EndCol : line.StartCol, token);
                 _pad.ReleaseButtons(_penKey);
+                _penDown = false;
+                _step?.Invoke(_row, _col, false);
                 Wait(_wait, token);
             }
         }
@@ -138,8 +151,28 @@ public sealed class SplatoonDrawing
 
     private void Click(GamePadKey key, CancellationToken token)
     {
+        CheckPause(token);
         _pad.ClickButtons(key, _duration, token);
         Advance(_duration);
+    }
+
+    /// <summary>
+    /// 暂停时阻塞到继续。若正按着画笔，暂停前先松开、继续后在原位重新按下并等一次延迟（同一格重画无影响）；
+    /// 这些额外动作不计入计划耗时，进度仍按原计划走到 100%。
+    /// </summary>
+    private void CheckPause(CancellationToken token)
+    {
+        if (_pause is not { IsPaused: true })
+            return;
+        bool lift = _penDown;
+        if (lift)
+            _pad.ReleaseButtons(_penKey);
+        _pause.WaitWhilePaused(token);
+        if (lift)
+        {
+            _pad.PressButtons(_penKey);
+            _sleep(_wait, token);
+        }
     }
 
     private void Advance(int milliseconds)
@@ -154,27 +187,30 @@ public sealed class SplatoonDrawing
             throw new OperationCanceledException(token);
     }
 
-    /// <summary>先上下移到目标行，再左右移到目标列；每格一次点按，每个方向走完后多等一次。</summary>
+    /// <summary>先上下移到目标行，再左右移到目标列；每格一次点按，每个方向走完后多等一次。光标位置逐格更新并回调。</summary>
     private void MoveTo(int row, int col, CancellationToken token)
     {
         GamePadKey vertical = row > _row ? GamePadKey.DOWN : GamePadKey.TOP;
+        int rowStep = Math.Sign(row - _row);
         for (int i = Math.Abs(row - _row); i > 0; i--)
         {
             Click(vertical, token);
+            _row += rowStep;
+            _step?.Invoke(_row, _col, _penDown);
             Wait(_wait, token);
         }
         Wait(_wait, token);
 
         GamePadKey horizontal = col > _col ? GamePadKey.RIGHT : GamePadKey.LEFT;
+        int colStep = Math.Sign(col - _col);
         for (int i = Math.Abs(col - _col); i > 0; i--)
         {
             Click(horizontal, token);
+            _col += colStep;
+            _step?.Invoke(_row, _col, _penDown);
             Wait(_wait, token);
         }
         Wait(_wait, token);
-
-        _row = row;
-        _col = col;
     }
 
     /// <summary>估算用的空跑手柄：不发任何键。</summary>

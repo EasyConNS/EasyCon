@@ -16,10 +16,20 @@ public partial class DrawingBoardViewModel
     /// <summary>适配到 320×120 后的画布图片；按阈值转成 <see cref="Mask"/>。</summary>
     private PixelImage? _canvas;
 
-    /// <summary>预览框显示的图片：默认是二值化结果（黑 = 要画的点），勾选"显示原图"时为原图。</summary>
+    /// <summary>预览图片：默认是二值化结果（黑 = 要画的点），勾选"显示原图"时为原图；"保存图片"保存的就是它。</summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SavePictureCommand))]
     private PixelImage? _preview;
+
+    /// <summary>
+    /// 预览框实际显示的图片：绘制中及结束后为进度图（游戏画面估计 + 光标），否则为 <see cref="Preview"/>；
+    /// 开启框选时再叠加区域框。
+    /// </summary>
+    [ObservableProperty]
+    private PixelImage? _displayImage;
+
+    /// <summary>最近一次绘制的进度图；图片或处理参数改变（且不在绘制中）时清除，恢复显示预览。</summary>
+    private PixelImage? _progressImage;
 
     /// <summary>载入文件的名字（不含扩展名），用于保存时的默认文件名。</summary>
     private string? _sourceName;
@@ -151,8 +161,29 @@ public partial class DrawingBoardViewModel
     private void UpdateMask()
     {
         Mask = _canvas == null ? null : InkMask.Binarize(_canvas, new BinarizeOptions(ThresholdPercent, Reverse, SelectedDither));
+        if (!IsDrawing)
+            _progressImage = null;
         Preview = ShowOriginal ? _canvas : Mask?.ToPreview();
         UpdateEstimate();
+    }
+
+    partial void OnPreviewChanged(PixelImage? value) => ComposeDisplay();
+
+    private void ShowProgressImage(PixelImage image)
+    {
+        _progressImage = image;
+        ComposeDisplay();
+    }
+
+    private void ComposeDisplay()
+    {
+        PixelImage? image = _progressImage ?? Preview;
+        if (image != null && SelectRegion)
+        {
+            (int startCol, int startRow, int colCount, int rowCount) = EffectiveRegion;
+            image = PreviewOverlay.WithRegionOutline(image, startCol, startRow, colCount, rowCount);
+        }
+        DisplayImage = image;
     }
 
     /// <summary>SkiaSharp 能解码的格式（实测 HEIC、TIFF、PSD、TGA、JPEG 2000 不支持）。</summary>

@@ -79,7 +79,8 @@ public class DrawingBoardSettingsTests : DrawingBoardTestBase
         string afterThreshold = f.Vm.EstimateText;
         f.Vm.DelayText = "100";       // 等待变长
         string afterDelay = f.Vm.EstimateText;
-        f.Vm.WidthText = "1";         // 只画第 0 列：没有墨点
+        f.Vm.SelectRegion = true;
+        f.Vm.SetRegion(0, 0, 1, 120); // 只画第 0 列：没有墨点
         string afterRegion = f.Vm.EstimateText;
 
         Assert.That(Minutes(afterThreshold), Is.LessThan(Minutes(seen[0])));
@@ -103,20 +104,16 @@ public class DrawingBoardSettingsTests : DrawingBoardTestBase
         Assert.That(f.Vm.EstimateText, Does.EndWith("mins"));
     }
 
-    [TestCase("abc", "0", "0", "320", "120", "延迟应为 0～10000 的整数")]
-    [TestCase("45", "-1", "0", "320", "120", "起始列应为 0～319 的整数")]
-    [TestCase("45", "0", "120", "320", "120", "起始行应为 0～119 的整数")]
-    [TestCase("45", "0", "0", "0", "120", "列数应为 1～320 的整数")]
-    [TestCase("45", "0", "0", "320", "", "行数应为 1～120 的整数")]
-    public async Task InvalidSettings_AreRejectedWithFieldName(string delay, string startCol, string startRow, string width, string height, string expected)
+    [TestCase("abc", "50", "延迟应为 0～10000 的整数")]
+    [TestCase("-1", "50", "延迟应为 0～10000 的整数")]
+    [TestCase("45", "", "按键持续应为 1～10000 的整数")]
+    [TestCase("45", "10001", "按键持续应为 1～10000 的整数")]
+    public async Task InvalidSettings_AreRejectedWithFieldName(string delay, string duration, string expected)
     {
         Fixture f = new(Canvas((0, 1)));
         await f.Vm.LoadPictureFileAsync("x.png");
         f.Vm.DelayText = delay;
-        f.Vm.StartPosXText = startCol;
-        f.Vm.StartPosYText = startRow;
-        f.Vm.WidthText = width;
-        f.Vm.HeightText = height;
+        f.Vm.DurationText = duration;
 
         await f.Vm.StartCommand.ExecuteAsync(null);
 
@@ -135,5 +132,65 @@ public class DrawingBoardSettingsTests : DrawingBoardTestBase
         await f.Vm.StartCommand.ExecuteAsync(null);
 
         Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "按键持续应为 1～10000 的整数" }));
+    }
+
+    [Test]
+    public async Task Region_DefaultsToTheWholeCanvas()
+    {
+        Fixture f = new(Canvas((0, 1), (100, 300)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+
+        Assert.That(f.Vm.SelectRegion, Is.False);
+        Assert.That(f.Vm.RegionText, Is.EqualTo("绘制整张画布（320×120），光标从左上角开始"));
+        Assert.That(f.Vm.DisplayImage, Is.SameAs(f.Vm.Preview), "不框选时不叠加区域框");
+    }
+
+    [Test]
+    public async Task Region_DragOnThePreviewSelectsAndFramesIt()
+    {
+        Fixture f = new(Canvas((0, 1), (100, 300)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        double full = Minutes(f.Vm.EstimateText);
+        f.Vm.SelectRegion = true;
+
+        // 预览 822×282：按下 (0,0)，拖到画布 (列 20, 行 4) 附近，再往回拖到 (列 10, 行 2)
+        f.Vm.OnPicturePressed(1, 1, 822, 282);
+        f.Vm.OnPictureDragged(20 * 822 / 320.0 + 1, 4 * 282 / 120.0 + 1, 822, 282);
+        f.Vm.OnPictureDragged(10 * 822 / 320.0 + 1, 2 * 282 / 120.0 + 1, 822, 282);
+        f.Vm.OnPictureReleased();
+        f.Vm.OnPictureDragged(300, 100, 822, 282);
+
+        Assert.That(f.Vm.RegionText, Is.EqualTo("绘制区域：第 0–10 列，第 0–2 行（在预览上拖动可重新框选）"), "松开后再移动不改区域");
+        Assert.That(f.Vm.DisplayImage, Is.Not.SameAs(f.Vm.Preview), "叠加了区域框");
+        Assert.That(f.Vm.Preview!.GetPixel(10, 0).ToArgb(), Is.EqualTo(System.Drawing.Color.White.ToArgb()), "预览本身不带框");
+        Assert.That(Minutes(f.Vm.EstimateText), Is.LessThan(full), "第 300 列的点不在区域内");
+
+        f.Vm.ResetRegionCommand.Execute(null);
+        Assert.That(f.Vm.RegionText, Is.EqualTo("绘制区域：第 0–319 列，第 0–119 行（在预览上拖动可重新框选）"));
+        f.Vm.SetRegion(5, 5, 1, 1);
+        f.Vm.SelectRegion = false;
+        Assert.That(Minutes(f.Vm.EstimateText), Is.EqualTo(full), "关闭框选即恢复整张画布");
+    }
+
+    [Test]
+    public async Task Region_CannotChangeWhileDrawing()
+    {
+        Fixture f = new(Canvas((0, 100)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.SelectRegion = true;
+        f.Vm.DelayText = "0";
+        f.Vm.DurationText = "10000";
+        TaskCompletionSource firstKey = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        f.Pad.WaitForDuration = true;
+        f.Pad.OnKey = () => firstKey.TrySetResult();
+        string before = f.Vm.RegionText;
+
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        await firstKey.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        f.Vm.OnPicturePressed(100, 100, 822, 282);
+        f.Vm.SetRegion(1, 1, 2, 2);
+
+        Assert.That(f.Vm.RegionText, Is.EqualTo(before));
+        await f.Vm.StopCommand.ExecuteAsync(null).WaitAsync(TimeSpan.FromSeconds(5));
     }
 }

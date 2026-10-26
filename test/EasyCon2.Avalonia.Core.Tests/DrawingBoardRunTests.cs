@@ -17,8 +17,8 @@ public class DrawingBoardRunTests : DrawingBoardTestBase
         await f.Vm.LoadPictureFileAsync("x.png");
         f.Vm.DelayText = "0";
         f.Vm.DurationText = "1";
-        f.Vm.WidthText = "3";
-        f.Vm.HeightText = "1";
+        f.Vm.SelectRegion = true;
+        f.Vm.SetRegion(0, 0, 3, 1);
         f.Vm.EraserMode = true;
 
         await f.Vm.StartCommand.ExecuteAsync(null);
@@ -94,7 +94,7 @@ public class DrawingBoardRunTests : DrawingBoardTestBase
         await f.Vm.StartCommand.ExecuteAsync(null);
         await firstKey.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.That(f.Vm.IsStartEnabled, Is.False);
-        Assert.That(f.Vm.ProgressText, Does.StartWith("0% · 已用 00:00 · 剩余约 "));
+        Assert.That(f.Vm.ProgressText, Does.StartWith("0% · 第 0/1 段 · 已用 00:00 · 剩余约 "));
         await f.Vm.StopCommand.ExecuteAsync(null).WaitAsync(TimeSpan.FromSeconds(5));
         Assert.That(f.Vm.ProgressText, Does.StartWith("已停止 · 完成 "));
 
@@ -201,5 +201,128 @@ public class DrawingBoardRunTests : DrawingBoardTestBase
         Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "画图中断: 手柄连接已断开" }));
         Assert.That(f.Vm.ProgressText, Does.StartWith("已中断 · 完成 "));
         Assert.That(f.Pad.Events.Last(), Is.EqualTo(LeaseRelease));
+    }
+
+    [Test]
+    public async Task Pause_ThenContinue_TogglesStateAndTexts()
+    {
+        Fixture f = new(Canvas((0, 100)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.DelayText = "0";
+        f.Vm.DurationText = "10000";
+        TaskCompletionSource firstKey = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        f.Pad.WaitForDuration = true;
+        f.Pad.OnKey = () => firstKey.TrySetResult();
+        Assert.That(f.Vm.TogglePauseCommand.CanExecute(null), Is.False, "没在画时不能暂停");
+
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        await firstKey.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.That(f.Vm.TogglePauseCommand.CanExecute(null), Is.True);
+        Assert.That(f.Vm.PauseButtonText, Is.EqualTo("暂停"));
+
+        f.Vm.TogglePauseCommand.Execute(null);
+        Assert.That(f.Vm.IsPaused, Is.True);
+        Assert.That(f.Vm.PauseButtonText, Is.EqualTo("继续"));
+        Assert.That(f.Vm.ProgressText, Does.StartWith("已暂停 · 0% · 第 0/1 段 · 已用 "));
+
+        f.Vm.TogglePauseCommand.Execute(null);
+        Assert.That(f.Vm.IsPaused, Is.False);
+        Assert.That(f.Vm.PauseButtonText, Is.EqualTo("暂停"));
+
+        await f.Vm.StopCommand.ExecuteAsync(null).WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.That(f.Vm.IsDrawing, Is.False);
+        Assert.That(f.Vm.TogglePauseCommand.CanExecute(null), Is.False);
+    }
+
+    [Test]
+    public async Task Stop_WhilePaused_EndsTheDraw()
+    {
+        Fixture f = new(Canvas((0, 100)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.DelayText = "0";
+        f.Vm.DurationText = "1";
+
+        // 开始后立刻暂停：第一次按键前就停住
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        f.Vm.TogglePauseCommand.Execute(null);
+        await Task.Delay(200);
+        Assert.That(f.Pad.Events, Is.Empty, "暂停期间不发键");
+
+        await f.Vm.StopCommand.ExecuteAsync(null).WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.That(f.Vm.DrawTask!.IsCompleted, Is.True);
+        Assert.That(f.Vm.IsPaused, Is.False);
+        Assert.That(f.Vm.IsStartEnabled, Is.True);
+        Assert.That(f.Pad.Events.Last(), Is.EqualTo(LeaseRelease));
+    }
+
+    [Test]
+    public async Task Finished_PreviewShowsDrawnInkAndTheCursor()
+    {
+        Fixture f = new(Canvas((0, 1), (0, 50)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.DelayText = "0";
+        f.Vm.DurationText = "1";
+
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        await f.Vm.DrawTask!;
+
+        PixelImage display = f.Vm.DisplayImage!;
+        Assert.That(display.GetPixel(1, 0).ToArgb(), Is.EqualTo(System.Drawing.Color.Black.ToArgb()), "已画的墨点");
+        Assert.That(display.GetPixel(50, 0).R, Is.EqualTo(PreviewOverlay.Cursor.R), "光标停在最后一段");
+        Assert.That(f.Vm.ProgressText, Does.StartWith("已完成"));
+        Assert.That(f.Vm.Preview, Is.Not.SameAs(display), "保存图片用的预览不含进度叠加");
+
+        f.Vm.ThresholdPercent = 40;
+        Assert.That(f.Vm.DisplayImage, Is.SameAs(f.Vm.Preview), "改了图片参数就恢复显示预览");
+    }
+
+    [Test]
+    public async Task Progress_CountsCompletedSegments()
+    {
+        Fixture f = new(Canvas((0, 1), (0, 50), (3, 7)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.DelayText = "0";
+        f.Vm.DurationText = "1";
+        TaskCompletionSource secondSegment = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        int presses = 0;
+        f.Pad.OnKey = () =>
+        {
+            if (f.Pad.Events.Last() == "press A" && ++presses == 2)
+            {
+                f.Vm.TogglePauseCommand.Execute(null);
+                secondSegment.TrySetResult();
+            }
+        };
+
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        await secondSegment.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.That(f.Vm.ProgressText, Does.Contain("第 1/3 段"), "第一段已画完，第二段刚落笔");
+        await f.Vm.StopCommand.ExecuteAsync(null).WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task Progress_OutsideTheRegion_ShowsTheUntouchedCanvas(bool eraser)
+    {
+        // 第 0 行第 1 列与第 100 列各有一个墨点；只框选左边 0～49 列
+        Fixture f = new(Canvas((0, 1), (0, 100)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.DelayText = "0";
+        f.Vm.DurationText = "1";
+        f.Vm.EraserMode = eraser;
+        f.Vm.SelectRegion = true;
+        f.Vm.SetRegion(0, 0, 50, 120);
+
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        await f.Vm.DrawTask!;
+
+        // 区域外：画笔模式为空白（墨点没画），橡皮擦模式仍是涂黑的
+        System.Drawing.Color outside = f.Vm.DisplayImage!.GetPixel(100, 60);
+        Assert.That(outside.ToArgb(), Is.EqualTo((eraser ? System.Drawing.Color.Black : System.Drawing.Color.White).ToArgb()));
+        System.Drawing.Color inkOutside = f.Vm.DisplayImage!.GetPixel(100, 0);
+        Assert.That(inkOutside.ToArgb(), Is.EqualTo((eraser ? System.Drawing.Color.Black : System.Drawing.Color.White).ToArgb()),
+            "区域外的墨点不画，不应显示为待画的灰色");
     }
 }

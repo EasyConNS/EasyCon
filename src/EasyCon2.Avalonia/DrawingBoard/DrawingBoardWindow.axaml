@@ -14,10 +14,10 @@
         WindowStartupLocation="CenterScreen"
         behaviors:FileDropBehavior.Command="{Binding DropPictureCommand}">
 
-    <!-- 布局对照 1.6.3 WinForms 版 DrawingBoard：预览图 / 坐标说明 / 参数与按钮 / 进度（新增）/ 提示与耗时。
+    <!-- 布局：预览图（绘制中显示进度与光标）/ 绘制区域与坐标 / 参数与按钮 / 进度 / 提示与耗时。
          窗口可缩放：预览占据剩余空间并随窗口等比放大缩小；其余控件保持原尺寸，窄时参数分组自动换行 -->
     <Grid Margin="16" RowDefinitions="*,Auto,Auto,Auto,Auto,Auto" RowSpacing="8">
-        <!-- 预览的逻辑尺寸固定为 822×282，由 Viewbox 等比缩放：点击坐标按 Image 自身坐标系换算，不受缩放影响 -->
+        <!-- 预览的逻辑尺寸固定为 822×282，由 Viewbox 等比缩放：点击、拖动坐标按 Image 自身坐标系换算，不受缩放影响 -->
         <Viewbox Stretch="Uniform">
             <Border x:Name="PictureFrame"
                     Background="Transparent"
@@ -27,13 +27,23 @@
                        Width="822"
                        Height="282"
                        Stretch="Fill"
-                       Source="{Binding Preview, Converter={x:Static conv:PixelImageToBitmapConverter.Instance}}"/>
+                       Source="{Binding DisplayImage, Converter={x:Static conv:PixelImageToBitmapConverter.Instance}}"/>
             </Border>
         </Viewbox>
 
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="16">
-            <TextBlock Text="{loc:Translate Text.DrawingBoard.Region}" TextWrapping="Wrap"/>
-            <TextBlock Grid.Column="1" Text="{Binding CurPosText}"/>
+        <!-- 绘制区域：默认整张画布；高级选项下在预览上拖动框选 -->
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="12">
+            <CheckBox Content="{loc:Translate Text.DrawingBoard.SelectRegion}"
+                      ToolTip.Tip="{loc:Translate Text.DrawingBoard.SelectRegionTip}"
+                      IsChecked="{Binding SelectRegion}"
+                      VerticalAlignment="Center"/>
+            <Button Grid.Column="1"
+                    Content="{loc:Translate Text.DrawingBoard.ResetRegion}"
+                    Command="{Binding ResetRegionCommand}"
+                    IsVisible="{Binding SelectRegion}"
+                    VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="2" Text="{Binding RegionText}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="3" Text="{Binding CurPosText}" VerticalAlignment="Center"/>
         </Grid>
 
         <WrapPanel Grid.Row="2" ItemSpacing="16" LineSpacing="8">
@@ -145,20 +155,6 @@
             </StackPanel>
 
             <Grid ColumnDefinitions="Auto,64" RowDefinitions="Auto,Auto" ColumnSpacing="6" RowSpacing="6">
-                <TextBlock Text="{loc:Translate Text.DrawingBoard.StartCol}" VerticalAlignment="Center"/>
-                <TextBox Grid.Column="1" Text="{Binding StartPosXText}"/>
-                <TextBlock Grid.Row="1" Text="{loc:Translate Text.DrawingBoard.StartRow}" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding StartPosYText}"/>
-            </Grid>
-
-            <Grid ColumnDefinitions="Auto,64" RowDefinitions="Auto,Auto" ColumnSpacing="6" RowSpacing="6">
-                <TextBlock Text="{loc:Translate Text.DrawingBoard.ColCount}" VerticalAlignment="Center"/>
-                <TextBox Grid.Column="1" Text="{Binding WidthText}"/>
-                <TextBlock Grid.Row="1" Text="{loc:Translate Text.DrawingBoard.RowCount}" VerticalAlignment="Center"/>
-                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding HeightText}"/>
-            </Grid>
-
-            <Grid ColumnDefinitions="Auto,64" RowDefinitions="Auto,Auto" ColumnSpacing="6" RowSpacing="6">
                 <TextBlock Text="{loc:Translate Text.DrawingBoard.Duration}" VerticalAlignment="Center"/>
                 <TextBox Grid.Column="1" Text="{Binding DurationText}"/>
                 <TextBlock Grid.Row="1" Text="{loc:Translate Text.DrawingBoard.Delay}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
@@ -174,6 +170,10 @@
                 <Button Content="{loc:Translate Text.DrawingBoard.Start}"
                         Command="{Binding StartCommand}"
                         IsEnabled="{Binding IsStartEnabled}"
+                        VerticalAlignment="Stretch"
+                        VerticalContentAlignment="Center"/>
+                <Button Content="{Binding PauseButtonText}"
+                        Command="{Binding TogglePauseCommand}"
                         VerticalAlignment="Stretch"
                         VerticalContentAlignment="Center"/>
                 <Button Content="{loc:Translate Text.DrawingBoard.Stop}"

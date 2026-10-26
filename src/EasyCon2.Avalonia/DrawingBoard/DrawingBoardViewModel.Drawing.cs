@@ -1,12 +1,16 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core.Maa;
+using EasyCon2.Avalonia.Models;
 using EasyScript;
 using System.Diagnostics;
 
 namespace EasyCon2.Avalonia.DrawingBoard;
 
-/// <summary>绘制：开始/停止、后台按运行租约发键（含橡皮擦模式）、进度与剩余时间、错误描述。</summary>
+/// <summary>
+/// 绘制：开始/暂停/继续/停止、后台按运行租约发键（含橡皮擦模式）、进度（百分比、段数、用时）、
+/// 绘制中在预览上标出已画部分与光标、错误描述。
+/// </summary>
 public partial class DrawingBoardViewModel
 {
     /// <summary>进度刷新间隔：每格移动只有几十毫秒，逐次刷新会塞满 UI 队列。</summary>
@@ -26,12 +30,37 @@ public partial class DrawingBoardViewModel
     [ObservableProperty]
     private bool _isStartEnabled = true;
 
+    /// <summary>后台绘制进行中（含暂停）；控制暂停按钮可用，并禁止修改框选区域。</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(TogglePauseCommand))]
+    private bool _isDrawing;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PauseButtonText))]
+    private bool _isPaused;
+
+    private DrawPause? _pause;
+
+    /// <summary>实际用时；暂停期间停表，不计入用时与剩余时间校正。</summary>
+    private readonly Stopwatch _clock = new();
+
     /// <summary>绘制进度 0～100。</summary>
     [ObservableProperty]
     private double _progressValue;
 
     private string? _progressKey;
     private object[] _progressArgs = [];
+
+    // 以下由绘制线程写入，节流后渲染成预览叠加图
+    private InkMask? _runStrokes;
+    private bool _runEraser;
+    private bool[]? _runDone;
+    private (int Row, int Col) _runCursor;
+    private bool _runPenDown;
+    private int _segmentsDone;
+    private int _segmentsTotal;
+    private long _plannedDone;
+    private long _plannedTotal;
 
     /// <summary>最近一次开始画图的后台任务（测试用于等待绘制结束）。</summary>
     internal Task? DrawTask { get; private set; }
@@ -44,6 +73,8 @@ public partial class DrawingBoardViewModel
     private GamePadKey StrokeKey => EraserMode ? GamePadKey.B : GamePadKey.A;
 
     public string ProgressText => _progressKey == null ? "" : Format(_progressKey, _progressArgs);
+
+    public string PauseButtonText => T(IsPaused ? "Text.DrawingBoard.Continue" : "Text.DrawingBoard.Pause");
 
     [RelayCommand]
     private async Task StartAsync()
@@ -71,73 +102,158 @@ public partial class DrawingBoardViewModel
         // 取开始时的掩码与模式快照：绘制过程中调整阈值、切换模式等不影响正在画的图
         InkMask strokes = StrokeMask(Mask);
         GamePadKey key = StrokeKey;
-        SetProgress(0, "Text.DrawingBoard.Preparing");
-        DrawTask = Task.Run(() => RunDraw(strokes, key, settings, token));
+        List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(strokes, settings);
+        // 进度图只把区域内的点算作待画；区域外保持游戏里原样（画笔模式为空白，橡皮擦模式仍是黑）
+        _runStrokes = strokes.Within(settings.StartCol, settings.StartRow, settings.ColCount, settings.RowCount);
+        _runEraser = EraserMode;
+        _runDone = new bool[strokes.Width * strokes.Height];
+        _runCursor = (0, 0);
+        _runPenDown = false;
+        _segmentsDone = 0;
+        _segmentsTotal = rows.Sum(row => row.Count);
+        _plannedDone = 0;
+        _plannedTotal = (long)SplatoonDrawing.Estimate(rows, settings.Wait, settings.Duration).TotalMilliseconds;
+        _pause = new DrawPause();
+        _clock.Reset();
+        IsPaused = false;
+        IsDrawing = true;
         IsStartEnabled = false;
+        SetProgress(0, "Text.DrawingBoard.Preparing");
+        DrawTask = Task.Run(() => RunDraw(rows, key, settings, _pause, token));
     }
 
-    private void RunDraw(InkMask strokes, GamePadKey key, DrawingBoardSettings settings, CancellationToken token)
+    private void RunDraw(List<List<DrawingLine>> rows, GamePadKey key, DrawingBoardSettings settings, DrawPause pause, CancellationToken token)
     {
-        long total = 0;
-        long done = 0;
-        Stopwatch clock = new();
         try
         {
-            List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(strokes, settings);
-            total = (long)SplatoonDrawing.Estimate(rows, settings.Wait, settings.Duration).TotalMilliseconds;
             _runner.Run((pad, runToken) =>
             {
-                // 取得手柄后才开始计时
-                clock.Start();
+                // 取得手柄后才开始计时（暂停时停表）
+                if (!pause.IsPaused)
+                    _clock.Start();
                 long lastReport = -ProgressIntervalMs;
-                PostProgress(0, total, TimeSpan.Zero);
+                PostProgress();
                 SplatoonDrawing drawing = new(pad, settings.Wait, settings.Duration, progress: value =>
                 {
-                    done = value;
-                    long now = clock.ElapsedMilliseconds;
+                    _plannedDone = value;
+                    long now = _clock.ElapsedMilliseconds;
                     if (now - lastReport < ProgressIntervalMs)
                         return;
                     lastReport = now;
-                    PostProgress(done, total, clock.Elapsed);
-                }, penKey: key);
+                    PostProgress();
+                }, penKey: key, pause: pause, step: OnStep);
                 drawing.Draw(rows, runToken);
             }, token);
-            string took = FormatClock(clock.Elapsed);
+            _clock.Stop();
+            string took = FormatClock(_clock.Elapsed);
+            PixelImage final = RenderProgressImage();
             _ui.Post(() =>
             {
+                ShowProgressImage(final);
                 SetProgress(100, "Text.DrawingBoard.Finished", took);
-                IsStartEnabled = true;
+                EndDrawing();
             });
         }
         catch (Exception) when (token.IsCancellationRequested)
         {
             // 用户停止或关闭窗口：按键已由运行租约释放，开始按钮由 StopAsync 恢复
-            double percent = Percent(done, total);
-            string reached = FormatPercent(done, total);
-            _ui.Post(() => SetProgress(percent, "Text.DrawingBoard.Stopped", reached));
+            _clock.Stop();
+            double percent = Percent(_plannedDone, _plannedTotal);
+            string reached = FormatPercent(_plannedDone, _plannedTotal);
+            PixelImage final = RenderProgressImage();
+            _ui.Post(() =>
+            {
+                ShowProgressImage(final);
+                SetProgress(percent, "Text.DrawingBoard.Stopped", reached);
+            });
         }
         catch (Exception ex)
         {
             // 旧版任务异常被静默吞掉，开始按钮一直禁用到点击停止，用户无从得知原因
+            _clock.Stop();
             string message = Format("Text.DrawingBoard.Error", DescribeError(ex));
-            double percent = Percent(done, total);
-            string reached = FormatPercent(done, total);
+            double percent = Percent(_plannedDone, _plannedTotal);
+            string reached = FormatPercent(_plannedDone, _plannedTotal);
+            PixelImage final = RenderProgressImage();
             _logService.AddLog(message);
             _ui.Post(() =>
             {
+                ShowProgressImage(final);
                 SetProgress(percent, "Text.DrawingBoard.Interrupted", reached);
-                IsStartEnabled = true;
+                EndDrawing();
                 _ = ShowMessageAsync(message);
             });
         }
     }
 
-    private void PostProgress(long done, long total, TimeSpan elapsed)
+    /// <summary>绘制线程：记录光标；画笔按下时走过的点即已画（橡皮擦模式即已擦）；抬笔即完成一段。</summary>
+    private void OnStep(int row, int col, bool penDown)
     {
-        double percent = Percent(done, total);
-        object[] args = [FormatPercent(done, total), FormatClock(elapsed), FormatClock(EstimateRemaining(done, total, elapsed))];
-        _ui.Post(() => SetProgress(percent, "Text.DrawingBoard.Progress", args));
+        _runCursor = (row, col);
+        if (_runPenDown && !penDown)
+            _segmentsDone++;
+        _runPenDown = penDown;
+        if (!penDown)
+            return;
+        bool[] done = _runDone!;
+        int i = row * SplatoonDrawing.CanvasWidth + col;
+        if (!done[i] && _runStrokes![col, row])
+            done[i] = true;
     }
+
+    /// <summary>暂停/继续。暂停在下一次按键前生效；若正按着画笔会先松开，继续时原位重新按下。</summary>
+    [RelayCommand(CanExecute = nameof(IsDrawing))]
+    private void TogglePause()
+    {
+        if (_pause == null)
+            return;
+        if (IsPaused)
+        {
+            IsPaused = false;
+            _clock.Start();
+            _pause.Resume();
+            PostProgress();
+        }
+        else
+        {
+            _pause.Pause();
+            _clock.Stop();
+            IsPaused = true;
+            // 节流期间的最新进度可能还没刷到预览上，暂停时立即刷新一次
+            ShowProgressImage(RenderProgressImage());
+            double percent = Percent(_plannedDone, _plannedTotal);
+            SetProgress(percent, "Text.DrawingBoard.Paused", FormatPercent(_plannedDone, _plannedTotal),
+                _segmentsDone, _segmentsTotal, FormatClock(_clock.Elapsed));
+        }
+    }
+
+    private void EndDrawing()
+    {
+        IsStartEnabled = true;
+        IsDrawing = false;
+        IsPaused = false;
+    }
+
+    /// <summary>在绘制线程上取快照并投递到界面：进度文字与预览叠加图。</summary>
+    private void PostProgress()
+    {
+        long done = _plannedDone;
+        long total = _plannedTotal;
+        TimeSpan elapsed = _clock.Elapsed;
+        double percent = Percent(done, total);
+        object[] args = [FormatPercent(done, total), _segmentsDone, _segmentsTotal, FormatClock(elapsed),
+            FormatClock(EstimateRemaining(done, total, elapsed))];
+        PixelImage image = RenderProgressImage();
+        _ui.Post(() =>
+        {
+            ShowProgressImage(image);
+            // 暂停后投递过来的旧进度不覆盖"已暂停"
+            if (!IsPaused)
+                SetProgress(percent, "Text.DrawingBoard.Progress", args);
+        });
+    }
+
+    private PixelImage RenderProgressImage() => PreviewOverlay.RenderProgress(_runStrokes!, _runDone!, _runEraser, _runCursor);
 
     private void SetProgress(double value, string key, params object[] args)
     {
@@ -169,11 +285,12 @@ public partial class DrawingBoardViewModel
     [RelayCommand]
     private async Task StopAsync()
     {
+        // 取消同样会打断暂停中的等待
         _drawCancellation?.Cancel();
         // 等后台绘制真正退出（运行租约此时已释放按键）再恢复开始按钮；旧版固定等 1 秒，期间绘制可能仍在发键
         if (DrawTask != null)
             await DrawTask;
-        IsStartEnabled = true;
+        EndDrawing();
     }
 
     private static string DescribeError(Exception ex) => ex switch

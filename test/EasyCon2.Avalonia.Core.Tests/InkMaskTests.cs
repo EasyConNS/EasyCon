@@ -149,4 +149,19 @@ public class InkMaskTests : DrawingBoardTestBase
         Assert.That(preview.GetPixel(0, 0).ToArgb(), Is.EqualTo(System.Drawing.Color.Black.ToArgb()));
         Assert.That(preview.GetPixel(1, 0).ToArgb(), Is.EqualTo(System.Drawing.Color.White.ToArgb()));
     }
+
+    [Test]
+    public void Within_KeepsOnlyTheRegion()
+    {
+        InkMask mask = new(4, 3, Enumerable.Repeat(true, 12).ToArray());
+
+        InkMask region = mask.Within(1, 1, 2, 5);
+
+        Assert.That(Cells(region), Is.EqualTo(new[]
+        {
+            false, false, false, false,
+            false, true, true, false,
+            false, true, true, false,
+        }), "区域超出画布的部分截掉");
+    }
 }
