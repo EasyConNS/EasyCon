@@ -35,12 +35,22 @@
         </Grid>
 
         <WrapPanel Grid.Row="2" ItemSpacing="16" LineSpacing="8">
-            <Button Content="{loc:Translate Text.DrawingBoard.LoadPicture}"
-                    Command="{Binding LoadPictureCommand}"
-                    MinWidth="110"
-                    VerticalAlignment="Stretch"
-                    VerticalContentAlignment="Center"
-                    HorizontalContentAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="{loc:Translate Text.DrawingBoard.LoadPicture}"
+                        Command="{Binding LoadPictureCommand}"
+                        MinWidth="110"
+                        VerticalAlignment="Stretch"
+                        VerticalContentAlignment="Center"
+                        HorizontalContentAlignment="Center"/>
+                <!-- 保存预览中的图片：默认二值化结果，勾选"显示原图"时为适配后的原图 -->
+                <Button Content="{loc:Translate Text.DrawingBoard.SavePicture}"
+                        Command="{Binding SavePictureCommand}"
+                        ToolTip.Tip="{loc:Translate Text.DrawingBoard.SavePictureTip}"
+                        MinWidth="110"
+                        VerticalAlignment="Stretch"
+                        VerticalContentAlignment="Center"
+                        HorizontalContentAlignment="Center"/>
+            </StackPanel>
 
             <!-- 图片处理：适配方式把任意尺寸的图放进 320×120；阈值决定哪些点算墨点，预览显示的就是将要画的结果 -->
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">

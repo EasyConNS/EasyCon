@@ -42,7 +42,11 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 
     /// <summary>预览框显示的图片：默认是二值化结果（黑 = 要画的点），勾选"显示原图"时为原图。</summary>
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SavePictureCommand))]
     private PixelImage? _preview;
+
+    /// <summary>载入文件的名字（不含扩展名），用于保存时的默认文件名。</summary>
+    private string? _sourceName;
 
     [ObservableProperty]
     private string _startPosXText = "0";
@@ -241,9 +245,32 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         }
         // 任意尺寸都按适配方式缩放到 320×120（旧版只接受 320×120，且尺寸检查用 && 写错了）
         _source = image;
+        _sourceName = Path.GetFileNameWithoutExtension(filePath);
         SourceSizeText = Format("Text.DrawingBoard.SourceSize", image.Width, image.Height);
         UpdateCanvas();
     }
+
+    /// <summary>
+    /// 保存预览中的 320×120 图片：默认是二值化结果（最终画出的样子，纯黑白），勾选"显示原图"时是旋转、适配后的原图。
+    /// 二值化结果尺寸正好是画布大小、只有纯黑白，之后再载入不会重采样，按默认 50% 阈值得到同一张掩码。
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanSavePicture))]
+    private async Task SavePictureAsync()
+    {
+        if (Preview is not { } picture)
+            return;
+        string suggested = (_sourceName ?? "drawing-board") + $"-{picture.Width}x{picture.Height}.png";
+        string? path = await _dialogService.SaveFileAsync(T("Text.DrawingBoard.SavePicture"), "png",
+            [new FileDialogFilter("PNG", ["*.png"])], suggested);
+        if (path == null)
+            return;
+        if (_imageProcessor.SavePng(picture, path))
+            _logService.AddLog(Format("Text.DrawingBoard.Saved", path));
+        else
+            await ShowMessageAsync(T("Text.DrawingBoard.SaveFailed"));
+    }
+
+    private bool CanSavePicture() => Preview != null;
 
     [RelayCommand]
     private async Task StartAsync()

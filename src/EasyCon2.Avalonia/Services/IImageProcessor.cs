@@ -23,4 +23,7 @@ public interface IImageProcessor
     /// 尺寸已一致时原样返回，不做重采样。
     /// </summary>
     PixelImage FitTo(PixelImage source, int width, int height, ImageFit fit);
+
+    /// <summary>把像素按原尺寸编码为 PNG 写入文件；失败返回 false。</summary>
+    bool SavePng(PixelImage image, string filePath);
 }

@@ -216,6 +216,10 @@
     <x:String x:Key="Text.DrawingBoard.Region">Canvas coordinates: top-left 0,0, bottom-right 319,119</x:String>
     <x:String x:Key="Text.DrawingBoard.LoadPicture">Load Picture</x:String>
     <x:String x:Key="Text.DrawingBoard.ImageFilter">Images</x:String>
+    <x:String x:Key="Text.DrawingBoard.SavePicture">Save Picture</x:String>
+    <x:String x:Key="Text.DrawingBoard.SavePictureTip">Save the 320×120 preview as PNG: by default the black-and-white result (what will be drawn); with “Show original” checked, the rotated and fitted original</x:String>
+    <x:String x:Key="Text.DrawingBoard.Saved">Picture saved: {0}</x:String>
+    <x:String x:Key="Text.DrawingBoard.SaveFailed">Failed to save the picture</x:String>
     <x:String x:Key="Text.DrawingBoard.Reverse">Invert</x:String>
     <x:String x:Key="Text.DrawingBoard.Threshold">Threshold</x:String>
     <x:String x:Key="Text.DrawingBoard.ShowOriginal">Show original</x:String>

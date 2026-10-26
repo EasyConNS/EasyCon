@@ -156,4 +156,53 @@ public class SkiaImageProcessorTests
         Assert.That(fitted.GetPixel(170, 110).R, Is.GreaterThan(235));
         Assert.That(fitted.GetPixel(315, 5).A, Is.EqualTo(255));
     }
+
+    [Test]
+    public void SavePng_RoundTripsPixelsAndTheBinarizedResult()
+    {
+        SkiaImageProcessor processor = new();
+        byte[] rgba = new byte[320 * 120 * 4];
+        for (int i = 0; i < rgba.Length; i += 4)
+        {
+            rgba[i] = (byte)(i * 7);
+            rgba[i + 1] = (byte)(i * 13);
+            rgba[i + 2] = (byte)(i * 3);
+            rgba[i + 3] = (byte)(i % 3 == 0 ? 255 : 128 + i % 100);
+        }
+        PixelImage original = new(320, 120, rgba);
+        EasyCon2.Avalonia.DrawingBoard.InkMask mask = EasyCon2.Avalonia.DrawingBoard.InkMask.Binarize(original,
+            new EasyCon2.Avalonia.DrawingBoard.BinarizeOptions(50, false, EasyCon2.Avalonia.DrawingBoard.DitherMode.Atkinson));
+        string directory = Path.Combine(Path.GetTempPath(), "easycon-save-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            string originalPath = Path.Combine(directory, "original.png");
+            string maskPath = Path.Combine(directory, "mask.png");
+
+            Assert.That(processor.SavePng(original, originalPath), Is.True);
+            Assert.That(processor.SavePng(mask.ToPreview(), maskPath), Is.True);
+
+            PixelImage reloaded = processor.LoadPixels(originalPath)!;
+            Assert.That(reloaded.Rgba.ToArray(), Is.EqualTo(original.Rgba.ToArray()), "PNG 无损，含半透明像素");
+
+            PixelImage reloadedMask = processor.LoadPixels(maskPath)!;
+            EasyCon2.Avalonia.DrawingBoard.InkMask again = EasyCon2.Avalonia.DrawingBoard.InkMask.Binarize(reloadedMask,
+                new EasyCon2.Avalonia.DrawingBoard.BinarizeOptions(50, false));
+            for (int row = 0; row < 120; row++)
+                for (int col = 0; col < 320; col++)
+                    Assert.That(again[col, row], Is.EqualTo(mask[col, row]), $"({col},{row})");
+        }
+        finally
+        {
+            Directory.Delete(directory, true);
+        }
+    }
+
+    [Test]
+    public void SavePng_UnwritablePath_ReturnsFalse()
+    {
+        PixelImage image = new(1, 1, [0, 0, 0, 255]);
+
+        Assert.That(new SkiaImageProcessor().SavePng(image, Path.Combine(Path.GetTempPath(), "missing-dir-" + Guid.NewGuid().ToString("N"), "x.png")), Is.False);
+    }
 }

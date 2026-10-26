@@ -455,6 +455,62 @@ public class DrawingBoardTests
     }
 
     [Test]
+    public async Task SavePicture_IsAvailableOnlyWithAPicture()
+    {
+        Fixture f = new(Canvas((0, 1)));
+        Assert.That(f.Vm.SavePictureCommand.CanExecute(null), Is.False);
+
+        await f.Vm.LoadPictureFileAsync("/tmp/cat.png");
+
+        Assert.That(f.Vm.SavePictureCommand.CanExecute(null), Is.True);
+    }
+
+    [Test]
+    public async Task SavePicture_SavesWhatThePreviewShows()
+    {
+        PixelImage image = Canvas((0, 1));
+        Fixture f = new(image);
+        await f.Vm.LoadPictureFileAsync("/tmp/cat.png");
+        f.Dialogs.SavePath = "/tmp/out.png";
+
+        await f.Vm.SavePictureCommand.ExecuteAsync(null);
+        f.Vm.ShowOriginal = true;
+        await f.Vm.SavePictureCommand.ExecuteAsync(null);
+
+        Assert.That(f.Dialogs.SuggestedFileName, Is.EqualTo("cat-320x120.png"));
+        Assert.That(f.Images.Saved, Has.Count.EqualTo(2));
+        Assert.That(f.Images.Saved[0].Path, Is.EqualTo("/tmp/out.png"));
+        Assert.That(f.Images.Saved[0].Image.GetPixel(1, 0).R, Is.EqualTo(0), "默认保存二值化结果：墨点为黑");
+        Assert.That(f.Images.Saved[0].Image, Is.Not.SameAs(image));
+        Assert.That(f.Images.Saved[1].Image, Is.SameAs(image), "勾选显示原图时保存原图");
+        Assert.That(f.Dialogs.Messages, Is.Empty);
+    }
+
+    [Test]
+    public async Task SavePicture_CancelledDialog_SavesNothing()
+    {
+        Fixture f = new(Canvas((0, 1)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+
+        await f.Vm.SavePictureCommand.ExecuteAsync(null);
+
+        Assert.That(f.Images.Saved, Is.Empty);
+    }
+
+    [Test]
+    public async Task SavePicture_Failure_IsReported()
+    {
+        Fixture f = new(Canvas((0, 1)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Dialogs.SavePath = "/readonly/out.png";
+        f.Images.SaveSucceeds = false;
+
+        await f.Vm.SavePictureCommand.ExecuteAsync(null);
+
+        Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { "图片保存失败" }));
+    }
+
+    [Test]
     public void MaskPreview_IsBlackWhereInk()
     {
         InkMask mask = new(2, 1, [true, false]);
@@ -1038,6 +1094,15 @@ public class DrawingBoardTests
             FittedSizes.Add((source.Width, source.Height));
             return source.Width == width && source.Height == height ? source : new PixelImage(width, height, White(width, height));
         }
+
+        public List<(PixelImage Image, string Path)> Saved { get; } = [];
+        public bool SaveSucceeds { get; set; } = true;
+
+        public bool SavePng(PixelImage image, string filePath)
+        {
+            Saved.Add((image, filePath));
+            return SaveSucceeds;
+        }
     }
 
     private sealed class FakeDialogs : IDialogService
@@ -1045,8 +1110,15 @@ public class DrawingBoardTests
         public List<string> Messages { get; } = [];
         public Task<IReadOnlyList<string>> OpenFilesAsync(string title, IReadOnlyList<FileDialogFilter>? filters = null, string? suggestedStartPath = null)
             => Task.FromResult<IReadOnlyList<string>>([]);
+        /// <summary>保存对话框返回的路径；null 表示用户取消。</summary>
+        public string? SavePath { get; set; }
+        public string? SuggestedFileName { get; private set; }
+
         public Task<string?> SaveFileAsync(string title, string defaultExtension, IReadOnlyList<FileDialogFilter>? filters = null, string? suggestedFileName = null)
-            => Task.FromResult<string?>(null);
+        {
+            SuggestedFileName = suggestedFileName;
+            return Task.FromResult(SavePath);
+        }
         public Task<string?> OpenFolderAsync(string title, string? suggestedStartPath = null) => Task.FromResult<string?>(null);
         public Task<DialogColor?> PickColorAsync(DialogColor current) => Task.FromResult<DialogColor?>(null);
         public Task<string[]?> ShowScriptArgsDialogAsync() => Task.FromResult<string[]?>(null);

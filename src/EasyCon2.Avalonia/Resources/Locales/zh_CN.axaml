@@ -216,6 +216,10 @@
     <x:String x:Key="Text.DrawingBoard.Region">画布坐标：左上角 0,0，右下角 319,119</x:String>
     <x:String x:Key="Text.DrawingBoard.LoadPicture">加载图片</x:String>
     <x:String x:Key="Text.DrawingBoard.ImageFilter">图片</x:String>
+    <x:String x:Key="Text.DrawingBoard.SavePicture">保存图片</x:String>
+    <x:String x:Key="Text.DrawingBoard.SavePictureTip">把预览中的 320×120 图片保存为 PNG：默认是二值化结果（最终画出的样子），勾选“显示原图”时保存旋转、适配后的原图</x:String>
+    <x:String x:Key="Text.DrawingBoard.Saved">图片已保存：{0}</x:String>
+    <x:String x:Key="Text.DrawingBoard.SaveFailed">图片保存失败</x:String>
     <x:String x:Key="Text.DrawingBoard.Reverse">反转黑白</x:String>
     <x:String x:Key="Text.DrawingBoard.Threshold">阈值</x:String>
     <x:String x:Key="Text.DrawingBoard.ShowOriginal">显示原图</x:String>

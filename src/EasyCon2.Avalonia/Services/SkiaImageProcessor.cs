@@ -126,4 +126,23 @@ public sealed class SkiaImageProcessor : IImageProcessor
         float top = (height - drawHeight) / 2;
         return new SKRect(left, top, left + drawWidth, top + drawHeight);
     }
+
+    public bool SavePng(PixelImage image, string filePath)
+    {
+        try
+        {
+            SKImageInfo info = new(image.Width, image.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+            using SKImage encoded = SKImage.FromPixelCopy(info, image.Rgba);
+            using SKData? data = encoded.Encode(SKEncodedImageFormat.Png, 100);
+            if (data == null)
+                return false;
+            using FileStream stream = File.Create(filePath);
+            data.SaveTo(stream);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
 }
