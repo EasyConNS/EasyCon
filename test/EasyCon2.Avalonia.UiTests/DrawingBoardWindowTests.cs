@@ -125,6 +125,22 @@ public class DrawingBoardWindowTests
         }
     }
 
+    [Test]
+    public void DroppingFiles_IsWiredToTheBoard()
+    {
+        DrawingBoardWindow window = Show(900, 560);
+        try
+        {
+            Assert.That(EasyCon2.Avalonia.Behaviors.FileDropBehavior.GetCommand(window),
+                Is.SameAs(((DrawingBoardViewModel)window.DataContext!).DropPictureCommand));
+            Assert.That(DragDrop.GetAllowDrop(window), Is.True);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     private static double PreviewWidthAt(double width, double height)
     {
         DrawingBoardWindow window = Show(width, height);

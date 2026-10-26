@@ -205,4 +205,133 @@ public class SkiaImageProcessorTests
 
         Assert.That(new SkiaImageProcessor().SavePng(image, Path.Combine(Path.GetTempPath(), "missing-dir-" + Guid.NewGuid().ToString("N"), "x.png")), Is.False);
     }
+
+    /// <summary>只有中间 150～169 列为黑的不透明 320×120 图。</summary>
+    private static PixelImage CenterStripe()
+    {
+        byte[] rgba = new byte[320 * 120 * 4];
+        for (int y = 0; y < 120; y++)
+            for (int x = 0; x < 320; x++)
+            {
+                int i = (y * 320 + x) * 4;
+                byte v = x is >= 150 and < 170 ? (byte)0 : (byte)255;
+                rgba[i] = rgba[i + 1] = rgba[i + 2] = v;
+                rgba[i + 3] = 255;
+            }
+        return new PixelImage(320, 120, rgba);
+    }
+
+    [Test]
+    public void FitTo_CoverWithAdjustments_DoesNotTakeTheSameSizeShortcut()
+    {
+        PixelImage source = CenterStripe();
+        SkiaImageProcessor processor = new();
+
+        Assert.That(processor.FitTo(source, 320, 120, ImageFit.Cover, CoverTransform.Identity), Is.SameAs(source));
+        Assert.That(processor.FitTo(source, 320, 120, ImageFit.Cover, new CoverTransform(10, 1, 0, 0)), Is.Not.SameAs(source));
+        Assert.That(processor.FitTo(source, 320, 120, ImageFit.Contain, new CoverTransform(10, 1, 0, 0)), Is.SameAs(source),
+            "取景调整只对等比裁切生效");
+    }
+
+    [Test]
+    public void FitTo_CoverPan_SelectsWhichPartIsKept()
+    {
+        // 640×120 左半黑：贴左只看到黑，贴右只看到白
+        SkiaImageProcessor processor = new();
+
+        PixelImage left = processor.FitTo(HalfBlack(640, 120), 320, 120, ImageFit.Cover, new CoverTransform(0, 1, -1, 0));
+        PixelImage right = processor.FitTo(HalfBlack(640, 120), 320, 120, ImageFit.Cover, new CoverTransform(0, 1, 1, 0));
+
+        Assert.That(left.GetPixel(300, 60).R, Is.LessThan(20));
+        Assert.That(right.GetPixel(20, 60).R, Is.GreaterThan(235));
+    }
+
+    [Test]
+    public void FitTo_CoverZoom_EnlargesAroundTheCenter()
+    {
+        PixelImage zoomed = new SkiaImageProcessor().FitTo(CenterStripe(), 320, 120, ImageFit.Cover, new CoverTransform(0, 2, 0, 0));
+
+        // 20 列宽的黑条放大 2 倍后占 140～179 列
+        Assert.That(zoomed.GetPixel(145, 60).R, Is.LessThan(20));
+        Assert.That(zoomed.GetPixel(175, 60).R, Is.LessThan(20));
+        Assert.That(zoomed.GetPixel(135, 60).R, Is.GreaterThan(235));
+    }
+
+    [Test]
+    public void FitTo_CoverAngle90_TurnsTheLeftHalfToTheTop()
+    {
+        PixelImage turned = new SkiaImageProcessor().FitTo(HalfBlack(320, 120), 320, 120, ImageFit.Cover, new CoverTransform(90, 1, 0, 0));
+
+        Assert.That(turned.GetPixel(160, 10).R, Is.LessThan(20), "顺时针 90°：原图左侧到上方");
+        Assert.That(turned.GetPixel(160, 110).R, Is.GreaterThan(235));
+    }
+
+    [TestCase(17)]
+    [TestCase(45)]
+    [TestCase(-120)]
+    public void FitTo_CoverAnyAngle_StillCoversTheWholeCanvasWhenCentered(double angle)
+    {
+        PixelImage turned = new SkiaImageProcessor().FitTo(HalfBlack(400, 300), 320, 120, ImageFit.Cover, new CoverTransform(angle, 1, 0, 0));
+
+        foreach ((int x, int y) in new[] { (0, 0), (319, 0), (0, 119), (319, 119), (160, 60) })
+            Assert.That(turned.GetPixel(x, y).A, Is.EqualTo(255), $"({x},{y}) 不应露出空白");
+    }
+
+    [Test]
+    public void LoadPixels_DecodesEverySupportedFormat()
+    {
+        SkiaImageProcessor processor = new();
+        PixelImage source = HalfBlack(8, 4);
+        SKImageInfo info = new(8, 4, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+        using SKImage image = SKImage.FromPixelCopy(info, source.Rgba);
+        byte[] png = image.Encode(SKEncodedImageFormat.Png, 100).ToArray();
+
+        // BMP：24 位、自下而上
+        byte[] bmp = new byte[54 + 8 * 4 * 3];
+        "BM"u8.CopyTo(bmp);
+        BitConverter.GetBytes(bmp.Length).CopyTo(bmp, 2);
+        BitConverter.GetBytes(54).CopyTo(bmp, 10);
+        BitConverter.GetBytes(40).CopyTo(bmp, 14);
+        BitConverter.GetBytes(8).CopyTo(bmp, 18);
+        BitConverter.GetBytes(4).CopyTo(bmp, 22);
+        BitConverter.GetBytes((short)1).CopyTo(bmp, 26);
+        BitConverter.GetBytes((short)24).CopyTo(bmp, 28);
+        // ICO：一个图标项，内嵌 PNG
+        byte[] ico = new byte[6 + 16 + png.Length];
+        BitConverter.GetBytes((short)1).CopyTo(ico, 2);
+        BitConverter.GetBytes((short)1).CopyTo(ico, 4);
+        ico[6] = 8;
+        ico[7] = 4;
+        BitConverter.GetBytes((short)1).CopyTo(ico, 10);
+        BitConverter.GetBytes((short)32).CopyTo(ico, 12);
+        BitConverter.GetBytes(png.Length).CopyTo(ico, 14);
+        BitConverter.GetBytes(22).CopyTo(ico, 18);
+        png.CopyTo(ico, 22);
+
+        Dictionary<string, byte[]> files = new()
+        {
+            ["png"] = png,
+            ["jpg"] = image.Encode(SKEncodedImageFormat.Jpeg, 90).ToArray(),
+            ["webp"] = image.Encode(SKEncodedImageFormat.Webp, 100).ToArray(),
+            ["bmp"] = bmp,
+            ["gif"] = Convert.FromBase64String("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"),
+            ["ico"] = ico,
+            ["wbmp"] = [0, 0, 8, 1, 0xF0],
+        };
+        string directory = Path.Combine(Path.GetTempPath(), "easycon-formats-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            foreach ((string extension, byte[] bytes) in files)
+            {
+                string path = Path.Combine(directory, "picture." + extension);
+                File.WriteAllBytes(path, bytes);
+                Assert.That(processor.LoadPixels(path), Is.Not.Null, extension);
+            }
+        }
+        finally
+        {
+            Directory.Delete(directory, true);
+        }
+    }
 }

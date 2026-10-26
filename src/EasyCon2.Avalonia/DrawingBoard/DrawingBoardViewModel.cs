@@ -82,7 +82,27 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 
     /// <summary>适配方式在 <see cref="FitModes"/> 中的下标；默认等比留白，整张图不变形。</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCoverMode))]
     private int _fitModeIndex;
+
+    /// <summary>等比裁切的任意角度旋转（顺时针，-180～180°），叠加在 90° 旋转与翻转之后。</summary>
+    [ObservableProperty]
+    private double _coverAngle;
+
+    /// <summary>等比裁切在铺满画布基础上的放大比例（100～400%）。</summary>
+    [ObservableProperty]
+    private double _coverZoomPercent = 100;
+
+    /// <summary>等比裁切的水平取景位置（-100 贴左 ～ 100 贴右）。</summary>
+    [ObservableProperty]
+    private double _coverPanX;
+
+    /// <summary>等比裁切的垂直取景位置（-100 贴上 ～ 100 贴下）。</summary>
+    [ObservableProperty]
+    private double _coverPanY;
+
+    /// <summary>重置取景时暂停逐项重算，最后统一算一次。</summary>
+    private bool _suppressCanvasUpdate;
 
     /// <summary>
     /// 橡皮擦模式：用户事先把整个画布涂黑，程序按住 B（橡皮擦）擦出应留白的点，而不是按住 A（画笔）画出墨点。
@@ -147,6 +167,44 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
 
     partial void OnFitModeIndexChanged(int value) => UpdateCanvas();
 
+    /// <summary>取景调整（任意角度、缩放、位置）只在等比裁切时显示和生效。</summary>
+    public bool IsCoverMode => SelectedFit == ImageFit.Cover;
+
+    private ImageFit SelectedFit => FitModes[Math.Clamp(FitModeIndex, 0, FitModes.Length - 1)];
+
+    partial void OnCoverAngleChanged(double value) => UpdateCoverCanvas();
+
+    partial void OnCoverZoomPercentChanged(double value) => UpdateCoverCanvas();
+
+    partial void OnCoverPanXChanged(double value) => UpdateCoverCanvas();
+
+    partial void OnCoverPanYChanged(double value) => UpdateCoverCanvas();
+
+    private void UpdateCoverCanvas()
+    {
+        if (IsCoverMode)
+            UpdateCanvas();
+    }
+
+    /// <summary>取景调整恢复为居中、不旋转、不放大。</summary>
+    [RelayCommand]
+    private void ResetCover()
+    {
+        _suppressCanvasUpdate = true;
+        try
+        {
+            CoverAngle = 0;
+            CoverZoomPercent = 100;
+            CoverPanX = 0;
+            CoverPanY = 0;
+        }
+        finally
+        {
+            _suppressCanvasUpdate = false;
+        }
+        UpdateCoverCanvas();
+    }
+
     partial void OnRotationIndexChanged(int value) => UpdateCanvas();
 
     partial void OnFlipHorizontalChanged(bool value) => UpdateCanvas();
@@ -156,8 +214,11 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     /// <summary>原图 → 旋转/翻转 → 适配到 320×120 → 二值化。均从已解码的原图重新计算，不重新读文件。</summary>
     private void UpdateCanvas()
     {
+        if (_suppressCanvasUpdate)
+            return;
+        CoverTransform cover = new(CoverAngle, CoverZoomPercent / 100, CoverPanX / 100, CoverPanY / 100);
         _canvas = _source == null ? null : _imageProcessor.FitTo(_source.Orient(RotationIndex, FlipHorizontal, FlipVertical),
-            SplatoonDrawing.CanvasWidth, SplatoonDrawing.CanvasHeight, FitModes[Math.Clamp(FitModeIndex, 0, FitModes.Length - 1)]);
+            SplatoonDrawing.CanvasWidth, SplatoonDrawing.CanvasHeight, SelectedFit, cover);
         UpdateMask();
     }
 
@@ -224,11 +285,18 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(ProgressText));
     }
 
+    /// <summary>SkiaSharp 能解码的格式（实测 HEIC、TIFF、PSD、TGA、JPEG 2000 不支持）。</summary>
+    internal static readonly string[] PictureExtensions = ["*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif", "*.webp", "*.ico", "*.wbmp"];
+
+    /// <summary>把图片文件拖进窗口即载入（由 FileDropBehavior 传入第一个文件的路径）。</summary>
+    [RelayCommand]
+    private Task DropPictureAsync(string path) => LoadPictureFileAsync(path);
+
     [RelayCommand]
     private async Task LoadPictureAsync()
     {
         IReadOnlyList<string> files = await _dialogService.OpenFilesAsync(T("Text.DrawingBoard.LoadPicture"),
-            [new FileDialogFilter(T("Text.DrawingBoard.ImageFilter"), ["*.png", "*.jpg"])],
+            [new FileDialogFilter(T("Text.DrawingBoard.ImageFilter"), PictureExtensions)],
             Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
         if (files.Count == 0)
             return;

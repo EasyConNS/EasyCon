@@ -215,6 +215,7 @@
     <x:String x:Key="Text.DrawingBoard.Title">Drawing Board</x:String>
     <x:String x:Key="Text.DrawingBoard.Region">Canvas coordinates: top-left 0,0, bottom-right 319,119</x:String>
     <x:String x:Key="Text.DrawingBoard.LoadPicture">Load Picture</x:String>
+    <x:String x:Key="Text.DrawingBoard.LoadPictureTip">Supports PNG, JPG, BMP, GIF, WebP, ICO and WBMP; you can also drop a picture onto the window</x:String>
     <x:String x:Key="Text.DrawingBoard.ImageFilter">Images</x:String>
     <x:String x:Key="Text.DrawingBoard.SavePicture">Save Picture</x:String>
     <x:String x:Key="Text.DrawingBoard.SavePictureTip">Save the 320×120 preview as PNG: by default the black-and-white result (what will be drawn); with “Show original” checked, the rotated and fitted original</x:String>
@@ -248,11 +249,16 @@
     <x:String x:Key="Text.DrawingBoard.EstimateNone">Time:</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateInvalid">Time: invalid parameters</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateResult">Time: {0:0.00} min</x:String>
-    <x:String x:Key="Text.DrawingBoard.LoadFailed">Failed to load the picture</x:String>
+    <x:String x:Key="Text.DrawingBoard.LoadFailed">Failed to load the picture (supported: PNG, JPG, BMP, GIF, WebP, ICO, WBMP; convert HEIC, TIFF and others first)</x:String>
     <x:String x:Key="Text.DrawingBoard.Fit">Fit</x:String>
     <x:String x:Key="Text.DrawingBoard.FitContain">Fit (letterbox)</x:String>
     <x:String x:Key="Text.DrawingBoard.FitCover">Fill (crop)</x:String>
     <x:String x:Key="Text.DrawingBoard.FitStretch">Stretch</x:String>
+    <x:String x:Key="Text.DrawingBoard.CoverAngle">Angle</x:String>
+    <x:String x:Key="Text.DrawingBoard.CoverZoom">Zoom</x:String>
+    <x:String x:Key="Text.DrawingBoard.CoverPanX">Horizontal</x:String>
+    <x:String x:Key="Text.DrawingBoard.CoverPanY">Vertical</x:String>
+    <x:String x:Key="Text.DrawingBoard.CoverReset">Reset framing</x:String>
     <x:String x:Key="Text.DrawingBoard.SourceSize">Source {0}×{1}</x:String>
     <x:String x:Key="Text.DrawingBoard.Rotate">Rotate</x:String>
     <x:String x:Key="Text.DrawingBoard.RotateTip">Rotate the picture clockwise; flips apply to the rotated picture</x:String>

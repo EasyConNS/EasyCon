@@ -215,6 +215,7 @@
     <x:String x:Key="Text.DrawingBoard.Title">画板</x:String>
     <x:String x:Key="Text.DrawingBoard.Region">画布坐标：左上角 0,0，右下角 319,119</x:String>
     <x:String x:Key="Text.DrawingBoard.LoadPicture">加载图片</x:String>
+    <x:String x:Key="Text.DrawingBoard.LoadPictureTip">支持 PNG、JPG、BMP、GIF、WebP、ICO、WBMP；也可以直接把图片拖进窗口</x:String>
     <x:String x:Key="Text.DrawingBoard.ImageFilter">图片</x:String>
     <x:String x:Key="Text.DrawingBoard.SavePicture">保存图片</x:String>
     <x:String x:Key="Text.DrawingBoard.SavePictureTip">把预览中的 320×120 图片保存为 PNG：默认是二值化结果（最终画出的样子），勾选“显示原图”时保存旋转、适配后的原图</x:String>
@@ -248,11 +249,16 @@
     <x:String x:Key="Text.DrawingBoard.EstimateNone">耗时：</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateInvalid">耗时：参数有误</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateResult">耗时：{0:0.00}mins</x:String>
-    <x:String x:Key="Text.DrawingBoard.LoadFailed">图片加载失败</x:String>
+    <x:String x:Key="Text.DrawingBoard.LoadFailed">图片加载失败（支持 PNG、JPG、BMP、GIF、WebP、ICO、WBMP；HEIC、TIFF 等请先转换格式）</x:String>
     <x:String x:Key="Text.DrawingBoard.Fit">适配</x:String>
     <x:String x:Key="Text.DrawingBoard.FitContain">等比留白</x:String>
     <x:String x:Key="Text.DrawingBoard.FitCover">等比裁切</x:String>
     <x:String x:Key="Text.DrawingBoard.FitStretch">拉伸</x:String>
+    <x:String x:Key="Text.DrawingBoard.CoverAngle">角度</x:String>
+    <x:String x:Key="Text.DrawingBoard.CoverZoom">缩放</x:String>
+    <x:String x:Key="Text.DrawingBoard.CoverPanX">左右</x:String>
+    <x:String x:Key="Text.DrawingBoard.CoverPanY">上下</x:String>
+    <x:String x:Key="Text.DrawingBoard.CoverReset">重置取景</x:String>
     <x:String x:Key="Text.DrawingBoard.SourceSize">原图 {0}×{1}</x:String>
     <x:String x:Key="Text.DrawingBoard.Rotate">旋转</x:String>
     <x:String x:Key="Text.DrawingBoard.RotateTip">顺时针旋转原图；翻转按旋转后的方向进行</x:String>

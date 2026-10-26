@@ -511,6 +511,69 @@ public class DrawingBoardTests
     }
 
     [Test]
+    public async Task CoverControls_OnlyApplyInCoverMode()
+    {
+        Fixture f = new(new PixelImage(640, 480, White(640, 480)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        List<string> changed = [];
+        f.Vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName!);
+        Assert.That(f.Vm.IsCoverMode, Is.False);
+
+        f.Vm.CoverAngle = 30;
+        Assert.That(f.Images.Fits, Has.Count.EqualTo(1), "非等比裁切时调取景不重算");
+
+        f.Vm.FitModeIndex = 1;
+        Assert.That(f.Vm.IsCoverMode, Is.True);
+        Assert.That(changed, Does.Contain(nameof(DrawingBoardViewModel.IsCoverMode)));
+        f.Vm.CoverZoomPercent = 150;
+        f.Vm.CoverPanX = -100;
+        f.Vm.CoverPanY = 40;
+
+        Assert.That(f.Images.Covers.Last(), Is.EqualTo(new CoverTransform(30, 1.5, -1, 0.4)));
+    }
+
+    [Test]
+    public async Task ResetCover_RestoresDefaultsWithASingleRefit()
+    {
+        Fixture f = new(new PixelImage(640, 480, White(640, 480)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.FitModeIndex = 1;
+        f.Vm.CoverAngle = 30;
+        f.Vm.CoverZoomPercent = 200;
+        f.Vm.CoverPanX = 50;
+        f.Vm.CoverPanY = -50;
+        int before = f.Images.Fits.Count;
+
+        f.Vm.ResetCoverCommand.Execute(null);
+
+        Assert.That(f.Images.Fits.Count - before, Is.EqualTo(1));
+        Assert.That(f.Images.Covers.Last(), Is.EqualTo(CoverTransform.Identity));
+        Assert.That((f.Vm.CoverAngle, f.Vm.CoverZoomPercent, f.Vm.CoverPanX, f.Vm.CoverPanY), Is.EqualTo((0.0, 100.0, 0.0, 0.0)));
+    }
+
+    [Test]
+    public async Task DroppedFile_IsLoaded()
+    {
+        Fixture f = new(Canvas((0, 1)));
+
+        await f.Vm.DropPictureCommand.ExecuteAsync("/tmp/dropped.webp");
+
+        Assert.That(f.Images.Decodes, Is.EqualTo(1));
+        Assert.That(f.Vm.Mask, Is.Not.Null);
+    }
+
+    [Test]
+    public async Task OpenDialog_ListsEverySupportedFormat()
+    {
+        Fixture f = new(Canvas());
+
+        await f.Vm.LoadPictureCommand.ExecuteAsync(null);
+
+        Assert.That(f.Dialogs.OpenFilters![0].Patterns,
+            Is.EquivalentTo(new[] { "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.gif", "*.webp", "*.ico", "*.wbmp" }));
+    }
+
+    [Test]
     public void MaskPreview_IsBlackWhereInk()
     {
         InkMask mask = new(2, 1, [true, false]);
@@ -1087,10 +1150,12 @@ public class DrawingBoardTests
 
         /// <summary>记录适配方式；尺寸已一致时原样返回（与真实实现相同），否则给一张同尺寸白图。</summary>
         public List<(int Width, int Height)> FittedSizes { get; } = [];
+        public List<CoverTransform?> Covers { get; } = [];
 
-        public PixelImage FitTo(PixelImage source, int width, int height, ImageFit fit)
+        public PixelImage FitTo(PixelImage source, int width, int height, ImageFit fit, CoverTransform? cover = null)
         {
             Fits.Add(fit);
+            Covers.Add(cover);
             FittedSizes.Add((source.Width, source.Height));
             return source.Width == width && source.Height == height ? source : new PixelImage(width, height, White(width, height));
         }
@@ -1108,8 +1173,13 @@ public class DrawingBoardTests
     private sealed class FakeDialogs : IDialogService
     {
         public List<string> Messages { get; } = [];
+        public IReadOnlyList<FileDialogFilter>? OpenFilters { get; private set; }
+
         public Task<IReadOnlyList<string>> OpenFilesAsync(string title, IReadOnlyList<FileDialogFilter>? filters = null, string? suggestedStartPath = null)
-            => Task.FromResult<IReadOnlyList<string>>([]);
+        {
+            OpenFilters = filters;
+            return Task.FromResult<IReadOnlyList<string>>([]);
+        }
         /// <summary>保存对话框返回的路径；null 表示用户取消。</summary>
         public string? SavePath { get; set; }
         public string? SuggestedFileName { get; private set; }

@@ -89,9 +89,10 @@ public sealed class SkiaImageProcessor : IImageProcessor
         }
     }
 
-    public PixelImage FitTo(PixelImage source, int width, int height, ImageFit fit)
+    public PixelImage FitTo(PixelImage source, int width, int height, ImageFit fit, CoverTransform? cover = null)
     {
-        if (source.Width == width && source.Height == height)
+        CoverTransform transform = fit == ImageFit.Cover ? cover ?? CoverTransform.Identity : CoverTransform.Identity;
+        if (source.Width == width && source.Height == height && transform.IsIdentity)
             return source;
 
         SKImageInfo sourceInfo = new(source.Width, source.Height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
@@ -99,8 +100,11 @@ public sealed class SkiaImageProcessor : IImageProcessor
         // 光栅 Surface 只支持预乘；读回时再转成非预乘，与 LoadPixels 的约定一致
         using SKSurface surface = SKSurface.Create(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul));
         surface.Canvas.Clear(SKColors.Transparent);
-        surface.Canvas.DrawImage(image, Destination(source.Width, source.Height, width, height, fit),
-            new SKSamplingOptions(SKCubicResampler.Mitchell));
+        SKSamplingOptions sampling = new(SKCubicResampler.Mitchell);
+        if (fit == ImageFit.Cover)
+            DrawCover(surface.Canvas, image, source.Width, source.Height, width, height, transform, sampling);
+        else
+            surface.Canvas.DrawImage(image, Destination(source.Width, source.Height, width, height, fit), sampling);
 
         SKImageInfo targetInfo = new(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
         byte[] rgba = new byte[width * height * 4];
@@ -111,6 +115,33 @@ public sealed class SkiaImageProcessor : IImageProcessor
                 snapshot.ReadPixels(targetInfo, (IntPtr)pixels, width * 4, 0, 0);
         }
         return new PixelImage(width, height, rgba);
+    }
+
+    /// <summary>
+    /// 等比裁切：以画布中心为原点旋转、缩放后绘制。基础缩放取"旋转后仍能铺满画布"的最小值（0° 时即普通等比裁切），
+    /// 再乘以 <see cref="CoverTransform.Zoom"/>；取景位置在图片超出画布的余量内移动。
+    /// 有旋转时余量按外接矩形计算，平移到边缘可能露出角落的空白（透明，按白色处理）。
+    /// </summary>
+    private static void DrawCover(SKCanvas canvas, SKImage image, int sourceWidth, int sourceHeight, int width, int height,
+        CoverTransform transform, SKSamplingOptions sampling)
+    {
+        double radians = transform.AngleDegrees * Math.PI / 180;
+        double cos = Math.Abs(Math.Cos(radians));
+        double sin = Math.Abs(Math.Sin(radians));
+        double scale = Math.Max((width * cos + height * sin) / sourceWidth, (width * sin + height * cos) / sourceHeight)
+            * Math.Max(1, transform.Zoom);
+        double boundsWidth = scale * (sourceWidth * cos + sourceHeight * sin);
+        double boundsHeight = scale * (sourceWidth * sin + sourceHeight * cos);
+        // 取景位置向右（PanX > 0）意味着露出图片右侧，图片整体左移
+        double dx = -Math.Clamp(transform.PanX, -1, 1) * Math.Max(0, (boundsWidth - width) / 2);
+        double dy = -Math.Clamp(transform.PanY, -1, 1) * Math.Max(0, (boundsHeight - height) / 2);
+
+        canvas.Save();
+        canvas.Translate((float)(width / 2.0 + dx), (float)(height / 2.0 + dy));
+        canvas.RotateDegrees((float)transform.AngleDegrees);
+        canvas.Scale((float)scale);
+        canvas.DrawImage(image, new SKRect(-sourceWidth / 2f, -sourceHeight / 2f, sourceWidth / 2f, sourceHeight / 2f), sampling);
+        canvas.Restore();
     }
 
     private static SKRect Destination(int sourceWidth, int sourceHeight, int width, int height, ImageFit fit)

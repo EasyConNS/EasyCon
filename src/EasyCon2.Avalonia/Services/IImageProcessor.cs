@@ -20,9 +20,10 @@ public interface IImageProcessor
 
     /// <summary>
     /// 按 <paramref name="fit"/> 把图片缩放进 <paramref name="width"/>×<paramref name="height"/> 的画布，未覆盖处透明。
-    /// 尺寸已一致时原样返回，不做重采样。
+    /// <paramref name="cover"/> 只在 <see cref="ImageFit.Cover"/> 时生效（任意角度旋转、缩放、取景位置）。
+    /// 尺寸已一致且无取景调整时原样返回，不做重采样。
     /// </summary>
-    PixelImage FitTo(PixelImage source, int width, int height, ImageFit fit);
+    PixelImage FitTo(PixelImage source, int width, int height, ImageFit fit, CoverTransform? cover = null);
 
     /// <summary>把像素按原尺寸编码为 PNG 写入文件；失败返回 false。</summary>
     bool SavePng(PixelImage image, string filePath);
