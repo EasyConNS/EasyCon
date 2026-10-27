@@ -1,10 +1,8 @@
 # 喷射战士画板
 
-> 状态：现状。与 `src/EasyCon2.Avalonia/DrawingBoard/` 保持一致。
-
 画板把一张图片转成黑白点阵，通过虚拟手柄在《喷射战士》（Splatoon）的投稿画板上自动逐点画出来。画布固定为 **320×120** 个点；光标从左上角出发，用方向键移动，按住 A 画、按住 B 擦。
 
-入口：主窗口“功能中心”→“喷射战士”。“自由画板”尚未完成，按钮保持禁用。
+入口：主窗口“功能中心”→“喷射战士”。
 
 - [快速上手](#快速上手)
 - [界面](#界面)
@@ -58,7 +56,7 @@
 
 ### 支持的格式
 
-PNG、JPG、BMP、GIF（取第一帧）、WebP、ICO、WBMP。HEIC（iPhone 照片）、TIFF、PSD 等格式无法读取，请先转换成 PNG 或 JPG。
+PNG、JPG、BMP、GIF（取第一帧）、WebP、ICO、WBMP。
 
 ### “图片”页
 
@@ -225,11 +223,6 @@ PNG、JPG、BMP、GIF（取第一帧）、WebP、ICO、WBMP。HEIC（iPhone 照�
 | `DrawingRunner.cs` | `IDrawingRunner`：经 `HostRunCoordinator` 取运行租约，与脚本互斥 |
 | `DrawingBoardViewModel*.cs` | 按职责分为 核心 / Picture / Adjust / Settings / Drawing 五个分部文件 |
 | `DrawingBoardWindow.axaml(.cs)` | 布局；代码后置只做指针坐标换算与最小高度计算 |
-
-约定：
-- 掩码处理顺序固定在 `BuildMask`，反转黑白必须是最后一步。
-- 预览的逻辑尺寸固定为 822×282，由 `Viewbox` 缩放；指针坐标按 `PictureBox` 自身坐标系换算，不受缩放影响。
-- `MoveTo` 每走完一个方向多等一次延迟。这一等待暂不删除：只在有线 ESP32-S3 上验证过，蓝牙设备可能需要这段余量。
 
 测试：
 - `test/EasyCon2.Avalonia.Core.Tests/DrawingBoard*`：算法、图片处理、参数、运行过程，用假手柄记录按键。
