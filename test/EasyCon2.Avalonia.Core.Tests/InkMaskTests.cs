@@ -217,8 +217,40 @@ public class InkMaskTests : DrawingBoardTestBase
 
         InkMask outline = mask.Outline();
 
-        Assert.That(Cells(outline).Count(ink => ink), Is.EqualTo(16 + 1 + 3 + 4), "5×5 方块剩外圈 16 点，单点、线段、贴边小块不变");
+        Assert.That(Cells(outline).Count(ink => ink), Is.EqualTo(16 + 1 + 3 + 3), "5×5 方块剩外圈 16 点，单点、线段不变，角上 2×2 小块去掉贴角的一点");
         Assert.That(outline[12, 12], Is.False, "方块内部被挖空");
         Assert.That(outline[10, 12], Is.True);
+        Assert.That(outline[0, 0], Is.False, "画布边缘不算轮廓");
+    }
+
+    [Test]
+    public void Outline_WithReverse_DoesNotFrameTheCanvas()
+    {
+        // 白底黑圆：反转后背景成了墨点，轮廓只应是圆周外侧一圈，不能把整圈画布边框也算进来
+        List<(int, int)> disc = [];
+        for (int r = 0; r < 120; r++)
+            for (int c = 0; c < 320; c++)
+                if ((c - 160) * (c - 160) + (r - 60) * (r - 60) < 30 * 30)
+                    disc.Add((r, c));
+        PixelImage image = Canvas([.. disc]);
+
+        InkMask normal = InkMask.Binarize(image, new BinarizeOptions(50, false)).Outline();
+        InkMask reversed = InkMask.Binarize(image, new BinarizeOptions(50, true)).Outline();
+
+        int Border(InkMask mask) =>
+            Enumerable.Range(0, 320).Count(c => mask[c, 0] || mask[c, 119]) + Enumerable.Range(1, 118).Count(r => mask[0, r] || mask[319, r]);
+        Assert.That(Border(reversed), Is.Zero);
+        Assert.That(Cells(reversed).Count(ink => ink), Is.EqualTo(Cells(normal).Count(ink => ink)).Within(10),
+            "反转后是圆周外侧一圈，与不反转时的内侧一圈点数相近");
+        Assert.That(reversed[160, 60], Is.False, "圆内（反转后的空白）不画");
+        Assert.That(reversed[5, 5], Is.False, "背景内部（反转后的实心区域）被挖空");
+    }
+
+    [Test]
+    public void Outline_OfAFullyInkedCanvas_IsEmpty()
+    {
+        InkMask full = new(320, 120, Enumerable.Repeat(true, 320 * 120).ToArray());
+
+        Assert.That(Cells(full.Outline()).Any(ink => ink), Is.False, "整张都是墨点时没有边，不画边框");
     }
 }
