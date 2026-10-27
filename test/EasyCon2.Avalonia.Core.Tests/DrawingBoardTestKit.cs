@@ -15,6 +15,15 @@ internal static class DrawingBoardTestKit
 {
     internal const string LeaseRelease = "lease-release";
 
+    /// <summary>开画前归位发出的一次输入：左摇杆以最大角度推向左上（推一下、推住各一次，见 <see cref="HomeKeys"/>）。</summary>
+    internal const string Home = "stick LS 0,0";
+
+    /// <summary>开画前的归位：左摇杆先向左上推一下，再推住把光标推到画布左上角。</summary>
+    internal static readonly string[] HomeKeys = [Home, Home];
+
+    /// <summary>归位的计划耗时：摇杆推一下 + 推住，各跟一次延迟。</summary>
+    internal static int HomeMs(int wait) => SplatoonDrawing.HomeTapMs + SplatoonDrawing.HomeHoldMs + 2 * wait;
+
     internal static readonly DrawingBoardSettings FullCanvas = new(0, 0, 0, 0, 320, 120);
 
     internal static Dictionary<string, string> Locale(string name)
@@ -77,6 +86,55 @@ internal static class DrawingBoardTestKit
         rgba[i + 3] = a;
     }
 
+    /// <summary>
+    /// 同步执行投递的操作，并标记"正在 UI 线程上"。配合 <see cref="UiOnlyResolver"/>，
+    /// 可以抓出在绘制线程上直接取本地化文本的代码（真实程序里 L10n 只能在 UI 线程上调用，否则抛异常）。
+    /// </summary>
+    internal sealed class UiMarkingDispatcher : IUiDispatcher
+    {
+        [ThreadStatic]
+        private static bool _inPost;
+
+        public static bool InPost => _inPost;
+
+        public bool IsOnUiThread => _inPost;
+
+        public void Post(Action action)
+        {
+            bool outer = _inPost;
+            _inPost = true;
+            try
+            {
+                action();
+            }
+            finally
+            {
+                _inPost = outer;
+            }
+        }
+
+        public Task InvokeAsync(Action action)
+        {
+            Post(action);
+            return Task.CompletedTask;
+        }
+
+        public Task InvokeAsync(Func<Task> action)
+        {
+            Task task = Task.CompletedTask;
+            Post(() => task = action());
+            return task;
+        }
+    }
+
+    /// <summary>线程池线程（绘制线程）上、且不在投递的 UI 操作内取本地化文本时抛异常，与真实 L10n 一致。</summary>
+    internal static Func<string, string?> UiOnlyResolver(Func<string, string?> inner) => key =>
+    {
+        if (Thread.CurrentThread.IsThreadPoolThread && !UiMarkingDispatcher.InPost)
+            throw new InvalidOperationException("本地化文本只能在 UI 线程上取：" + key);
+        return inner(key);
+    };
+
     /// <summary>320×120 白底，给定 (行, 列) 处为黑点。</summary>
     internal static PixelImage Canvas(params (int Row, int Col)[] dark)
     {
@@ -91,12 +149,14 @@ internal static class DrawingBoardTestKit
 
     internal sealed class Fixture
     {
-        public Fixture(PixelImage image)
+        public Fixture(PixelImage image, IUiDispatcher? ui = null)
         {
             Runner = new FakeRunner(Pad);
             Images = new FakeImages(image);
-            Vm = new DrawingBoardViewModel(Runner, Dialogs, Images, SynchronousUiDispatcher.Instance, new NullLog());
+            Vm = new DrawingBoardViewModel(Runner, Dialogs, Images, ui ?? SynchronousUiDispatcher.Instance, Log);
         }
+
+        public RecordingLog Log { get; } = new();
 
         public FakeImages Images { get; }
         public RecordingPad Pad { get; } = new();
@@ -162,7 +222,14 @@ internal static class DrawingBoardTestKit
         }
 
         public void ReleaseButtons(GamePadKey key) => Add("release " + key);
-        public void ClickStick(GamePadKey key, byte x, byte y, int duration, CancellationToken token) => Add("stick " + key);
+        public void ClickStick(GamePadKey key, byte x, byte y, int duration, CancellationToken token)
+        {
+            Add($"stick {key} {x},{y}");
+            Interlocked.Add(ref _clickDurations, duration);
+            OnKey?.Invoke();
+            if (WaitForDuration && token.WaitHandle.WaitOne(duration))
+                throw new OperationCanceledException(token);
+        }
         public void SetStick(GamePadKey key, byte x, byte y) => Add("stick " + key);
         public void ChangeAmiibo(uint index) { }
 
@@ -246,14 +313,29 @@ internal static class DrawingBoardTestKit
         }
     }
 
-    internal sealed class NullLog : ILogService
+    internal sealed class RecordingLog : ILogService
     {
+        private readonly List<string> _messages = [];
+
+        public List<string> Messages
+        {
+            get
+            {
+                lock (_messages)
+                    return [.. _messages];
+            }
+        }
+
         public event Action<string?, string?>? LogAppended
         {
             add { }
             remove { }
         }
-        public void AddLog(string message, string? color = null) { }
+        public void AddLog(string message, string? color = null)
+        {
+            lock (_messages)
+                _messages.Add(message);
+        }
         public void Clear() { }
         public void Print(string message, bool newline = true) { }
         public void Alert(string message) { }
@@ -271,6 +353,10 @@ public abstract class DrawingBoardTestBase
 {
     [SetUp]
     public void UseChineseLocale() => L10nBridge.Resolver = DrawingBoardTestKit.Locale("zh_CN").GetValueOrDefault;
+
+    /// <summary>学到的额外耗时是进程级静态值，各用例从 0 开始，避免前一个用例的真实计时影响估算断言。</summary>
+    [SetUp]
+    public void ForgetLearnedOverhead() => DrawingBoardViewModel.LearnedOverhead = default;
 
     [TearDown]
     public void ResetLocale() => L10nBridge.Resolver = null;

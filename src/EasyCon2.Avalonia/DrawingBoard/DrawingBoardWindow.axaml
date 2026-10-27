@@ -277,6 +277,9 @@
                             <CheckBox Content="{loc:Translate Text.DrawingBoard.EraserMode}"
                                       ToolTip.Tip="{loc:Translate Text.DrawingBoard.EraserHelp}"
                                       IsChecked="{Binding EraserMode}"/>
+                            <CheckBox Content="{loc:Translate Text.DrawingBoard.AutoHome}"
+                                      ToolTip.Tip="{loc:Translate Text.DrawingBoard.AutoHomeTip}"
+                                      IsChecked="{Binding AutoHome}"/>
                             <StackPanel Classes="field">
                                 <CheckBox Content="{loc:Translate Text.DrawingBoard.SelectRegion}"
                                           ToolTip.Tip="{loc:Translate Text.DrawingBoard.SelectRegionTip}"

@@ -258,7 +258,7 @@
     <x:String x:Key="Text.DrawingBoard.Start">开始画图</x:String>
     <x:String x:Key="Text.DrawingBoard.Stop">停止</x:String>
     <x:String x:Key="Text.DrawingBoard.SelectRegion">框选绘制区域</x:String>
-    <x:String x:Key="Text.DrawingBoard.SelectRegionTip">勾选后在预览上按住鼠标拖动，框出只画的一块区域，可随时重新拖动；光标仍从画布左上角出发</x:String>
+    <x:String x:Key="Text.DrawingBoard.SelectRegionTip">勾选后在预览上按住鼠标拖动，框出只画的一块区域，可随时重新拖动；开画时光标仍会先归位到画布左上角</x:String>
     <x:String x:Key="Text.DrawingBoard.ResetRegion">全图</x:String>
     <x:String x:Key="Text.DrawingBoard.RegionAll">绘制整张画布 320×120</x:String>
     <x:String x:Key="Text.DrawingBoard.RegionRange">绘制区域：第 {0}–{1} 列，第 {2}–{3} 行</x:String>
@@ -266,8 +266,12 @@
     <x:String x:Key="Text.DrawingBoard.Continue">继续</x:String>
     <x:String x:Key="Text.DrawingBoard.Paused">已暂停 · {0} · 第 {1}/{2} 段 · 已用 {3}</x:String>
     <x:String x:Key="Text.DrawingBoard.EraserMode">橡皮擦模式（画布已涂黑）</x:String>
-    <x:String x:Key="Text.DrawingBoard.EraserHelp">橡皮擦模式：开始前先在游戏里用最大笔刷把整个画布涂黑，再把笔刷调到最小、光标移到左上角。程序会按住 B（橡皮擦）擦出图中的空白部分，最终效果与画笔模式相同。黑多白少的图要处理的点更少，通常更快，可对比右下角的耗时选择。只处理绘制区域内的点，区域外保持涂黑。</x:String>
-    <x:String x:Key="Text.DrawingBoard.Tip">开始前，请先进入画画页面，笔刷调整到最小，光标移动到左上角，绘制是从左上到右下</x:String>
+    <x:String x:Key="Text.DrawingBoard.EraserHelp">橡皮擦模式：开始前先在游戏里用最大笔刷把整个画布涂黑，再把笔刷调到最小。程序会按住 B（橡皮擦）擦出图中的空白部分，最终效果与画笔模式相同。黑多白少的图要处理的点更少，通常更快，可对比右下角的耗时选择。只处理绘制区域内的点，区域外保持涂黑。</x:String>
+    <x:String x:Key="Text.DrawingBoard.Tip">开始前，请先进入画画页面，笔刷调整到最小。开画前会自动把光标归位到左上角（可在“绘制”页关闭），再从左上到右下绘制</x:String>
+    <x:String x:Key="Text.DrawingBoard.AutoHome">开画前自动归位</x:String>
+    <x:String x:Key="Text.DrawingBoard.AutoHomeTip">开画前自动把光标归位到画布左上角，并防止开头的输入因丢帧而失效。会多花几秒，强烈建议保持勾选</x:String>
+    <x:String x:Key="Text.DrawingBoard.AutoHomeOffWarning">已关闭自动归位。Switch 可能丢掉开头的输入帧，即使开始前手动把光标移到了左上角，也可能出现不可预测的绘制错位或整行缺失。除非确有需要，请保持勾选。</x:String>
+    <x:String x:Key="Text.DrawingBoard.OverheadLog">画板实测额外耗时：每次点按 {0} 毫秒，每次落笔/抬笔 {1} 毫秒，每次延迟 {2} 毫秒（用于之后的耗时估算）</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateNone">预计耗时：—</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateInvalid">预计耗时：参数有误</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateResult">预计耗时：{0:0.00} 分钟</x:String>

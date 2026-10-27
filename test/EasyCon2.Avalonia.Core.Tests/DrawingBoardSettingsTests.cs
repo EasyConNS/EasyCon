@@ -53,8 +53,9 @@ public class DrawingBoardSettingsTests : DrawingBoardTestBase
 
         await f.Vm.LoadPictureFileAsync("x.png");
 
-        // 1 次点按 × (50 + 45) + 落笔前后两次移动各 2 次延迟 + 落笔、抬笔各 1 次延迟 = 95 + 6 × 45 = 365 ms
-        Assert.That(f.Vm.EstimateText, Is.EqualTo("预计耗时：" + (365 / 60000.0).ToString("0.00") + " 分钟"));
+        // 归位摇杆推 50 + 推住 4000，各 1 次延迟；1 次点按 × (50 + 45) + 落笔前后两次移动各 2 次延迟 + 落笔、抬笔各 1 次延迟
+        // = 4050 + 95 + 8 × 45 = 4505 ms
+        Assert.That(f.Vm.EstimateText, Is.EqualTo("预计耗时：" + (4505 / 60000.0).ToString("0.00") + " 分钟"));
         Assert.That(f.Dialogs.Messages, Is.Empty);
     }
 
@@ -222,6 +223,7 @@ public class DrawingBoardSettingsTests : DrawingBoardTestBase
         f.Vm.DurationText = "80";
         f.Vm.DelayText = "60";
         f.Vm.EraserMode = true;
+        f.Vm.AutoHome = false;
         f.Vm.SelectRegion = true;
         f.Vm.SetRegion(10, 10, 20, 20);
         int fits = f.Images.Fits.Count;
@@ -236,7 +238,7 @@ public class DrawingBoardSettingsTests : DrawingBoardTestBase
             Assert.That((f.Vm.ToneBrightness, f.Vm.ToneContrast, f.Vm.ToneGamma), Is.EqualTo((0, 0, 1.0)));
             Assert.That((f.Vm.ThresholdPercent, f.Vm.DitherModeIndex, f.Vm.SpeckSize, f.Vm.OutlineMode, f.Vm.Reverse, f.Vm.ShowOriginal),
                 Is.EqualTo((50, 0, 0, false, false, false)));
-            Assert.That((f.Vm.DurationText, f.Vm.DelayText, f.Vm.EraserMode, f.Vm.SelectRegion), Is.EqualTo(("50", "45", false, false)));
+            Assert.That((f.Vm.DurationText, f.Vm.DelayText, f.Vm.EraserMode, f.Vm.AutoHome, f.Vm.SelectRegion), Is.EqualTo(("50", "45", false, true, false)));
             Assert.That(f.Vm.RegionText, Is.EqualTo("绘制整张画布 320×120"));
             Assert.That(f.Vm.EstimateText, Is.EqualTo(defaultEstimate));
             Assert.That(f.Vm.Preview!.Rgba.ToArray(), Is.EqualTo(defaultPreview.Rgba.ToArray()), "图片仍在，按默认参数重新处理");
@@ -245,5 +247,35 @@ public class DrawingBoardSettingsTests : DrawingBoardTestBase
 
         f.Vm.SelectRegion = true;
         Assert.That(f.Vm.RegionText, Is.EqualTo("绘制区域：第 0–319 列，第 0–119 行"), "框选区域也恢复为整张画布");
+    }
+
+    [Test]
+    public async Task Estimate_IncludesLearnedOverheadPerOperation()
+    {
+        // 计划 4505 ms（见上）；归位两下 + 右移共 3 次点按、落笔/抬笔 2 次，每次点按多 3 s、每次落笔/抬笔多 1.5 s → 共多 12 s
+        DrawingBoardViewModel.LearnedOverhead = new DrawingOverhead(3_000, 1_500, 0);
+        Fixture f = new(Canvas((0, 1)));
+
+        await f.Vm.LoadPictureFileAsync("x.png");
+
+        Assert.That(f.Vm.EstimateText, Is.EqualTo("预计耗时：" + (16_505 / 60000.0).ToString("0.00") + " 分钟"));
+    }
+
+    [Test]
+    public async Task AutoHome_IsOnByDefault_AndTurningItOffWarnsAndDropsTheHoming()
+    {
+        Fixture f = new(Canvas((0, 1)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        Assert.That(f.Vm.AutoHome, Is.True);
+        double withHome = Minutes(f.Vm.EstimateText);
+
+        f.Vm.AutoHome = false;
+
+        Assert.That(f.Dialogs.Messages, Has.Count.EqualTo(1));
+        Assert.That(f.Dialogs.Messages[0], Does.Contain("丢").And.Contain("错位"));
+        Assert.That(Minutes(f.Vm.EstimateText), Is.LessThan(withHome), "不归位省下约 4 秒");
+
+        f.Vm.AutoHome = true;
+        Assert.That(f.Dialogs.Messages, Has.Count.EqualTo(1), "重新勾选不再提示");
     }
 }

@@ -128,7 +128,8 @@ public partial class DrawingBoardViewModel
         if (Mask != null)
         {
             if (TryParseSettings(out DrawingBoardSettings? settings, out _))
-                _estimate = SplatoonDrawing.Estimate(SplatoonDrawing.SearchLines(StrokeMask(Mask), settings), settings.Wait, settings.Duration);
+                _estimate = LearnedOverhead.Apply(
+                    SplatoonDrawing.EstimateCost(SplatoonDrawing.SearchLines(StrokeMask(Mask), settings), settings.Wait, settings.Duration, AutoHome));
             else
                 _estimateInvalid = true;
         }

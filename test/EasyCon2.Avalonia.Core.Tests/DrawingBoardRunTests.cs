@@ -1,5 +1,6 @@
 using EasyCon.Core.Maa;
 using EasyCon2.Avalonia.DrawingBoard;
+using EasyCon2.Avalonia.Localization;
 using EasyCon2.Avalonia.Models;
 using static EasyCon2.Avalonia.Core.Tests.DrawingBoardTestKit;
 
@@ -25,12 +26,53 @@ public class DrawingBoardRunTests : DrawingBoardTestBase
         await f.Vm.DrawTask!;
 
         // 区域内第 0 行 0～2 列：第 1 列是墨点要保留，第 0、2 列擦成空白
-        Assert.That(f.Pad.Events, Is.EqualTo(new[]
+        Assert.That(f.Pad.Events, Is.EqualTo(new List<string>
         {
+            Home, Home,
             "press B", "release B",
             "click RIGHT", "click RIGHT", "press B", "release B",
             LeaseRelease,
         }));
+    }
+
+    [Test]
+    public async Task DrawingThread_NeverReadsLocalizedTextOffTheUiThread()
+    {
+        // 画完（学到额外耗时、写日志）与出错（错误提示）两条路径都会取本地化文本，必须投递到 UI 线程。
+        // 曾在绘制线程上直接 Format，真机上点停止后抛跨线程异常并使程序崩溃。
+        Fixture done = new(Canvas((0, 30)), new UiMarkingDispatcher());
+        Fixture failed = new(Canvas((0, 30)), new UiMarkingDispatcher());
+        failed.Runner.Failure = new InvalidOperationException("boom");
+
+        foreach (Fixture f in new[] { done, failed })
+        {
+            await f.Vm.LoadPictureFileAsync("x.png");
+            f.Vm.DelayText = "0";
+            f.Vm.DurationText = "1";
+            // 测试没有 UI 同步上下文，await 之后可能落在线程池上；只在开画前后检查，避开载图等 UI 侧流程
+            L10nBridge.Resolver = UiOnlyResolver(Locale("zh_CN").GetValueOrDefault);
+            await f.Vm.StartCommand.ExecuteAsync(null);
+            await f.Vm.DrawTask!;
+            L10nBridge.Resolver = Locale("zh_CN").GetValueOrDefault;
+        }
+
+        Assert.That(done.Log.Messages, Has.Some.StartsWith("画板实测额外耗时"));
+        Assert.That(failed.Log.Messages, Has.Some.Contains("boom"));
+    }
+
+    [Test]
+    public async Task AutoHomeOff_StartsDrawingWithoutHoming()
+    {
+        Fixture f = new(Canvas((0, 1)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.DelayText = "0";
+        f.Vm.DurationText = "1";
+        f.Vm.AutoHome = false;
+
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        await f.Vm.DrawTask!;
+
+        Assert.That(f.Pad.Events, Is.EqualTo(new[] { "click RIGHT", "press A", "release A", LeaseRelease }));
     }
 
     [Test]
@@ -62,13 +104,19 @@ public class DrawingBoardRunTests : DrawingBoardTestBase
     }
 
     [Test]
-    public void EstimateRemaining_UsesPlanFirstThenActualPace()
+    public void EstimateRemaining_AddsPerOperationOverheadToRemainingPlan()
     {
-        Assert.That(DrawingBoardViewModel.EstimateRemaining(0, 10_000, TimeSpan.Zero), Is.EqualTo(TimeSpan.FromSeconds(10)));
-        Assert.That(DrawingBoardViewModel.EstimateRemaining(2_000, 10_000, TimeSpan.FromSeconds(3)), Is.EqualTo(TimeSpan.FromSeconds(8)));
-        // 实际用时是计划的 2 倍：剩余 8 s 计划按 2 倍校正
-        Assert.That(DrawingBoardViewModel.EstimateRemaining(5_000, 13_000, TimeSpan.FromSeconds(10)), Is.EqualTo(TimeSpan.FromSeconds(16)));
-        Assert.That(DrawingBoardViewModel.EstimateRemaining(10_000, 10_000, TimeSpan.FromSeconds(30)), Is.EqualTo(TimeSpan.Zero));
+        DrawingCost total = new(10_000, 100, 40, 200);
+        DrawingOverhead learned = new(1, 10, 0.5);
+
+        // 刚开始没有实测样本：全部用学到的值。10 s + 100×1 + 40×10 + 200×0.5 = 10.6 s
+        Assert.That(DrawingBoardViewModel.EstimateRemaining(default, total, default, learned), Is.EqualTo(TimeSpan.FromMilliseconds(10_600)));
+        // 点按与延迟样本已够、落笔/抬笔还不够：前两项用实测，落笔/抬笔仍用学到的 10 ms
+        DrawingCost done = new(4_000, 50, 10, 100);
+        DrawingOverhead measured = new(2, 30, 1);
+        Assert.That(DrawingBoardViewModel.EstimateRemaining(done, total, measured, learned),
+            Is.EqualTo(TimeSpan.FromMilliseconds(6_000 + 50 * 2 + 30 * 10 + 100 * 1)));
+        Assert.That(DrawingBoardViewModel.EstimateRemaining(total, total, measured, learned), Is.EqualTo(TimeSpan.Zero));
     }
 
     [TestCase(65, "01:05")]

@@ -15,8 +15,12 @@ public partial class DrawingBoardViewModel
 {
     /// <summary>进度刷新间隔：每格移动只有几十毫秒，逐次刷新会塞满 UI 队列。</summary>
     private const int ProgressIntervalMs = 200;
-    /// <summary>实际用时超过此值后，剩余时间按实际速度校正（设备延迟会让实际比计划慢）。</summary>
-    private static readonly TimeSpan CalibrateAfter = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// 最近一次绘制实测的各类操作额外耗时，用于下一次的预计耗时与起步阶段的剩余时间。
+    /// 本次运行期间有效（同一台设备、同一种连接），重启程序后从 0 重新学习。测试会在每个用例前清零。
+    /// </summary>
+    internal static DrawingOverhead LearnedOverhead { get; set; }
 
     private CancellationTokenSource? _drawCancellation;
 
@@ -26,6 +30,13 @@ public partial class DrawingBoardViewModel
     /// </summary>
     [ObservableProperty]
     private bool _eraserMode;
+
+    /// <summary>
+    /// 开画前自动归位：按住左上把光标推到画布左上角。默认开启；关闭时弹出风险提示
+    /// （光标不在左上角会整体错位；Switch 可能忽略第一帧输入，第一下落笔丢失会让第一行画不出来）。
+    /// </summary>
+    [ObservableProperty]
+    private bool _autoHome = true;
 
     [ObservableProperty]
     private bool _isStartEnabled = true;
@@ -61,13 +72,21 @@ public partial class DrawingBoardViewModel
     private bool _runPenDown;
     private int _segmentsDone;
     private int _segmentsTotal;
-    private long _plannedDone;
-    private long _plannedTotal;
+    private DrawingCost _costDone;
+    private DrawingCost _costTotal;
+    private DrawingOverhead _runOverhead;
 
     /// <summary>最近一次开始画图的后台任务（测试用于等待绘制结束）。</summary>
     internal Task? DrawTask { get; private set; }
 
     partial void OnEraserModeChanged(bool value) => UpdateEstimate();
+
+    partial void OnAutoHomeChanged(bool value)
+    {
+        UpdateEstimate();
+        if (!value)
+            _ = ShowMessageAsync(T("Text.DrawingBoard.AutoHomeOffWarning"));
+    }
 
     /// <summary>实际要走笔的点：画笔模式是墨点，橡皮擦模式是要擦成空白的点。</summary>
     private InkMask StrokeMask(InkMask mask) => EraserMode ? mask.Inverted() : mask;
@@ -104,6 +123,7 @@ public partial class DrawingBoardViewModel
         // 取开始时的掩码与模式快照：绘制过程中调整阈值、切换模式等不影响正在画的图
         InkMask strokes = StrokeMask(Mask);
         GamePadKey key = StrokeKey;
+        bool home = AutoHome;
         List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(strokes, settings);
         _runStrokes = strokes;
         _runRegion = (settings.StartCol, settings.StartRow, settings.ColCount, settings.RowCount);
@@ -113,18 +133,19 @@ public partial class DrawingBoardViewModel
         _runPenDown = false;
         _segmentsDone = 0;
         _segmentsTotal = rows.Sum(row => row.Count);
-        _plannedDone = 0;
-        _plannedTotal = (long)SplatoonDrawing.Estimate(rows, settings.Wait, settings.Duration).TotalMilliseconds;
+        _costDone = default;
+        _costTotal = SplatoonDrawing.EstimateCost(rows, settings.Wait, settings.Duration, home);
+        _runOverhead = default;
         _pause = new DrawPause();
         _clock.Reset();
         IsPaused = false;
         IsDrawing = true;
         IsStartEnabled = false;
         SetProgress(0, "Text.DrawingBoard.Preparing");
-        DrawTask = Task.Run(() => RunDraw(rows, key, settings, _pause, token));
+        DrawTask = Task.Run(() => RunDraw(rows, key, home, settings, _pause, token));
     }
 
-    private void RunDraw(List<List<DrawingLine>> rows, GamePadKey key, DrawingBoardSettings settings, DrawPause pause, CancellationToken token)
+    private void RunDraw(List<List<DrawingLine>> rows, GamePadKey key, bool home, DrawingBoardSettings settings, DrawPause pause, CancellationToken token)
     {
         try
         {
@@ -135,18 +156,20 @@ public partial class DrawingBoardViewModel
                     _clock.Start();
                 long lastReport = -ProgressIntervalMs;
                 PostProgress();
-                SplatoonDrawing drawing = new(pad, settings.Wait, settings.Duration, progress: value =>
+                SplatoonDrawing drawing = new(pad, settings.Wait, settings.Duration, progress: (done, overhead) =>
                 {
-                    _plannedDone = value;
+                    _costDone = done;
+                    _runOverhead = overhead;
                     long now = _clock.ElapsedMilliseconds;
                     if (now - lastReport < ProgressIntervalMs)
                         return;
                     lastReport = now;
                     PostProgress();
-                }, penKey: key, pause: pause, step: OnStep);
+                }, penKey: key, pause: pause, step: OnStep, home: home);
                 drawing.Draw(rows, runToken);
             }, token);
             _clock.Stop();
+            LearnOverhead();
             string took = FormatClock(_clock.Elapsed);
             PixelImage final = RenderProgressImage();
             _ui.Post(() =>
@@ -160,8 +183,9 @@ public partial class DrawingBoardViewModel
         {
             // 用户停止或关闭窗口：按键已由运行租约释放，开始按钮由 StopAsync 恢复
             _clock.Stop();
-            double percent = Percent(_plannedDone, _plannedTotal);
-            string reached = FormatPercent(_plannedDone, _plannedTotal);
+            LearnOverhead();
+            double percent = Percent(_costDone.PlannedMs, _costTotal.PlannedMs);
+            string reached = FormatPercent(_costDone.PlannedMs, _costTotal.PlannedMs);
             PixelImage final = RenderProgressImage();
             _ui.Post(() =>
             {
@@ -173,13 +197,14 @@ public partial class DrawingBoardViewModel
         {
             // 旧版任务异常被静默吞掉，开始按钮一直禁用到点击停止，用户无从得知原因
             _clock.Stop();
-            string message = Format("Text.DrawingBoard.Error", DescribeError(ex));
-            double percent = Percent(_plannedDone, _plannedTotal);
-            string reached = FormatPercent(_plannedDone, _plannedTotal);
+            double percent = Percent(_costDone.PlannedMs, _costTotal.PlannedMs);
+            string reached = FormatPercent(_costDone.PlannedMs, _costTotal.PlannedMs);
             PixelImage final = RenderProgressImage();
-            _logService.AddLog(message);
+            // 本地化文本只能在 UI 线程上取
             _ui.Post(() =>
             {
+                string message = Format("Text.DrawingBoard.Error", DescribeError(ex));
+                _logService.AddLog(message);
                 ShowProgressImage(final);
                 SetProgress(percent, "Text.DrawingBoard.Interrupted", reached);
                 EndDrawing();
@@ -223,8 +248,8 @@ public partial class DrawingBoardViewModel
             IsPaused = true;
             // 节流期间的最新进度可能还没刷到预览上，暂停时立即刷新一次
             ShowProgressImage(RenderProgressImage());
-            double percent = Percent(_plannedDone, _plannedTotal);
-            SetProgress(percent, "Text.DrawingBoard.Paused", FormatPercent(_plannedDone, _plannedTotal),
+            double percent = Percent(_costDone.PlannedMs, _costTotal.PlannedMs);
+            SetProgress(percent, "Text.DrawingBoard.Paused", FormatPercent(_costDone.PlannedMs, _costTotal.PlannedMs),
                 _segmentsDone, _segmentsTotal, FormatClock(_clock.Elapsed));
         }
     }
@@ -239,12 +264,12 @@ public partial class DrawingBoardViewModel
     /// <summary>在绘制线程上取快照并投递到界面：进度文字与预览叠加图。</summary>
     private void PostProgress()
     {
-        long done = _plannedDone;
-        long total = _plannedTotal;
+        DrawingCost done = _costDone;
+        DrawingCost total = _costTotal;
         TimeSpan elapsed = _clock.Elapsed;
-        double percent = Percent(done, total);
-        object[] args = [FormatPercent(done, total), _segmentsDone, _segmentsTotal, FormatClock(elapsed),
-            FormatClock(EstimateRemaining(done, total, elapsed))];
+        double percent = Percent(done.PlannedMs, total.PlannedMs);
+        object[] args = [FormatPercent(done.PlannedMs, total.PlannedMs), _segmentsDone, _segmentsTotal, FormatClock(elapsed),
+            FormatClock(EstimateRemaining(done, total, _runOverhead, LearnedOverhead))];
         PixelImage image = RenderProgressImage();
         _ui.Post(() =>
         {
@@ -271,14 +296,25 @@ public partial class DrawingBoardViewModel
     private static string FormatPercent(long done, long total) => Math.Floor(Percent(done, total)) + "%";
 
     /// <summary>
-    /// 剩余时间：起步阶段按计划耗时；实际用时超过 <see cref="CalibrateAfter"/> 后，按"实际用时 / 已完成计划耗时"的比例校正。
+    /// 剩余时间：剩下各类操作的次数 × 本次实测的额外耗时，加上剩余计划耗时；某类操作样本不足时用上次学到的值。
+    /// 不按"实际用时 / 计划用时"整体比例外推：图案疏密不均时（如抖动区与空白区），前后两段的落笔比例差别很大。
     /// </summary>
-    internal static TimeSpan EstimateRemaining(long done, long total, TimeSpan elapsed)
+    internal static TimeSpan EstimateRemaining(DrawingCost done, DrawingCost total, DrawingOverhead measured, DrawingOverhead learned)
+        => measured.Or(learned, done).Apply(total - done);
+
+    /// <summary>绘制线程：把本次实测并入学到的额外耗时；日志与预计耗时在 UI 线程上更新（本地化文本只能在 UI 线程上取）。</summary>
+    private void LearnOverhead()
     {
-        long planned = Math.Max(0, total - done);
-        if (done <= 0 || elapsed < CalibrateAfter)
-            return TimeSpan.FromMilliseconds(planned);
-        return TimeSpan.FromMilliseconds(planned * elapsed.TotalMilliseconds / done);
+        DrawingOverhead learned = _runOverhead.Or(LearnedOverhead, _costDone);
+        if (learned == LearnedOverhead)
+            return;
+        LearnedOverhead = learned;
+        _ui.Post(() =>
+        {
+            _logService.AddLog(Format("Text.DrawingBoard.OverheadLog",
+                learned.ClickMs.ToString("0.0"), learned.ToggleMs.ToString("0.0"), learned.WaitMs.ToString("0.0")));
+            UpdateEstimate();
+        });
     }
 
     internal static string FormatClock(TimeSpan time)

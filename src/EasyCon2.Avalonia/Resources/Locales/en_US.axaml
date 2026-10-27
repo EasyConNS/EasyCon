@@ -258,7 +258,7 @@
     <x:String x:Key="Text.DrawingBoard.Start">Start</x:String>
     <x:String x:Key="Text.DrawingBoard.Stop">Stop</x:String>
     <x:String x:Key="Text.DrawingBoard.SelectRegion">Select drawing region</x:String>
-    <x:String x:Key="Text.DrawingBoard.SelectRegionTip">When checked, drag on the preview to draw only that area; the cursor still starts at the canvas top-left</x:String>
+    <x:String x:Key="Text.DrawingBoard.SelectRegionTip">When checked, drag on the preview to draw only that area; the cursor is still homed to the canvas top-left first</x:String>
     <x:String x:Key="Text.DrawingBoard.ResetRegion">Whole canvas</x:String>
     <x:String x:Key="Text.DrawingBoard.RegionAll">Drawing the whole canvas 320×120</x:String>
     <x:String x:Key="Text.DrawingBoard.RegionRange">Drawing region: columns {0}–{1}, rows {2}–{3}</x:String>
@@ -266,8 +266,12 @@
     <x:String x:Key="Text.DrawingBoard.Continue">Continue</x:String>
     <x:String x:Key="Text.DrawingBoard.Paused">Paused · {0} · segment {1}/{2} · elapsed {3}</x:String>
     <x:String x:Key="Text.DrawingBoard.EraserMode">Eraser mode (canvas pre-filled black)</x:String>
-    <x:String x:Key="Text.DrawingBoard.EraserHelp">Eraser mode: before starting, fill the whole canvas black in the game with the largest brush, then pick the smallest brush and move the cursor to the top-left corner. The program holds B (eraser) to erase the blank parts of the picture; the result is the same as pen mode. Pictures that are mostly black need fewer points and usually finish faster; compare the estimate at the bottom right. Only points inside the drawing region are processed; the rest stays black.</x:String>
-    <x:String x:Key="Text.DrawingBoard.Tip">Before starting, open the drawing screen, pick the smallest brush and move the cursor to the top-left corner. Drawing goes from top-left to bottom-right.</x:String>
+    <x:String x:Key="Text.DrawingBoard.EraserHelp">Eraser mode: before starting, fill the whole canvas black in the game with the largest brush, then pick the smallest brush. The program holds B (eraser) to erase the blank parts of the picture; the result is the same as pen mode. Pictures that are mostly black need fewer points and usually finish faster; compare the estimate at the bottom right. Only points inside the drawing region are processed; the rest stays black.</x:String>
+    <x:String x:Key="Text.DrawingBoard.Tip">Before starting, open the drawing screen and pick the smallest brush. The cursor is homed to the top-left corner automatically before drawing (can be turned off on the Drawing tab), then drawing goes from top-left to bottom-right.</x:String>
+    <x:String x:Key="Text.DrawingBoard.AutoHome">Home cursor before drawing</x:String>
+    <x:String x:Key="Text.DrawingBoard.AutoHomeTip">Homes the cursor to the canvas top-left corner before drawing and keeps the first inputs from being lost to dropped frames. Takes a few extra seconds; strongly recommended.</x:String>
+    <x:String x:Key="Text.DrawingBoard.AutoHomeOffWarning">Auto homing is off. The Switch may drop the first input frames, so even if you move the cursor to the top-left corner yourself, the drawing may end up shifted in unpredictable ways or miss whole rows. Keep it checked unless you really need otherwise.</x:String>
+    <x:String x:Key="Text.DrawingBoard.OverheadLog">Drawing board measured overhead: {0} ms per click, {1} ms per pen press/release, {2} ms per delay (used for later estimates)</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateNone">Estimated time: —</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateInvalid">Estimated time: invalid parameters</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateResult">Estimated time: {0:0.00} min</x:String>
