@@ -5,7 +5,7 @@ using EasyCon2.Avalonia.Models;
 namespace EasyCon2.Avalonia.DrawingBoard;
 
 /// <summary>
-/// 图片调整（高级，默认折叠）：像素画最近邻缩放、亮度/对比度/伽马、去除孤立杂点、轮廓模式。
+/// 图片调整：像素画最近邻缩放、亮度/对比度/伽马、去除孤立杂点、轮廓模式。
 /// 处理顺序：适配缩放 → 明暗调整 → 阈值/抖动 → 去杂点 → 轮廓 → 反转黑白（最后一步）。默认值不改变任何结果。
 /// </summary>
 public partial class DrawingBoardViewModel

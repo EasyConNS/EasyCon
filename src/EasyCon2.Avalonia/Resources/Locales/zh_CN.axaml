@@ -224,6 +224,9 @@
     <x:String x:Key="Text.DrawingBoard.ReverseTip">最后一步：把处理完的结果（含去杂点、轮廓）黑白互换，例如黑色轮廓线变成黑底白线</x:String>
     <x:String x:Key="Text.DrawingBoard.Threshold">阈值</x:String>
     <x:String x:Key="Text.DrawingBoard.ShowOriginal">显示原图</x:String>
+    <x:String x:Key="Text.DrawingBoard.ResetAll">重置</x:String>
+    <x:String x:Key="Text.DrawingBoard.ResetAllTip">所有选项恢复默认值，已载入的图片保留</x:String>
+    <x:String x:Key="Text.DrawingBoard.DropHint">把图片拖到这里，或点击“加载图片”</x:String>
     <x:String x:Key="Text.DrawingBoard.TabPicture">图片</x:String>
     <x:String x:Key="Text.DrawingBoard.TabTone">明暗</x:String>
     <x:String x:Key="Text.DrawingBoard.TabInk">黑白</x:String>
@@ -265,8 +268,6 @@
     <x:String x:Key="Text.DrawingBoard.EraserMode">橡皮擦模式（画布已涂黑）</x:String>
     <x:String x:Key="Text.DrawingBoard.EraserHelp">橡皮擦模式：开始前先在游戏里用最大笔刷把整个画布涂黑，再把笔刷调到最小、光标移到左上角。程序会按住 B（橡皮擦）擦出图中的空白部分，最终效果与画笔模式相同。黑多白少的图要处理的点更少，通常更快，可对比右下角的耗时选择。只处理绘制区域内的点，区域外保持涂黑。</x:String>
     <x:String x:Key="Text.DrawingBoard.Tip">开始前，请先进入画画页面，笔刷调整到最小，光标移动到左上角，绘制是从左上到右下</x:String>
-    <x:String x:Key="Text.DrawingBoard.CurPosNone">点击预览查看坐标</x:String>
-    <x:String x:Key="Text.DrawingBoard.CurPos">当前位置:{0},{1}</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateNone">预计耗时：—</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateInvalid">预计耗时：参数有误</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateResult">预计耗时：{0:0.00} 分钟</x:String>

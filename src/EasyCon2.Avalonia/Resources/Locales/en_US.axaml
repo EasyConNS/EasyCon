@@ -224,6 +224,9 @@
     <x:String x:Key="Text.DrawingBoard.ReverseTip">Applied last: swaps black and white in the processed result (after speck removal and outline), e.g. a black outline becomes white lines on black</x:String>
     <x:String x:Key="Text.DrawingBoard.Threshold">Threshold</x:String>
     <x:String x:Key="Text.DrawingBoard.ShowOriginal">Show original</x:String>
+    <x:String x:Key="Text.DrawingBoard.ResetAll">Reset</x:String>
+    <x:String x:Key="Text.DrawingBoard.ResetAllTip">Restore every option to its default; the loaded picture is kept</x:String>
+    <x:String x:Key="Text.DrawingBoard.DropHint">Drop a picture here, or click “Load Picture”</x:String>
     <x:String x:Key="Text.DrawingBoard.TabPicture">Picture</x:String>
     <x:String x:Key="Text.DrawingBoard.TabTone">Tone</x:String>
     <x:String x:Key="Text.DrawingBoard.TabInk">Black &amp; white</x:String>
@@ -265,8 +268,6 @@
     <x:String x:Key="Text.DrawingBoard.EraserMode">Eraser mode (canvas pre-filled black)</x:String>
     <x:String x:Key="Text.DrawingBoard.EraserHelp">Eraser mode: before starting, fill the whole canvas black in the game with the largest brush, then pick the smallest brush and move the cursor to the top-left corner. The program holds B (eraser) to erase the blank parts of the picture; the result is the same as pen mode. Pictures that are mostly black need fewer points and usually finish faster; compare the estimate at the bottom right. Only points inside the drawing region are processed; the rest stays black.</x:String>
     <x:String x:Key="Text.DrawingBoard.Tip">Before starting, open the drawing screen, pick the smallest brush and move the cursor to the top-left corner. Drawing goes from top-left to bottom-right.</x:String>
-    <x:String x:Key="Text.DrawingBoard.CurPosNone">Click the preview for coordinates</x:String>
-    <x:String x:Key="Text.DrawingBoard.CurPos">Position: {0},{1}</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateNone">Estimated time: —</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateInvalid">Estimated time: invalid parameters</x:String>
     <x:String x:Key="Text.DrawingBoard.EstimateResult">Estimated time: {0:0.00} min</x:String>

@@ -48,7 +48,11 @@
                     ToolTip.Tip="{loc:Translate Text.DrawingBoard.SavePictureTip}"/>
             <CheckBox Content="{loc:Translate Text.DrawingBoard.ShowOriginal}"
                       IsChecked="{Binding ShowOriginal}"
-                      Margin="8,0,16,0"/>
+                      Margin="8,0,0,0"/>
+            <Button Content="{loc:Translate Text.DrawingBoard.ResetAll}"
+                    Command="{Binding ResetAllCommand}"
+                    ToolTip.Tip="{loc:Translate Text.DrawingBoard.ResetAllTip}"
+                    Margin="0,0,16,0"/>
             <StackPanel Orientation="Horizontal" Spacing="8">
                 <Button Classes="accent"
                         Content="{loc:Translate Text.DrawingBoard.Start}"
@@ -74,28 +78,33 @@
                     Background="Transparent"
                     BorderBrush="{DynamicResource WorkbenchControlBorderBrush}"
                     BorderThickness="1">
-                <Image x:Name="PictureBox"
-                       Width="822"
-                       Height="282"
-                       Stretch="Fill"
-                       Source="{Binding DisplayImage, Converter={x:Static conv:PixelImageToBitmapConverter.Instance}}"/>
+                <Panel Width="822" Height="282">
+                    <Image x:Name="PictureBox"
+                           Width="822"
+                           Height="282"
+                           Stretch="Fill"
+                           Source="{Binding DisplayImage, Converter={x:Static conv:PixelImageToBitmapConverter.Instance}}"/>
+                    <!-- 未载入图片时的提示；字号按 822 宽的逻辑尺寸取，随预览一起缩放 -->
+                    <TextBlock x:Name="DropHint"
+                               Classes="muted"
+                               IsVisible="{Binding DisplayImage, Converter={x:Static ObjectConverters.IsNull}}"
+                               IsHitTestVisible="False"
+                               Text="{loc:Translate Text.DrawingBoard.DropHint}"
+                               FontSize="28"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Panel>
             </Border>
         </Viewbox>
 
-        <!-- 状态行：绘制区域 / 点击位置 / 估算耗时（随图片与参数自动更新）。固定单行，窄时前两项截断，耗时始终完整显示 -->
-        <Grid x:Name="StatusRow" Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="16">
+        <!-- 状态行：绘制区域 / 估算耗时（随图片与参数自动更新）。固定单行，窄时区域截断，耗时始终完整显示 -->
+        <Grid x:Name="StatusRow" Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="16">
             <TextBlock Classes="muted"
                        Text="{Binding RegionText}"
                        ToolTip.Tip="{Binding RegionText}"
                        TextTrimming="CharacterEllipsis"
                        VerticalAlignment="Center"/>
-            <TextBlock Grid.Column="1"
-                       Classes="muted"
-                       MaxWidth="200"
-                       Text="{Binding CurPosText}"
-                       TextTrimming="CharacterEllipsis"
-                       VerticalAlignment="Center"/>
-            <TextBlock Grid.Column="2" Text="{Binding EstimateText}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1" Text="{Binding EstimateText}" FontWeight="SemiBold" VerticalAlignment="Center"/>
         </Grid>
 
         <Grid x:Name="ProgressRow" Grid.Row="3" ColumnDefinitions="*,Auto" ColumnSpacing="12">
@@ -264,7 +273,9 @@
                             </StackPanel>
                         </WrapPanel>
                         <WrapPanel Classes="fields" ItemSpacing="20" LineSpacing="8">
+                            <!-- 橡皮擦模式的准备步骤较长，放在悬停提示里 -->
                             <CheckBox Content="{loc:Translate Text.DrawingBoard.EraserMode}"
+                                      ToolTip.Tip="{loc:Translate Text.DrawingBoard.EraserHelp}"
                                       IsChecked="{Binding EraserMode}"/>
                             <StackPanel Classes="field">
                                 <CheckBox Content="{loc:Translate Text.DrawingBoard.SelectRegion}"
@@ -280,16 +291,11 @@
             </TabControl>
         </Border>
 
-        <!-- 开始前的准备步骤：橡皮擦模式的步骤不同（先涂黑画布），勾选后换成对应说明 -->
-        <Panel x:Name="TipRow" Grid.Row="5">
-            <TextBlock Classes="muted"
-                       IsVisible="{Binding !EraserMode}"
-                       Text="{loc:Translate Text.DrawingBoard.Tip}"
-                       TextWrapping="Wrap"/>
-            <TextBlock Classes="muted"
-                       IsVisible="{Binding EraserMode}"
-                       Text="{loc:Translate Text.DrawingBoard.EraserHelp}"
-                       TextWrapping="Wrap"/>
-        </Panel>
+        <!-- 开始前的准备步骤（橡皮擦模式的步骤见其复选框的悬停提示） -->
+        <TextBlock x:Name="TipRow"
+                   Grid.Row="5"
+                   Classes="muted"
+                   Text="{loc:Translate Text.DrawingBoard.Tip}"
+                   TextWrapping="Wrap"/>
     </Grid>
 </Window>

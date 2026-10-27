@@ -10,11 +10,14 @@ namespace EasyCon2.Avalonia.DrawingBoard;
 /// </summary>
 public partial class DrawingBoardViewModel
 {
-    [ObservableProperty]
-    private string _durationText = "50";
+    private const string DefaultDuration = "50";
+    private const string DefaultDelay = "45";
 
     [ObservableProperty]
-    private string _delayText = "45";
+    private string _durationText = DefaultDuration;
+
+    [ObservableProperty]
+    private string _delayText = DefaultDelay;
 
     /// <summary>
     /// 高级：在预览上拖动框选绘制区域。默认关闭，即整张画布、光标从左上角出发——
@@ -77,14 +80,13 @@ public partial class DrawingBoardViewModel
     private void ResetRegion() => SetRegion(0, 0, SplatoonDrawing.CanvasWidth, SplatoonDrawing.CanvasHeight);
 
     /// <summary>
-    /// 预览图左键按下：按预览框实际尺寸换算成 320×120 画布坐标（列,行）并显示。
-    /// 旧版固定除以 2，但预览框是 822×282 拉伸显示，显示的坐标与画布对不上。开启框选时同时作为框选起点。
+    /// 预览图左键按下：开启框选时，按预览框实际尺寸换算成 320×120 画布坐标（列,行）作为框选起点。
+    /// 旧版固定除以 2，但预览框是 822×282 拉伸显示，坐标与画布对不上。
     /// </summary>
     public void OnPicturePressed(double x, double y, double width, double height)
     {
         if (ToCanvas(x, y, width, height) is not { } at)
             return;
-        ShowPosition(at);
         if (SelectRegion && !IsDrawing)
         {
             _dragAnchor = at;
@@ -92,12 +94,11 @@ public partial class DrawingBoardViewModel
         }
     }
 
-    /// <summary>按住左键拖动：更新坐标显示；框选时以按下点和当前点为对角更新区域。</summary>
+    /// <summary>按住左键拖动：框选时以按下点和当前点为对角更新区域。</summary>
     public void OnPictureDragged(double x, double y, double width, double height)
     {
         if (ToCanvas(x, y, width, height) is not { } at)
             return;
-        ShowPosition(at);
         if (_dragAnchor is { } anchor)
         {
             SetRegion(Math.Min(anchor.Col, at.Col), Math.Min(anchor.Row, at.Row),

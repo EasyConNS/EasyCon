@@ -258,17 +258,18 @@ public class DrawingBoardPictureTests : DrawingBoardTestBase
         Assert.That(f.Images.Decodes, Is.EqualTo(1));
     }
 
-    [TestCase(0, 0, "当前位置:0,0")]
-    [TestCase(411, 141, "当前位置:160,60")]
-    [TestCase(821.9, 281.9, "当前位置:319,119")]
-    [TestCase(822, 282, "当前位置:319,119")]
+    [TestCase(0, 0, "绘制区域：第 0–0 列，第 0–0 行")]
+    [TestCase(411, 141, "绘制区域：第 160–160 列，第 60–60 行")]
+    [TestCase(821.9, 281.9, "绘制区域：第 319–319 列，第 119–119 行")]
+    [TestCase(822, 282, "绘制区域：第 319–319 列，第 119–119 行")]
     public void PicturePressed_ScalesToCanvasCoordinates(double x, double y, string expected)
     {
-        Fixture f = new(Canvas());
+        Fixture f = new(Canvas()) { Vm = { SelectRegion = true } };
 
+        // 按下即以该点为框选起点，区域为这一个点
         f.Vm.OnPicturePressed(x, y, 822, 282);
 
-        Assert.That(f.Vm.CurPosText, Is.EqualTo(expected));
+        Assert.That(f.Vm.RegionText, Is.EqualTo(expected));
     }
 
     [Test]

@@ -34,15 +34,14 @@ public class DrawingBoardSettingsTests : DrawingBoardTestBase
     {
         Fixture f = new(Canvas((0, 1)));
         await f.Vm.LoadPictureFileAsync("x.png");
-        f.Vm.OnPicturePressed(411, 141, 822, 282);
         List<string> changed = [];
         f.Vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName!);
 
         L10nBridge.Resolver = Locale("en_US").GetValueOrDefault;
         f.Vm.RefreshLocalizedTexts();
 
-        Assert.That(changed, Is.SupersetOf(new[] { "CurPosText", "EstimateText", "ProgressText" }));
-        Assert.That(f.Vm.CurPosText, Is.EqualTo("Position: 160,60"));
+        Assert.That(changed, Is.SupersetOf(new[] { "RegionText", "EstimateText", "ProgressText" }));
+        Assert.That(f.Vm.RegionText, Is.EqualTo("Drawing the whole canvas 320×120"));
         Assert.That(f.Vm.EstimateText, Does.StartWith("Estimated time: ").And.EndWith(" min"));
     }
 
@@ -191,6 +190,60 @@ public class DrawingBoardSettingsTests : DrawingBoardTestBase
         f.Vm.SetRegion(1, 1, 2, 2);
 
         Assert.That(f.Vm.RegionText, Is.EqualTo(before));
+        Assert.That(f.Vm.ResetAllCommand.CanExecute(null), Is.False, "绘制中不能全部重置");
         await f.Vm.StopCommand.ExecuteAsync(null).WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [Test]
+    public async Task ResetAll_RestoresEveryOptionAndKeepsThePicture()
+    {
+        Fixture f = new(Canvas((0, 1), (100, 300)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        string defaultEstimate = f.Vm.EstimateText;
+        PixelImage defaultPreview = f.Vm.Preview!;
+        f.Vm.FitModeIndex = 1;
+        f.Vm.CoverAngle = 30;
+        f.Vm.CoverZoomPercent = 200;
+        f.Vm.CoverPanX = 50;
+        f.Vm.CoverPanY = -50;
+        f.Vm.RotationIndex = 2;
+        f.Vm.FlipHorizontal = true;
+        f.Vm.FlipVertical = true;
+        f.Vm.PixelArt = true;
+        f.Vm.ToneBrightness = 20;
+        f.Vm.ToneContrast = -20;
+        f.Vm.ToneGamma = 2;
+        f.Vm.ThresholdPercent = 80;
+        f.Vm.DitherModeIndex = 3;
+        f.Vm.SpeckSize = 5;
+        f.Vm.OutlineMode = true;
+        f.Vm.Reverse = true;
+        f.Vm.ShowOriginal = true;
+        f.Vm.DurationText = "80";
+        f.Vm.DelayText = "60";
+        f.Vm.EraserMode = true;
+        f.Vm.SelectRegion = true;
+        f.Vm.SetRegion(10, 10, 20, 20);
+        int fits = f.Images.Fits.Count;
+
+        f.Vm.ResetAllCommand.Execute(null);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That((f.Vm.FitModeIndex, f.Vm.CoverAngle, f.Vm.CoverZoomPercent, f.Vm.CoverPanX, f.Vm.CoverPanY),
+                Is.EqualTo((0, 0.0, 100.0, 0.0, 0.0)));
+            Assert.That((f.Vm.RotationIndex, f.Vm.FlipHorizontal, f.Vm.FlipVertical, f.Vm.PixelArt), Is.EqualTo((0, false, false, false)));
+            Assert.That((f.Vm.ToneBrightness, f.Vm.ToneContrast, f.Vm.ToneGamma), Is.EqualTo((0, 0, 1.0)));
+            Assert.That((f.Vm.ThresholdPercent, f.Vm.DitherModeIndex, f.Vm.SpeckSize, f.Vm.OutlineMode, f.Vm.Reverse, f.Vm.ShowOriginal),
+                Is.EqualTo((50, 0, 0, false, false, false)));
+            Assert.That((f.Vm.DurationText, f.Vm.DelayText, f.Vm.EraserMode, f.Vm.SelectRegion), Is.EqualTo(("50", "45", false, false)));
+            Assert.That(f.Vm.RegionText, Is.EqualTo("绘制整张画布 320×120"));
+            Assert.That(f.Vm.EstimateText, Is.EqualTo(defaultEstimate));
+            Assert.That(f.Vm.Preview!.Rgba.ToArray(), Is.EqualTo(defaultPreview.Rgba.ToArray()), "图片仍在，按默认参数重新处理");
+            Assert.That(f.Images.Fits, Has.Count.EqualTo(fits + 1), "各项改完后只重新适配一次");
+        });
+
+        f.Vm.SelectRegion = true;
+        Assert.That(f.Vm.RegionText, Is.EqualTo("绘制区域：第 0–319 列，第 0–119 行"), "框选区域也恢复为整张画布");
     }
 }

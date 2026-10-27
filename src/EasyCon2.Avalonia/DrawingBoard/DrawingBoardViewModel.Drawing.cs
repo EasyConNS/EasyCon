@@ -33,6 +33,7 @@ public partial class DrawingBoardViewModel
     /// <summary>后台绘制进行中（含暂停）；控制暂停按钮可用，并禁止修改框选区域。</summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(TogglePauseCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ResetAllCommand))]
     private bool _isDrawing;
 
     [ObservableProperty]

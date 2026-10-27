@@ -91,10 +91,11 @@ public class DrawingBoardWindowTests
     [TestCase(1400, 900)]
     public void ScaledPreview_ClickMapsToCanvasCoordinates(double width, double height)
     {
-        L10nBridge.Resolver = key => key == "Text.DrawingBoard.CurPos" ? "{0},{1}" : null;
+        L10nBridge.Resolver = key => key == "Text.DrawingBoard.RegionRange" ? "{0},{1},{2},{3}" : null;
         DrawingBoardWindow window = Show(width, height);
         try
         {
+            ((DrawingBoardViewModel)window.DataContext!).SelectRegion = true;
             Image picture = window.FindControl<Image>("PictureBox")!;
             Point center = picture.TranslatePoint(new Point(411, 141), window)!.Value;
 
@@ -102,9 +103,10 @@ public class DrawingBoardWindowTests
             window.MouseUp(center, MouseButton.Left);
 
             // 缩放后的点击位置会取整到像素，允许 ±1
-            int[] pos = ((DrawingBoardViewModel)window.DataContext!).CurPosText.Split(',').Select(int.Parse).ToArray();
-            Assert.That(pos[0], Is.EqualTo(160).Within(1));
-            Assert.That(pos[1], Is.EqualTo(60).Within(1));
+            // 单击框出的区域就是这一个点：起止列、起止行
+            int[] region = ((DrawingBoardViewModel)window.DataContext!).RegionText.Split(',').Select(int.Parse).ToArray();
+            Assert.That(region[0], Is.EqualTo(160).Within(1));
+            Assert.That(region[2], Is.EqualTo(60).Within(1));
         }
         finally
         {
@@ -163,6 +165,25 @@ public class DrawingBoardWindowTests
         {
             window.Close();
             L10nBridge.Resolver = null;
+        }
+    }
+
+    [Test]
+    public void EmptyPreview_ShowsTheDropHint()
+    {
+        DrawingBoardWindow window = Show(900, 600);
+        try
+        {
+            DrawingBoardViewModel vm = (DrawingBoardViewModel)window.DataContext!;
+            TextBlock hint = window.FindControl<TextBlock>("DropHint")!;
+            Assert.That(hint.IsVisible, Is.False, "有图片时不显示提示");
+
+            vm.Preview = null;
+            Assert.That(hint.IsVisible, Is.True);
+        }
+        finally
+        {
+            window.Close();
         }
     }
 
