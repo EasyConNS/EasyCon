@@ -5,12 +5,13 @@ namespace EasyCon2.Avalonia.DrawingBoard;
 
 /// <summary>
 /// 二值化参数。<paramref name="ThresholdPercent"/> 为明暗分界（0～100，占最大亮度的百分比）；
-/// <paramref name="Dither"/> 为抖动算法，灰度图效果更好，但墨点更碎、绘制更久。
+/// <paramref name="Dither"/> 为抖动算法，灰度图效果更好，但墨点更碎、绘制更久；
+/// <paramref name="Tone"/> 为分界之前的亮度、对比度、伽马调整（null 即不调整）。
 /// </summary>
-public sealed record BinarizeOptions(int ThresholdPercent, bool Reverse, DitherMode Dither = DitherMode.None);
+public sealed record BinarizeOptions(int ThresholdPercent, bool Reverse, DitherMode Dither = DitherMode.None, ToneAdjust? Tone = null);
 
 /// <summary>画布上每个点是否需要落墨。绘制只看掩码，预览也直接显示掩码，所见即所画。</summary>
-public sealed class InkMask
+public sealed partial class InkMask
 {
     /// <summary>R+G+B 的最大值；量化后的点要么是 0（墨）要么是它（纸）。</summary>
     internal const double White = 255 * 3;
@@ -39,10 +40,16 @@ public sealed class InkMask
         int height = image.Height;
         // 统一在 R+G+B（0～765）上比较，各算法用同一个分界
         double threshold = White * options.ThresholdPercent / 100.0;
+        ToneAdjust? tone = options.Tone is { IsIdentity: false } adjust ? adjust : null;
         double[] brightness = new double[width * height];
         for (int row = 0; row < height; row++)
+        {
             for (int col = 0; col < width; col++)
-                brightness[row * width + col] = Brightness(image.GetPixel(col, row));
+            {
+                double value = Brightness(image.GetPixel(col, row));
+                brightness[row * width + col] = tone == null ? value : tone.Apply(value / White) * White;
+            }
+        }
 
         bool[] dark = Dithering.Quantize(brightness, width, height, threshold, options.Dither);
 

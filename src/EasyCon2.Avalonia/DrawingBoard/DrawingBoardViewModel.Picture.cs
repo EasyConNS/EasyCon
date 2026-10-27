@@ -147,20 +147,25 @@ public partial class DrawingBoardViewModel
 
     partial void OnFlipVerticalChanged(bool value) => UpdateCanvas();
 
-    /// <summary>原图 → 旋转/翻转 → 适配到 320×120 → 二值化。均从已解码的原图重新计算，不重新读文件。</summary>
+    /// <summary>
+    /// 原图 → 旋转/翻转 → 适配到 320×120（可选像素画最近邻）→ 明暗调整与二值化 → 去杂点/轮廓（见 .Adjust）。
+    /// 均从已解码的原图重新计算，不重新读文件。
+    /// </summary>
     private void UpdateCanvas()
     {
         if (_suppressCanvasUpdate)
             return;
         CoverTransform cover = new(CoverAngle, CoverZoomPercent / 100, CoverPanX / 100, CoverPanY / 100);
         _canvas = _source == null ? null : _imageProcessor.FitTo(_source.Orient(RotationIndex, FlipHorizontal, FlipVertical),
-            SplatoonDrawing.CanvasWidth, SplatoonDrawing.CanvasHeight, SelectedFit, cover);
+            SplatoonDrawing.CanvasWidth, SplatoonDrawing.CanvasHeight, SelectedFit, cover, nearest: PixelArt);
         UpdateMask();
     }
 
     private void UpdateMask()
     {
-        Mask = _canvas == null ? null : InkMask.Binarize(_canvas, new BinarizeOptions(ThresholdPercent, Reverse, SelectedDither));
+        if (_suppressMaskUpdate)
+            return;
+        Mask = _canvas == null ? null : BuildMask(_canvas);
         if (!IsDrawing)
             _progressImage = null;
         Preview = ShowOriginal ? _canvas : Mask?.ToPreview();

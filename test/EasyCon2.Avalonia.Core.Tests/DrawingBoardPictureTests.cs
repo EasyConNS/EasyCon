@@ -270,4 +270,70 @@ public class DrawingBoardPictureTests : DrawingBoardTestBase
 
         Assert.That(f.Vm.CurPosText, Is.EqualTo(expected));
     }
+
+    [Test]
+    public async Task PixelArt_RefitsWithNearestNeighbour()
+    {
+        Fixture f = new(new PixelImage(640, 480, White(640, 480)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+
+        f.Vm.PixelArt = true;
+
+        Assert.That(f.Images.Nearest, Is.EqualTo(new[] { false, true }));
+    }
+
+    [Test]
+    public async Task Adjustments_ChangeTheMaskAndTheEstimate()
+    {
+        // 灰点 (0,0)、孤立黑点 (60,300)、5×5 实心方块
+        List<(int, int)> dots = [(60, 300)];
+        for (int r = 10; r < 15; r++)
+            for (int c = 10; c < 15; c++)
+                dots.Add((r, c));
+        byte[] rgba = White(320, 120);
+        foreach ((int r, int c) in dots)
+            SetPixel(rgba, r, c, 0, 0, 0, 255);
+        SetPixel(rgba, 0, 0, 100, 100, 100, 255);
+        Fixture f = new(new PixelImage(320, 120, rgba));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        double full = Minutes(f.Vm.EstimateText);
+
+        f.Vm.ToneBrightness = 20;
+        Assert.That(f.Vm.Mask![0, 0], Is.False, "提亮后灰点不画");
+
+        Assert.That(f.Vm.SpeckText, Is.EqualTo("关闭"));
+        f.Vm.SpeckSize = 1;
+        Assert.That(f.Vm.SpeckText, Is.EqualTo("≤ 1 点"));
+        Assert.That(f.Vm.Mask![300, 60], Is.False, "孤立黑点被去掉");
+        Assert.That(Minutes(f.Vm.EstimateText), Is.LessThan(full));
+
+        f.Vm.OutlineMode = true;
+        Assert.That(f.Vm.Mask![12, 12], Is.False, "方块内部挖空");
+        Assert.That(f.Vm.Mask![10, 10], Is.True);
+        Assert.That(f.Vm.Preview!.GetPixel(12, 12).ToArgb(), Is.EqualTo(System.Drawing.Color.White.ToArgb()), "预览跟着变");
+    }
+
+    [Test]
+    public async Task ResetTone_RestoresDefaultsWithASingleUpdate()
+    {
+        byte[] rgba = White(320, 120);
+        SetPixel(rgba, 0, 0, 100, 100, 100, 255);
+        Fixture f = new(new PixelImage(320, 120, rgba));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.ToneBrightness = 40;
+        f.Vm.ToneContrast = -30;
+        f.Vm.ToneGamma = 1.5;
+        int previews = 0;
+        f.Vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(DrawingBoardViewModel.Preview))
+                previews++;
+        };
+
+        f.Vm.ResetToneCommand.Execute(null);
+
+        Assert.That((f.Vm.ToneBrightness, f.Vm.ToneContrast, f.Vm.ToneGamma), Is.EqualTo((0, 0, 1.0)));
+        Assert.That(previews, Is.EqualTo(1));
+        Assert.That(f.Vm.Mask![0, 0], Is.True);
+    }
 }

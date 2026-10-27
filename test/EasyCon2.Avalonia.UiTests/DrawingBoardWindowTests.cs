@@ -35,13 +35,19 @@ public class DrawingBoardWindowTests
         _stylesInitialized = true;
     }
 
-    [TestCase(false)]
-    [TestCase(true)]
-    public void MinimumSize_NothingOverflows(bool eraserMode)
+    [TestCase(false, false)]
+    [TestCase(true, false)]
+    [TestCase(false, true)]
+    public void MinimumSize_NothingOverflows(bool eraserMode, bool adjustmentsExpanded)
     {
         DrawingBoardWindow window = Show(480, 480, eraserMode);
         try
         {
+            if (adjustmentsExpanded)
+            {
+                window.GetLogicalDescendants().OfType<Expander>().Single().IsExpanded = true;
+                _ = window.CaptureRenderedFrame();
+            }
             Assert.That(window.ClientSize, Is.EqualTo(new Size(window.MinWidth, window.MinHeight)));
             Size client = window.ClientSize;
             string[] overflowing = window.GetLogicalDescendants().OfType<Control>()
@@ -63,7 +69,7 @@ public class DrawingBoardWindowTests
     [Test]
     public void Preview_ScalesWithWindowInBothDirections()
     {
-        double normal = PreviewWidthAt(900, 560);
+        double normal = PreviewWidthAt(900, 600);
         double larger = PreviewWidthAt(1400, 900);
         double wideButShort = PreviewWidthAt(1400, 480);
 

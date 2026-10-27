@@ -164,4 +164,61 @@ public class InkMaskTests : DrawingBoardTestBase
             false, true, true, false,
         }), "区域超出画布的部分截掉");
     }
+
+    [Test]
+    public void ToneAdjust_MapsBrightness()
+    {
+        Assert.That(ToneAdjust.Identity.Apply(0.3), Is.EqualTo(0.3).Within(1e-9));
+        Assert.That(new ToneAdjust(50, 0, 1).Apply(0.3), Is.EqualTo(0.8).Within(1e-9), "亮度 +50 即加半档");
+        Assert.That(new ToneAdjust(-100, 0, 1).Apply(0.9), Is.Zero, "结果截到 0～1");
+        Assert.That(new ToneAdjust(0, 50, 1).Apply(0.6), Is.EqualTo(0.7).Within(1e-9), "对比度 +50：离中灰的距离放大 2 倍");
+        Assert.That(new ToneAdjust(0, -50, 1).Apply(0.9), Is.EqualTo(0.7).Within(1e-9), "对比度 -50：距离减半");
+        Assert.That(new ToneAdjust(0, 0, 2).Apply(0.25), Is.EqualTo(0.5).Within(1e-9), "伽马 2：开平方提亮");
+        Assert.That(new ToneAdjust(0, 0, 2).Apply(1), Is.EqualTo(1), "纯白不变");
+    }
+
+    [Test]
+    public void Binarize_ToneShiftsWhatIsInk()
+    {
+        byte[] rgba = White(320, 120);
+        SetPixel(rgba, 0, 0, 100, 100, 100, 255);   // 约 39% 亮度
+        PixelImage image = new(320, 120, rgba);
+
+        Assert.That(InkMask.Binarize(image, new BinarizeOptions(50, false))[0, 0], Is.True);
+        Assert.That(InkMask.Binarize(image, new BinarizeOptions(50, false, Tone: new ToneAdjust(20, 0, 1)))[0, 0], Is.False, "提亮后不再算墨点");
+        Assert.That(InkMask.Binarize(image, new BinarizeOptions(50, false, Tone: new ToneAdjust(0, 0, 2)))[0, 0], Is.False, "伽马提亮暗部");
+        Assert.That(InkMask.Binarize(image, new BinarizeOptions(50, false, Tone: ToneAdjust.Identity))[0, 0], Is.True);
+    }
+
+    [Test]
+    public void RemoveSpecks_RemovesSmallEightConnectedBlobsOnly()
+    {
+        // 单点 (0,0)；斜向相连的两点 (5,5)(6,6)；三点横线 (10,20..22)
+        InkMask mask = InkMask.Binarize(Canvas((0, 0), (5, 5), (6, 6), (10, 20), (10, 21), (10, 22)), new BinarizeOptions(50, false));
+
+        InkMask one = mask.RemoveSpecks(1);
+        InkMask two = mask.RemoveSpecks(2);
+
+        Assert.That((one[0, 0], one[5, 5], one[6, 6], one[20, 10]), Is.EqualTo((false, true, true, true)), "斜向相连算一块");
+        Assert.That((two[5, 5], two[6, 6], two[20, 10]), Is.EqualTo((false, false, true)));
+        Assert.That(mask.RemoveSpecks(0), Is.SameAs(mask));
+        Assert.That(mask[0, 0], Is.True, "不修改原掩码");
+    }
+
+    [Test]
+    public void Outline_HollowsSolidAreasButKeepsLinesAndDots()
+    {
+        List<(int, int)> square = [];
+        for (int r = 10; r < 15; r++)
+            for (int c = 10; c < 15; c++)
+                square.Add((r, c));
+        InkMask mask = InkMask.Binarize(Canvas([.. square, (30, 50), (40, 60), (40, 61), (40, 62), (0, 0), (0, 1), (1, 0), (1, 1)]),
+            new BinarizeOptions(50, false));
+
+        InkMask outline = mask.Outline();
+
+        Assert.That(Cells(outline).Count(ink => ink), Is.EqualTo(16 + 1 + 3 + 4), "5×5 方块剩外圈 16 点，单点、线段、贴边小块不变");
+        Assert.That(outline[12, 12], Is.False, "方块内部被挖空");
+        Assert.That(outline[10, 12], Is.True);
+    }
 }

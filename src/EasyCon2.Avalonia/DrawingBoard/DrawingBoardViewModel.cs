@@ -43,6 +43,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(ProgressText));
         OnPropertyChanged(nameof(RegionText));
         OnPropertyChanged(nameof(PauseButtonText));
+        OnPropertyChanged(nameof(SpeckText));
     }
 
     private void ShowPosition((int Col, int Row) at)

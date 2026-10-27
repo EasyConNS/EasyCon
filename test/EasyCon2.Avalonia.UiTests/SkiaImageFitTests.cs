@@ -135,4 +135,34 @@ public class SkiaImageFitTests
         foreach ((int x, int y) in new[] { (0, 0), (319, 0), (0, 119), (319, 119), (160, 60) })
             Assert.That(turned.GetPixel(x, y).A, Is.EqualTo(255), $"({x},{y}) 不应露出空白");
     }
+
+    [Test]
+    public void FitTo_Nearest_KeepsHardEdgesWhenEnlarging()
+    {
+        // 4×2 黑白相间放大到 320×120：最近邻只有纯黑纯白，平滑插值会出现灰色过渡
+        byte[] rgba = new byte[4 * 2 * 4];
+        for (int i = 0; i < 8; i++)
+        {
+            byte v = (i + i / 4) % 2 == 0 ? (byte)0 : (byte)255;
+            rgba[i * 4] = rgba[i * 4 + 1] = rgba[i * 4 + 2] = v;
+            rgba[i * 4 + 3] = 255;
+        }
+        PixelImage tiny = new(4, 2, rgba);
+        SkiaImageProcessor processor = new();
+
+        PixelImage nearest = processor.FitTo(tiny, 320, 120, ImageFit.Stretch, nearest: true);
+        PixelImage smooth = processor.FitTo(tiny, 320, 120, ImageFit.Stretch);
+
+        static int Grays(PixelImage image)
+        {
+            int count = 0;
+            for (int y = 0; y < image.Height; y++)
+                for (int x = 0; x < image.Width; x++)
+                    if (image.GetPixel(x, y).R is > 20 and < 235)
+                        count++;
+            return count;
+        }
+        Assert.That(Grays(nearest), Is.Zero);
+        Assert.That(Grays(smooth), Is.GreaterThan(0));
+    }
 }

@@ -89,7 +89,7 @@ public sealed class SkiaImageProcessor : IImageProcessor
         }
     }
 
-    public PixelImage FitTo(PixelImage source, int width, int height, ImageFit fit, CoverTransform? cover = null)
+    public PixelImage FitTo(PixelImage source, int width, int height, ImageFit fit, CoverTransform? cover = null, bool nearest = false)
     {
         CoverTransform transform = fit == ImageFit.Cover ? cover ?? CoverTransform.Identity : CoverTransform.Identity;
         if (source.Width == width && source.Height == height && transform.IsIdentity)
@@ -100,7 +100,7 @@ public sealed class SkiaImageProcessor : IImageProcessor
         // 光栅 Surface 只支持预乘；读回时再转成非预乘，与 LoadPixels 的约定一致
         using SKSurface surface = SKSurface.Create(new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Premul));
         surface.Canvas.Clear(SKColors.Transparent);
-        SKSamplingOptions sampling = new(SKCubicResampler.Mitchell);
+        SKSamplingOptions sampling = nearest ? new SKSamplingOptions(SKFilterMode.Nearest, SKMipmapMode.None) : new SKSamplingOptions(SKCubicResampler.Mitchell);
         if (fit == ImageFit.Cover)
             DrawCover(surface.Canvas, image, source.Width, source.Height, width, height, transform, sampling);
         else

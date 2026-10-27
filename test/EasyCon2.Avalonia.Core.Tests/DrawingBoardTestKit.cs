@@ -195,9 +195,11 @@ internal static class DrawingBoardTestKit
         /// <summary>记录适配方式；尺寸已一致时原样返回（与真实实现相同），否则给一张同尺寸白图。</summary>
         public List<(int Width, int Height)> FittedSizes { get; } = [];
         public List<CoverTransform?> Covers { get; } = [];
+        public List<bool> Nearest { get; } = [];
 
-        public PixelImage FitTo(PixelImage source, int width, int height, ImageFit fit, CoverTransform? cover = null)
+        public PixelImage FitTo(PixelImage source, int width, int height, ImageFit fit, CoverTransform? cover = null, bool nearest = false)
         {
+            Nearest.Add(nearest);
             Fits.Add(fit);
             Covers.Add(cover);
             FittedSizes.Add((source.Width, source.Height));
