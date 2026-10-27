@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
+using Avalonia.Markup.Xaml;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
@@ -35,19 +36,26 @@ public class DrawingBoardWindowTests
         _stylesInitialized = true;
     }
 
-    [TestCase(false, false)]
-    [TestCase(true, false)]
-    [TestCase(false, true)]
-    public void MinimumSize_NothingOverflows(bool eraserMode, bool adjustmentsExpanded)
+    [TestCase("zh_CN", false, 0, false)]
+    [TestCase("zh_CN", false, 0, true)]
+    [TestCase("zh_CN", false, 1, false)]
+    [TestCase("zh_CN", false, 2, false)]
+    [TestCase("zh_CN", false, 3, false)]
+    [TestCase("zh_CN", true, 3, false)]
+    [TestCase("en_US", false, 0, true)]
+    [TestCase("en_US", true, 3, false)]
+    public void MinimumSize_NothingOverflows(string locale, bool eraserMode, int tab, bool coverMode)
     {
-        DrawingBoardWindow window = Show(480, 480, eraserMode);
+        // 用真实文案排版：未加载语言时控件显示的是键名，长短与实际不符
+        ResourceDictionary dictionary = (ResourceDictionary)AvaloniaXamlLoader.Load(new Uri($"avares://EasyCon2.Avalonia/Resources/Locales/{locale}.axaml"));
+        Application.Current!.Resources.MergedDictionaries.Add(dictionary);
+        // 参数页高度各不相同（等比裁切多出取景行，橡皮擦说明比普通提示长），每页都要放得下
+        DrawingBoardWindow window = Show(480, 480, eraserMode, tab, coverMode);
         try
         {
-            if (adjustmentsExpanded)
-            {
-                window.GetLogicalDescendants().OfType<Expander>().Single().IsExpanded = true;
-                _ = window.CaptureRenderedFrame();
-            }
+            // 控件放不下时最小高度会随之抬高（桌面上窗口跟着长高，无头窗口不会），按抬高后的最小尺寸再排一次
+            window.Height = window.MinHeight;
+            _ = window.CaptureRenderedFrame();
             Assert.That(window.ClientSize, Is.EqualTo(new Size(window.MinWidth, window.MinHeight)));
             Size client = window.ClientSize;
             string[] overflowing = window.GetLogicalDescendants().OfType<Control>()
@@ -63,6 +71,7 @@ public class DrawingBoardWindowTests
         finally
         {
             window.Close();
+            Application.Current.Resources.MergedDictionaries.Remove(dictionary);
         }
     }
 
@@ -186,17 +195,21 @@ public class DrawingBoardWindowTests
         }
     }
 
-    private static double PreviewWidth(DrawingBoardWindow window) => RenderedWidth(window.FindControl<Image>("PictureBox")!, window);
+    // 量外框：未载入原图时切换适配方式会清空预览，Image 排布为 0×0，外框仍按逻辑尺寸占位
+    private static double PreviewWidth(DrawingBoardWindow window) => RenderedWidth(window.FindControl<Border>("PictureFrame")!, window);
 
-    private static DrawingBoardWindow Show(double width, double height, bool eraserMode = false)
+    /// <summary>参数页与适配方式在显示前设好：显示后再切换，无头窗口会沿用先前撑大的尺寸排版，ClientSize 却不跟着变。</summary>
+    private static DrawingBoardWindow Show(double width, double height, bool eraserMode = false, int tab = 0, bool coverMode = false)
     {
         DrawingBoardViewModel vm = new(new DisconnectedRunner(), new DialogService(), new SkiaImageProcessor(),
             SynchronousUiDispatcher.Instance, new LogService())
         {
             Preview = new PixelImage(320, 120, Enumerable.Repeat((byte)255, 320 * 120 * 4).ToArray()),
             EraserMode = eraserMode,
+            FitModeIndex = coverMode ? 1 : 0,
         };
         DrawingBoardWindow window = new() { DataContext = vm, Width = width, Height = height };
+        window.GetLogicalDescendants().OfType<TabControl>().Single().SelectedIndex = tab;
         window.Show();
         _ = window.CaptureRenderedFrame();
         return window;

@@ -37,7 +37,8 @@ public partial class DrawingBoardWindow : Window
         PictureFrame.PointerReleased += OnPicturePointerReleased;
         Opened += (_, _) => FitToScreen();
         _baseMinHeight = MinHeight;
-        ControlsPanel.SizeChanged += (_, _) => FitMinHeightToControls();
+        foreach (Control row in FixedRows)
+            row.SizeChanged += (_, _) => FitMinHeightToControls();
     }
 
     // 布局：默认尺寸在小屏上可能超出可用区域，打开时收进屏幕工作区
@@ -53,12 +54,16 @@ public partial class DrawingBoardWindow : Window
             Height = Math.Max(MinHeight, maxHeight * 0.95);
     }
 
-    // 布局：预览下方的控件只占自身高度、不能被压缩（展开"图片调整"、勾选橡皮擦说明、窗口变窄换行都会让它变高），
-    // 所以窗口最小高度跟着它走，避免底部控件被挤出窗口；必要时窗口随之增高
+    /// <summary>预览以外的各行：只占自身高度、不能被压缩。</summary>
+    private Control[] FixedRows => [Toolbar, StatusRow, ProgressRow, SettingsPanel, TipRow];
+
+    // 布局：切换到内容更多的参数页、勾选橡皮擦说明、窗口变窄换行都会让这些行变高，
+    // 所以窗口最小高度跟着它们走，避免底部控件被挤出窗口；必要时窗口随之增高
     private void FitMinHeightToControls()
     {
-        Thickness margin = ((Grid)Content!).Margin;
-        double needed = ControlsPanel.Bounds.Height + margin.Top + margin.Bottom + ((Grid)Content).RowSpacing + PreviewMinHeight;
+        Control[] rows = FixedRows;
+        double needed = Root.Margin.Top + Root.Margin.Bottom + Root.RowSpacing * rows.Length + PreviewMinHeight
+            + rows.Sum(row => row.Bounds.Height);
         MinHeight = Math.Max(_baseMinHeight, Math.Ceiling(needed));
     }
 

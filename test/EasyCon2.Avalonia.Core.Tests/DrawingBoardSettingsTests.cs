@@ -43,26 +43,26 @@ public class DrawingBoardSettingsTests : DrawingBoardTestBase
 
         Assert.That(changed, Is.SupersetOf(new[] { "CurPosText", "EstimateText", "ProgressText" }));
         Assert.That(f.Vm.CurPosText, Is.EqualTo("Position: 160,60"));
-        Assert.That(f.Vm.EstimateText, Does.StartWith("Time: ").And.EndWith(" min"));
+        Assert.That(f.Vm.EstimateText, Does.StartWith("Estimated time: ").And.EndWith(" min"));
     }
 
     [Test]
     public async Task Estimate_AppearsAutomaticallyOnceAPictureIsLoaded()
     {
         Fixture f = new(Canvas((0, 1)));
-        Assert.That(f.Vm.EstimateText, Is.EqualTo("耗时："));
+        Assert.That(f.Vm.EstimateText, Is.EqualTo("预计耗时：—"));
 
         await f.Vm.LoadPictureFileAsync("x.png");
 
         // 1 次点按 × (50 + 45) + 落笔前后两次移动各 2 次延迟 + 落笔、抬笔各 1 次延迟 = 95 + 6 × 45 = 365 ms
-        Assert.That(f.Vm.EstimateText, Is.EqualTo("耗时：" + (365 / 60000.0).ToString("0.00") + "mins"));
+        Assert.That(f.Vm.EstimateText, Is.EqualTo("预计耗时：" + (365 / 60000.0).ToString("0.00") + " 分钟"));
         Assert.That(f.Dialogs.Messages, Is.Empty);
     }
 
     [Test]
     public async Task Estimate_FollowsPictureAndParameterChanges()
     {
-        // 点放远一些，让估算长到"X.XXmins"能分辨：黑点在 (60,1)，灰点在 (100,300)
+        // 点放远一些，让估算长到"X.XX 分钟"能分辨：黑点在 (60,1)，灰点在 (100,300)
         byte[] rgba = White(320, 120);
         SetPixel(rgba, 60, 1, 0, 0, 0, 255);
         SetPixel(rgba, 100, 300, 100, 100, 100, 255);
@@ -97,11 +97,11 @@ public class DrawingBoardSettingsTests : DrawingBoardTestBase
 
         f.Vm.DelayText = "";
 
-        Assert.That(f.Vm.EstimateText, Is.EqualTo("耗时：参数有误"));
+        Assert.That(f.Vm.EstimateText, Is.EqualTo("预计耗时：参数有误"));
         Assert.That(f.Dialogs.Messages, Is.Empty, "输入过程中不弹框");
 
         f.Vm.DelayText = "45";
-        Assert.That(f.Vm.EstimateText, Does.EndWith("mins"));
+        Assert.That(f.Vm.EstimateText, Does.EndWith("分钟"));
     }
 
     [TestCase("abc", "50", "延迟应为 0～10000 的整数")]
@@ -119,7 +119,7 @@ public class DrawingBoardSettingsTests : DrawingBoardTestBase
 
         Assert.That(f.Dialogs.Messages, Is.EqualTo(new[] { expected }));
         Assert.That(f.Vm.DrawTask, Is.Null);
-        Assert.That(f.Vm.EstimateText, Is.EqualTo("耗时：参数有误"));
+        Assert.That(f.Vm.EstimateText, Is.EqualTo("预计耗时：参数有误"));
     }
 
     [Test]
@@ -141,7 +141,7 @@ public class DrawingBoardSettingsTests : DrawingBoardTestBase
         await f.Vm.LoadPictureFileAsync("x.png");
 
         Assert.That(f.Vm.SelectRegion, Is.False);
-        Assert.That(f.Vm.RegionText, Is.EqualTo("绘制整张画布（320×120），光标从左上角开始"));
+        Assert.That(f.Vm.RegionText, Is.EqualTo("绘制整张画布 320×120"));
         Assert.That(f.Vm.DisplayImage, Is.SameAs(f.Vm.Preview), "不框选时不叠加区域框");
     }
 
@@ -160,13 +160,13 @@ public class DrawingBoardSettingsTests : DrawingBoardTestBase
         f.Vm.OnPictureReleased();
         f.Vm.OnPictureDragged(300, 100, 822, 282);
 
-        Assert.That(f.Vm.RegionText, Is.EqualTo("绘制区域：第 0–10 列，第 0–2 行（在预览上拖动可重新框选）"), "松开后再移动不改区域");
+        Assert.That(f.Vm.RegionText, Is.EqualTo("绘制区域：第 0–10 列，第 0–2 行"), "松开后再移动不改区域");
         Assert.That(f.Vm.DisplayImage, Is.Not.SameAs(f.Vm.Preview), "叠加了区域框");
         Assert.That(f.Vm.Preview!.GetPixel(10, 0).ToArgb(), Is.EqualTo(System.Drawing.Color.White.ToArgb()), "预览本身不带框");
         Assert.That(Minutes(f.Vm.EstimateText), Is.LessThan(full), "第 300 列的点不在区域内");
 
         f.Vm.ResetRegionCommand.Execute(null);
-        Assert.That(f.Vm.RegionText, Is.EqualTo("绘制区域：第 0–319 列，第 0–119 行（在预览上拖动可重新框选）"));
+        Assert.That(f.Vm.RegionText, Is.EqualTo("绘制区域：第 0–319 列，第 0–119 行"));
         f.Vm.SetRegion(5, 5, 1, 1);
         f.Vm.SelectRegion = false;
         Assert.That(Minutes(f.Vm.EstimateText), Is.EqualTo(full), "关闭框选即恢复整张画布");

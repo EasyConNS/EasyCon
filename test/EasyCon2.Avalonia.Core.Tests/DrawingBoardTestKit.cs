@@ -32,7 +32,7 @@ internal static class DrawingBoardTestKit
         return dir?.FullName ?? throw new DirectoryNotFoundException("找不到仓库根目录（EasyCon2.slnx）");
     }
 
-    /// <summary>从"耗时：X.XXmins"中取出分钟数。</summary>
+    /// <summary>从"预计耗时：X.XX 分钟"中取出分钟数。</summary>
     internal static double Minutes(string estimateText)
         => double.Parse(Regex.Match(estimateText, @"[\d.]+").Value, System.Globalization.CultureInfo.CurrentCulture);
 
