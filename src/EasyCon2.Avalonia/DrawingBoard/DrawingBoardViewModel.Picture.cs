@@ -88,7 +88,7 @@ public partial class DrawingBoardViewModel
     [ObservableProperty]
     private string _sourceSizeText = "";
 
-    /// <summary>当前图片按阈值/反转得到的墨点掩码；未载入图片时为 null。</summary>
+    /// <summary>当前图片经全部图片处理（见 <see cref="BuildMask"/>）得到的墨点掩码；未载入图片时为 null。</summary>
     public InkMask? Mask { get; private set; }
 
     partial void OnReverseChanged(bool value) => UpdateMask();

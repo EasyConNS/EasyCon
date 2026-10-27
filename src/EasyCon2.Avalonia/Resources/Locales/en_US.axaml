@@ -221,6 +221,7 @@
     <x:String x:Key="Text.DrawingBoard.Saved">Picture saved: {0}</x:String>
     <x:String x:Key="Text.DrawingBoard.SaveFailed">Failed to save the picture</x:String>
     <x:String x:Key="Text.DrawingBoard.Reverse">Invert</x:String>
+    <x:String x:Key="Text.DrawingBoard.ReverseTip">Applied last: swaps black and white in the processed result (after speck removal and outline), e.g. a black outline becomes white lines on black</x:String>
     <x:String x:Key="Text.DrawingBoard.Threshold">Threshold</x:String>
     <x:String x:Key="Text.DrawingBoard.ShowOriginal">Show original</x:String>
     <x:String x:Key="Text.DrawingBoard.Adjust">Picture adjustments (advanced)</x:String>

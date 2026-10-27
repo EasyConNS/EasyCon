@@ -221,6 +221,7 @@
     <x:String x:Key="Text.DrawingBoard.Saved">图片已保存：{0}</x:String>
     <x:String x:Key="Text.DrawingBoard.SaveFailed">图片保存失败</x:String>
     <x:String x:Key="Text.DrawingBoard.Reverse">反转黑白</x:String>
+    <x:String x:Key="Text.DrawingBoard.ReverseTip">最后一步：把处理完的结果（含去杂点、轮廓）黑白互换，例如黑色轮廓线变成黑底白线</x:String>
     <x:String x:Key="Text.DrawingBoard.Threshold">阈值</x:String>
     <x:String x:Key="Text.DrawingBoard.ShowOriginal">显示原图</x:String>
     <x:String x:Key="Text.DrawingBoard.Adjust">图片调整（高级）</x:String>

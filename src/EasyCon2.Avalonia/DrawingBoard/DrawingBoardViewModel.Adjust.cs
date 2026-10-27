@@ -6,7 +6,7 @@ namespace EasyCon2.Avalonia.DrawingBoard;
 
 /// <summary>
 /// 图片调整（高级，默认折叠）：像素画最近邻缩放、亮度/对比度/伽马、去除孤立杂点、轮廓模式。
-/// 处理顺序：适配缩放 → 明暗调整 → 阈值/抖动 → 反转 → 去杂点 → 轮廓。默认值不改变任何结果。
+/// 处理顺序：适配缩放 → 明暗调整 → 阈值/抖动 → 去杂点 → 轮廓 → 反转黑白（最后一步）。默认值不改变任何结果。
 /// </summary>
 public partial class DrawingBoardViewModel
 {
@@ -70,12 +70,17 @@ public partial class DrawingBoardViewModel
         UpdateMask();
     }
 
-    /// <summary>画布图片 → 掩码：明暗调整 + 阈值/抖动 + 反转，再去杂点、取轮廓。</summary>
+    /// <summary>
+    /// 画布图片 → 掩码：明暗调整 + 阈值/抖动，再去杂点、取轮廓，最后才反转黑白——
+    /// 反转作用于处理完的结果（例如黑色轮廓线反转成黑底白线）；若先反转，轮廓取的就是背景的边，与不反转几乎一样。
+    /// </summary>
     private InkMask BuildMask(PixelImage canvas)
     {
         ToneAdjust tone = new(ToneBrightness, ToneContrast, Math.Round(ToneGamma, 2));
-        InkMask mask = InkMask.Binarize(canvas, new BinarizeOptions(ThresholdPercent, Reverse, SelectedDither, tone));
+        InkMask mask = InkMask.Binarize(canvas, new BinarizeOptions(ThresholdPercent, false, SelectedDither, tone));
         mask = mask.RemoveSpecks(SpeckSize);
-        return OutlineMode ? mask.Outline() : mask;
+        if (OutlineMode)
+            mask = mask.Outline();
+        return Reverse ? mask.Inverted() : mask;
     }
 }

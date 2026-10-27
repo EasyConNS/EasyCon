@@ -149,6 +149,7 @@
                                Text="{Binding ThresholdPercent, StringFormat={}{0}%}"
                                VerticalAlignment="Center"/>
                     <CheckBox Content="{loc:Translate Text.DrawingBoard.Reverse}"
+                              ToolTip.Tip="{loc:Translate Text.DrawingBoard.ReverseTip}"
                               IsChecked="{Binding Reverse}"
                               VerticalAlignment="Center"/>
                     <CheckBox Content="{loc:Translate Text.DrawingBoard.ShowOriginal}"

@@ -336,4 +336,53 @@ public class DrawingBoardPictureTests : DrawingBoardTestBase
         Assert.That(previews, Is.EqualTo(1));
         Assert.That(f.Vm.Mask![0, 0], Is.True);
     }
+
+    /// <summary>白底黑圆（半径 30）加一个孤立黑点 (5,5)。</summary>
+    private static PixelImage DiscWithSpeck()
+    {
+        List<(int, int)> dots = [(5, 5)];
+        for (int r = 0; r < 120; r++)
+            for (int c = 0; c < 320; c++)
+                if ((c - 160) * (c - 160) + (r - 60) * (r - 60) < 30 * 30)
+                    dots.Add((r, c));
+        return Canvas([.. dots]);
+    }
+
+    [Test]
+    public async Task Reverse_IsAppliedLast_AfterOutline()
+    {
+        Fixture f = new(DiscWithSpeck());
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.OutlineMode = true;
+        bool[] outline = Cells(f.Vm.Mask!).ToArray();
+
+        f.Vm.Reverse = true;
+
+        Assert.That(Cells(f.Vm.Mask!), Is.EqualTo(outline.Select(ink => !ink)), "黑色轮廓线反转成黑底白线");
+        Assert.That(f.Vm.Mask![160, 60], Is.True, "圆内（轮廓挖空的部分）反转后要画");
+        Assert.That(f.Vm.Mask![160, 31], Is.False, "圆周（轮廓线，圆的最上一行是第 31 行）反转后留白");
+    }
+
+    [Test]
+    public async Task Reverse_IsAppliedLast_AfterSpeckRemoval()
+    {
+        Fixture f = new(DiscWithSpeck());
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.SpeckSize = 1;
+        f.Vm.Reverse = true;
+
+        Assert.That(f.Vm.Mask![5, 5], Is.True, "孤立黑点先被去掉、再反转：与周围背景一样要画");
+    }
+
+    [Test]
+    public async Task Reverse_Alone_StillSwapsInkAndBlank()
+    {
+        PixelImage image = DiscWithSpeck();
+        Fixture f = new(image);
+        await f.Vm.LoadPictureFileAsync("x.png");
+
+        f.Vm.Reverse = true;
+
+        Assert.That(Cells(f.Vm.Mask!), Is.EqualTo(Cells(InkMask.Binarize(image, new BinarizeOptions(50, true)))));
+    }
 }
