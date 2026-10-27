@@ -304,7 +304,7 @@ public class DrawingBoardRunTests : DrawingBoardTestBase
 
     [TestCase(false)]
     [TestCase(true)]
-    public async Task Progress_OutsideTheRegion_ShowsTheUntouchedCanvas(bool eraser)
+    public async Task Progress_OutsideTheRegion_ShowsTheUntouchedCanvasFaintly(bool eraser)
     {
         // 第 0 行第 1 列与第 100 列各有一个墨点；只框选左边 0～49 列
         Fixture f = new(Canvas((0, 1), (0, 100)));
@@ -318,11 +318,48 @@ public class DrawingBoardRunTests : DrawingBoardTestBase
         await f.Vm.StartCommand.ExecuteAsync(null);
         await f.Vm.DrawTask!;
 
-        // 区域外：画笔模式为空白（墨点没画），橡皮擦模式仍是涂黑的
-        System.Drawing.Color outside = f.Vm.DisplayImage!.GetPixel(100, 60);
-        Assert.That(outside.ToArgb(), Is.EqualTo((eraser ? System.Drawing.Color.Black : System.Drawing.Color.White).ToArgb()));
-        System.Drawing.Color inkOutside = f.Vm.DisplayImage!.GetPixel(100, 0);
-        Assert.That(inkOutside.ToArgb(), Is.EqualTo((eraser ? System.Drawing.Color.Black : System.Drawing.Color.White).ToArgb()),
-            "区域外的墨点不画，不应显示为待画的灰色");
+        // 区域外不处理：画笔模式的墨点、橡皮擦模式本该擦的点都只淡淡显示，不算已画也不算待画
+        (byte R, byte G, byte B) Rgb(int col, int row)
+        {
+            System.Drawing.Color c = f.Vm.DisplayImage!.GetPixel(col, row);
+            return (c.R, c.G, c.B);
+        }
+        if (eraser)
+        {
+            Assert.That(Rgb(100, 60), Is.EqualTo(PreviewOverlay.OutsideErase), "区域外本该擦的空白处：仍是黑，略亮");
+            Assert.That(Rgb(100, 0), Is.EqualTo(((byte)0, (byte)0, (byte)0)), "区域外的墨点：保持涂黑");
+        }
+        else
+        {
+            Assert.That(Rgb(100, 0), Is.EqualTo(PreviewOverlay.OutsideInk), "区域外的墨点没画，但淡淡保留图片内容");
+            Assert.That(Rgb(100, 60), Is.EqualTo(((byte)255, (byte)255, (byte)255)));
+        }
+    }
+
+    [Test]
+    public async Task AfterStopping_ReselectingTheRegionShowsTheWholePictureAgain()
+    {
+        Fixture f = new(Canvas((0, 1), (50, 200)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.DelayText = "0";
+        f.Vm.DurationText = "10000";
+        f.Pad.WaitForDuration = true;
+        TaskCompletionSource firstKey = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        f.Pad.OnKey = () => firstKey.TrySetResult();
+        f.Vm.SelectRegion = true;
+        f.Vm.SetRegion(0, 0, 50, 120);
+
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        await firstKey.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await f.Vm.StopCommand.ExecuteAsync(null).WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.That(f.Vm.DisplayImage!.GetPixel(200, 50).R, Is.EqualTo(PreviewOverlay.OutsideInk.R), "停止后仍显示进度图，区域外淡化");
+
+        f.Vm.OnPicturePressed(400, 100, 822, 282);
+        f.Vm.OnPictureDragged(800, 250, 822, 282);
+        f.Vm.OnPictureReleased();
+
+        Assert.That(f.Vm.RegionText, Does.StartWith("绘制区域：第 155–311 列"));
+        Assert.That(f.Vm.DisplayImage!.GetPixel(200, 50).ToArgb(), Is.EqualTo(System.Drawing.Color.Black.ToArgb()),
+            "重新框选时换回完整预览，区域外的图片内容照常显示");
     }
 }

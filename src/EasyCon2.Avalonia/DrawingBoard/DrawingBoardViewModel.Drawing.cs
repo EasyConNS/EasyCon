@@ -53,6 +53,7 @@ public partial class DrawingBoardViewModel
 
     // 以下由绘制线程写入，节流后渲染成预览叠加图
     private InkMask? _runStrokes;
+    private (int StartCol, int StartRow, int ColCount, int RowCount) _runRegion;
     private bool _runEraser;
     private bool[]? _runDone;
     private (int Row, int Col) _runCursor;
@@ -103,8 +104,8 @@ public partial class DrawingBoardViewModel
         InkMask strokes = StrokeMask(Mask);
         GamePadKey key = StrokeKey;
         List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(strokes, settings);
-        // 进度图只把区域内的点算作待画；区域外保持游戏里原样（画笔模式为空白，橡皮擦模式仍是黑）
-        _runStrokes = strokes.Within(settings.StartCol, settings.StartRow, settings.ColCount, settings.RowCount);
+        _runStrokes = strokes;
+        _runRegion = (settings.StartCol, settings.StartRow, settings.ColCount, settings.RowCount);
         _runEraser = EraserMode;
         _runDone = new bool[strokes.Width * strokes.Height];
         _runCursor = (0, 0);
@@ -253,7 +254,7 @@ public partial class DrawingBoardViewModel
         });
     }
 
-    private PixelImage RenderProgressImage() => PreviewOverlay.RenderProgress(_runStrokes!, _runDone!, _runEraser, _runCursor);
+    private PixelImage RenderProgressImage() => PreviewOverlay.RenderProgress(_runStrokes!, _runDone!, _runEraser, _runCursor, _runRegion);
 
     private void SetProgress(double value, string key, params object[] args)
     {

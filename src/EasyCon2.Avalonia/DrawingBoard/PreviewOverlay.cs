@@ -9,17 +9,25 @@ internal static class PreviewOverlay
     internal static readonly (byte R, byte G, byte B) PendingInk = (190, 190, 190);
     /// <summary>橡皮擦模式下还没擦到的点（此时游戏里仍是黑色）。</summary>
     internal static readonly (byte R, byte G, byte B) PendingErase = (110, 110, 110);
+    /// <summary>画笔模式下绘制区域外的墨点：本次不画，淡淡显示以保留整张图的轮廓。</summary>
+    internal static readonly (byte R, byte G, byte B) OutsideInk = (225, 225, 225);
+    /// <summary>橡皮擦模式下绘制区域外本该擦掉的点：本次不擦（游戏里仍是黑），比黑色略亮以示区别。</summary>
+    internal static readonly (byte R, byte G, byte B) OutsideErase = (55, 55, 55);
     internal static readonly (byte R, byte G, byte B) Cursor = (230, 30, 30);
     internal static readonly (byte R, byte G, byte B) Region = (255, 140, 0);
 
     /// <summary>
     /// 按当前进度估计游戏里的画面：画笔模式下已画的墨点为黑、待画为浅灰、其余为白；
     /// 橡皮擦模式下（画布事先涂黑）已擦的点为白、待擦为深灰、其余为黑。再用红点与红框标出光标。
+    /// 给了绘制区域时，区域外的点本次不处理，按游戏里的原样显示，但用很淡的颜色保留图片内容，便于对照和重新框选。
     /// </summary>
     /// <param name="strokes">要走笔的点（画笔模式是墨点，橡皮擦模式是要擦的点）。</param>
     /// <param name="done">已经走过笔的点，与 <paramref name="strokes"/> 同尺寸、按行展开。</param>
-    public static PixelImage RenderProgress(InkMask strokes, bool[] done, bool eraser, (int Row, int Col)? cursor)
+    /// <param name="region">绘制区域（起始列, 起始行, 列数, 行数）；null 为整张画布。</param>
+    public static PixelImage RenderProgress(InkMask strokes, bool[] done, bool eraser, (int Row, int Col)? cursor,
+        (int StartCol, int StartRow, int ColCount, int RowCount)? region = null)
     {
+        (int startCol, int startRow, int colCount, int rowCount) = region ?? (0, 0, strokes.Width, strokes.Height);
         int width = strokes.Width;
         int height = strokes.Height;
         byte[] rgba = new byte[width * height * 4];
@@ -29,6 +37,18 @@ internal static class PreviewOverlay
             {
                 int i = row * width + col;
                 bool stroke = strokes[col, row];
+                bool inside = col >= startCol && col < startCol + colCount && row >= startRow && row < startRow + rowCount;
+                if (!inside)
+                {
+                    Set(rgba, width, col, row, (eraser, stroke) switch
+                    {
+                        (false, true) => OutsideInk,
+                        (false, false) => (255, 255, 255),
+                        (true, true) => OutsideErase,
+                        (true, false) => (0, 0, 0),
+                    });
+                    continue;
+                }
                 (byte R, byte G, byte B) color = (eraser, stroke, done[i]) switch
                 {
                     (false, true, true) => (0, 0, 0),

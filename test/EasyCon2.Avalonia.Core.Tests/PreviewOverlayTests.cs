@@ -67,4 +67,21 @@ public class PreviewOverlayTests
         Assert.That(Rgb(framed, 30, 15), Is.EqualTo(((byte)255, (byte)255, (byte)255)), "框外不变");
         Assert.That(Rgb(white, 10, 5), Is.EqualTo(((byte)255, (byte)255, (byte)255)), "不修改原图");
     }
+
+    [Test]
+    public void RenderProgress_OutsideTheRegion_ShowsThePictureFaintly()
+    {
+        InkMask strokes = new(4, 1, [true, false, true, false]);
+        bool[] done = [false, false, true, false];
+
+        PixelImage pen = PreviewOverlay.RenderProgress(strokes, done, eraser: false, cursor: null, region: (2, 0, 2, 1));
+        PixelImage eraser = PreviewOverlay.RenderProgress(strokes, done, eraser: true, cursor: null, region: (2, 0, 2, 1));
+
+        Assert.That(Rgb(pen, 0, 0), Is.EqualTo(PreviewOverlay.OutsideInk), "区域外的墨点");
+        Assert.That(Rgb(pen, 1, 0), Is.EqualTo(((byte)255, (byte)255, (byte)255)));
+        Assert.That(Rgb(pen, 2, 0), Is.EqualTo(((byte)0, (byte)0, (byte)0)), "区域内已画");
+        Assert.That(Rgb(eraser, 0, 0), Is.EqualTo(PreviewOverlay.OutsideErase), "区域外本该擦的点");
+        Assert.That(Rgb(eraser, 1, 0), Is.EqualTo(((byte)0, (byte)0, (byte)0)));
+        Assert.That(Rgb(eraser, 2, 0), Is.EqualTo(((byte)255, (byte)255, (byte)255)), "区域内已擦");
+    }
 }

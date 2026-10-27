@@ -41,6 +41,7 @@ public partial class DrawingBoardViewModel
 
     partial void OnSelectRegionChanged(bool value)
     {
+        ClearFinishedProgress();
         UpdateEstimate();
         ComposeDisplay();
     }
@@ -60,6 +61,8 @@ public partial class DrawingBoardViewModel
     {
         if (IsDrawing)
             return;
+        // 重新框选时换回完整预览：上一次绘制留下的进度图会把区域外淡化，不便对照整张图选区
+        ClearFinishedProgress();
         _regionStartCol = Math.Clamp(startCol, 0, SplatoonDrawing.CanvasWidth - 1);
         _regionStartRow = Math.Clamp(startRow, 0, SplatoonDrawing.CanvasHeight - 1);
         _regionColCount = Math.Clamp(colCount, 1, SplatoonDrawing.CanvasWidth - _regionStartCol);

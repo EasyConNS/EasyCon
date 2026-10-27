@@ -166,13 +166,19 @@ public partial class DrawingBoardViewModel
         if (_suppressMaskUpdate)
             return;
         Mask = _canvas == null ? null : BuildMask(_canvas);
-        if (!IsDrawing)
-            _progressImage = null;
+        ClearFinishedProgress();
         Preview = ShowOriginal ? _canvas : Mask?.ToPreview();
         UpdateEstimate();
     }
 
     partial void OnPreviewChanged(PixelImage? value) => ComposeDisplay();
+
+    /// <summary>不在绘制中时清掉上一次绘制留下的进度图（之后显示的就是预览）。</summary>
+    private void ClearFinishedProgress()
+    {
+        if (!IsDrawing)
+            _progressImage = null;
+    }
 
     private void ShowProgressImage(PixelImage image)
     {

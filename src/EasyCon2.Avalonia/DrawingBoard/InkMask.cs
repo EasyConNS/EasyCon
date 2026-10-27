@@ -59,18 +59,6 @@ public sealed partial class InkMask
         return new InkMask(width, height, ink);
     }
 
-    /// <summary>只保留矩形区域内的点，区域外一律视为不走笔（框选绘制区域时用于进度显示）。</summary>
-    public InkMask Within(int startCol, int startRow, int colCount, int rowCount)
-    {
-        bool[] ink = new bool[_ink.Length];
-        int endRow = Math.Min(Height, startRow + rowCount);
-        int endCol = Math.Min(Width, startCol + colCount);
-        for (int row = Math.Max(0, startRow); row < endRow; row++)
-            for (int col = Math.Max(0, startCol); col < endCol; col++)
-                ink[row * Width + col] = _ink[row * Width + col];
-        return new InkMask(Width, Height, ink);
-    }
-
     /// <summary>黑白互换：橡皮擦模式下要擦的正是原本留空的点。</summary>
     public InkMask Inverted() => new(Width, Height, Array.ConvertAll(_ink, ink => !ink));
 
