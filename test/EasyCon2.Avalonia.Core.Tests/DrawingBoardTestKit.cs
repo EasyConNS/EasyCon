@@ -172,8 +172,12 @@ internal static class DrawingBoardTestKit
         public Exception? Failure { get; set; }
         public bool IsConnected => Connected;
 
-        public void Run(Action<IPadInput, CancellationToken> draw, CancellationToken token)
+        /// <summary>每次运行收到的保持唤醒选项。</summary>
+        public List<bool> KeepAwakeRequests { get; } = [];
+
+        public void Run(Action<IPadInput, CancellationToken> draw, bool keepAwake, CancellationToken token)
         {
+            KeepAwakeRequests.Add(keepAwake);
             if (Failure != null)
                 throw Failure;
             try

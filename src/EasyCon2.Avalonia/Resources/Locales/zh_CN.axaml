@@ -268,6 +268,8 @@
     <x:String x:Key="Text.DrawingBoard.EraserMode">橡皮擦模式（画布已涂黑）</x:String>
     <x:String x:Key="Text.DrawingBoard.EraserHelp">橡皮擦模式：开始前先在游戏里用最大笔刷把整个画布涂黑，再把笔刷调到最小。程序会按住 B（橡皮擦）擦出图中的空白部分，最终效果与画笔模式相同。黑多白少的图要处理的点更少，通常更快，可对比右下角的耗时选择。只处理绘制区域内的点，区域外保持涂黑。</x:String>
     <x:String x:Key="Text.DrawingBoard.Tip">开始前，请先进入画画页面，笔刷调整到最小。开画前会自动把光标归位到左上角（可在“绘制”页关闭），再从左上到右下绘制</x:String>
+    <x:String x:Key="Text.DrawingBoard.StayAwake">绘制时保持唤醒</x:String>
+    <x:String x:Key="Text.DrawingBoard.StayAwakeTip">绘制期间阻止电脑休眠、熄屏和进入屏幕保护，画完或停止后恢复。关闭后，电脑进入屏幕保护时绘制可能明显变慢甚至中断。建议保持勾选</x:String>
     <x:String x:Key="Text.DrawingBoard.AutoHome">开画前自动归位</x:String>
     <x:String x:Key="Text.DrawingBoard.AutoHomeTip">开画前自动把光标归位到画布左上角，并防止开头的输入因丢帧而失效。会多花几秒，强烈建议保持勾选</x:String>
     <x:String x:Key="Text.DrawingBoard.AutoHomeOffWarning">已关闭自动归位。Switch 可能丢掉开头的输入帧，即使开始前手动把光标移到了左上角，也可能出现不可预测的绘制错位或整行缺失。除非确有需要，请保持勾选。</x:String>

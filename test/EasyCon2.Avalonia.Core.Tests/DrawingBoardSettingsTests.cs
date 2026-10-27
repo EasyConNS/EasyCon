@@ -224,6 +224,7 @@ public class DrawingBoardSettingsTests : DrawingBoardTestBase
         f.Vm.DelayText = "60";
         f.Vm.EraserMode = true;
         f.Vm.AutoHome = false;
+        f.Vm.StayAwake = false;
         f.Vm.SelectRegion = true;
         f.Vm.SetRegion(10, 10, 20, 20);
         int fits = f.Images.Fits.Count;
@@ -238,7 +239,8 @@ public class DrawingBoardSettingsTests : DrawingBoardTestBase
             Assert.That((f.Vm.ToneBrightness, f.Vm.ToneContrast, f.Vm.ToneGamma), Is.EqualTo((0, 0, 1.0)));
             Assert.That((f.Vm.ThresholdPercent, f.Vm.DitherModeIndex, f.Vm.SpeckSize, f.Vm.OutlineMode, f.Vm.Reverse, f.Vm.ShowOriginal),
                 Is.EqualTo((50, 0, 0, false, false, false)));
-            Assert.That((f.Vm.DurationText, f.Vm.DelayText, f.Vm.EraserMode, f.Vm.AutoHome, f.Vm.SelectRegion), Is.EqualTo(("50", "45", false, true, false)));
+            Assert.That((f.Vm.DurationText, f.Vm.DelayText, f.Vm.EraserMode, f.Vm.AutoHome, f.Vm.StayAwake, f.Vm.SelectRegion),
+                Is.EqualTo(("50", "45", false, true, true, false)));
             Assert.That(f.Vm.RegionText, Is.EqualTo("绘制整张画布 320×120"));
             Assert.That(f.Vm.EstimateText, Is.EqualTo(defaultEstimate));
             Assert.That(f.Vm.Preview!.Rgba.ToArray(), Is.EqualTo(defaultPreview.Rgba.ToArray()), "图片仍在，按默认参数重新处理");

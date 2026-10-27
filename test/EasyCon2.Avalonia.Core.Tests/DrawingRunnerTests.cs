@@ -15,6 +15,16 @@ public class DrawingRunnerTests
     private static readonly byte[] PressedA = new SwitchReport { Button = (ushort)SwitchButton.A }.GetBytes();
 
     [Test]
+    public void KeepAwake_AcquireAndRelease_CallsThePlatformApiWithoutThrowing()
+    {
+        // macOS / Windows 上真实调用系统接口（Objective-C 运行时 / kernel32），签名写错会在这里崩溃或抛异常
+        for (int i = 0; i < 3; i++)
+        {
+            using KeepAwake awake = KeepAwake.Acquire();
+        }
+    }
+
+    [Test]
     public async Task Run_OwnsInputExclusively_AndReleasesAfterwards()
     {
         using Harness h = new();
@@ -28,7 +38,7 @@ public class DrawingRunnerTests
             manualError = Assert.Throws<ControllerOperationException>(() => h.Controller.Down(ECKeyUtil.Button(SwitchButton.B)));
             // 设备写循环约 30 ms 一帧、只发最新报告；像画图落笔一样按住一段时间
             Thread.Sleep(200);
-        }, CancellationToken.None);
+        }, keepAwake: false, CancellationToken.None);
 
         Assert.That(manualAcceptedDuringRun, Is.False, "画图期间应拒绝虚拟手柄/键盘等手动输入");
         Assert.That(manualError!.ErrorCode, Is.EqualTo("Busy"));
@@ -45,7 +55,7 @@ public class DrawingRunnerTests
         bool drew = false;
 
         ControllerOperationException? error = Assert.Throws<ControllerOperationException>(
-            () => h.Runner.Run((_, _) => drew = true, CancellationToken.None));
+            () => h.Runner.Run((_, _) => drew = true, keepAwake: false, CancellationToken.None));
 
         Assert.That(error!.ErrorCode, Is.EqualTo("Busy"));
         Assert.That(drew, Is.False);
@@ -64,7 +74,7 @@ public class DrawingRunnerTests
             pressed.SetResult();
             token.WaitHandle.WaitOne();
             token.ThrowIfCancellationRequested();
-        }, cts.Token));
+        }, keepAwake: false, cts.Token));
         await pressed.Task.WaitAsync(TimeSpan.FromSeconds(5));
         cts.Cancel();
 

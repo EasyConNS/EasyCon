@@ -242,6 +242,6 @@ public class DrawingBoardWindowTests
     private sealed class DisconnectedRunner : IDrawingRunner
     {
         public bool IsConnected => false;
-        public void Run(Action<IPadInput, CancellationToken> draw, CancellationToken token) { }
+        public void Run(Action<IPadInput, CancellationToken> draw, bool keepAwake, CancellationToken token) { }
     }
 }

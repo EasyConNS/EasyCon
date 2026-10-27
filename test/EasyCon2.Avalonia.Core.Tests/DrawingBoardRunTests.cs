@@ -61,6 +61,24 @@ public class DrawingBoardRunTests : DrawingBoardTestBase
     }
 
     [Test]
+    public async Task StayAwake_IsOnByDefault_AndIsPassedToTheRunner()
+    {
+        Fixture f = new(Canvas((0, 1)));
+        await f.Vm.LoadPictureFileAsync("x.png");
+        f.Vm.DelayText = "0";
+        f.Vm.DurationText = "1";
+        Assert.That(f.Vm.StayAwake, Is.True);
+
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        await f.Vm.DrawTask!;
+        f.Vm.StayAwake = false;
+        await f.Vm.StartCommand.ExecuteAsync(null);
+        await f.Vm.DrawTask!;
+
+        Assert.That(f.Runner.KeepAwakeRequests, Is.EqualTo(new[] { true, false }));
+    }
+
+    [Test]
     public async Task AutoHomeOff_StartsDrawingWithoutHoming()
     {
         Fixture f = new(Canvas((0, 1)));

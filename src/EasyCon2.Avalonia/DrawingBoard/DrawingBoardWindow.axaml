@@ -280,6 +280,9 @@
                             <CheckBox Content="{loc:Translate Text.DrawingBoard.AutoHome}"
                                       ToolTip.Tip="{loc:Translate Text.DrawingBoard.AutoHomeTip}"
                                       IsChecked="{Binding AutoHome}"/>
+                            <CheckBox Content="{loc:Translate Text.DrawingBoard.StayAwake}"
+                                      ToolTip.Tip="{loc:Translate Text.DrawingBoard.StayAwakeTip}"
+                                      IsChecked="{Binding StayAwake}"/>
                             <StackPanel Classes="field">
                                 <CheckBox Content="{loc:Translate Text.DrawingBoard.SelectRegion}"
                                           ToolTip.Tip="{loc:Translate Text.DrawingBoard.SelectRegionTip}"

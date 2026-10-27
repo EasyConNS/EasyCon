@@ -38,6 +38,10 @@ public partial class DrawingBoardViewModel
     [ObservableProperty]
     private bool _autoHome = true;
 
+    /// <summary>绘制时保持唤醒：阻止系统休眠、熄屏与屏幕保护（macOS 进入屏幕保护后计时明显变慢）。默认开启。</summary>
+    [ObservableProperty]
+    private bool _stayAwake = true;
+
     [ObservableProperty]
     private bool _isStartEnabled = true;
 
@@ -124,6 +128,7 @@ public partial class DrawingBoardViewModel
         InkMask strokes = StrokeMask(Mask);
         GamePadKey key = StrokeKey;
         bool home = AutoHome;
+        bool stayAwake = StayAwake;
         List<List<DrawingLine>> rows = SplatoonDrawing.SearchLines(strokes, settings);
         _runStrokes = strokes;
         _runRegion = (settings.StartCol, settings.StartRow, settings.ColCount, settings.RowCount);
@@ -142,10 +147,10 @@ public partial class DrawingBoardViewModel
         IsDrawing = true;
         IsStartEnabled = false;
         SetProgress(0, "Text.DrawingBoard.Preparing");
-        DrawTask = Task.Run(() => RunDraw(rows, key, home, settings, _pause, token));
+        DrawTask = Task.Run(() => RunDraw(rows, key, home, stayAwake, settings, _pause, token));
     }
 
-    private void RunDraw(List<List<DrawingLine>> rows, GamePadKey key, bool home, DrawingBoardSettings settings, DrawPause pause, CancellationToken token)
+    private void RunDraw(List<List<DrawingLine>> rows, GamePadKey key, bool home, bool stayAwake, DrawingBoardSettings settings, DrawPause pause, CancellationToken token)
     {
         try
         {
@@ -167,7 +172,7 @@ public partial class DrawingBoardViewModel
                     PostProgress();
                 }, penKey: key, pause: pause, step: OnStep, home: home);
                 drawing.Draw(rows, runToken);
-            }, token);
+            }, stayAwake, token);
             _clock.Stop();
             LearnOverhead();
             string took = FormatClock(_clock.Elapsed);

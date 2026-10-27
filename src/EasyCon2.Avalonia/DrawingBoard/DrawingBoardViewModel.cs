@@ -41,7 +41,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// 所有选项恢复默认：图片处理（适配、取景、方向、明暗、黑白化）、按键时序、橡皮擦、自动归位与框选区域。
+    /// 所有选项恢复默认：图片处理（适配、取景、方向、明暗、黑白化）、按键时序、橡皮擦、自动归位、保持唤醒与框选区域。
     /// 已载入的图片保留，各项改完后只重算一次；绘制进行中不可用。
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanResetAll))]
@@ -73,6 +73,7 @@ public partial class DrawingBoardViewModel : ViewModelBase, IDisposable
             DelayText = DefaultDelay;
             EraserMode = false;
             AutoHome = true;
+            StayAwake = true;
             SelectRegion = false;
             ResetRegion();
         }

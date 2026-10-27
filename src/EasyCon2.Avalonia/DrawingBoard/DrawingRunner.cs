@@ -11,13 +11,15 @@ public interface IDrawingRunner
     /// <summary>
     /// 独占手柄执行 <paramref name="draw"/>，回调拿到租约下的手柄输入与运行令牌。
     /// 结束（画完、取消或出错）时由租约写出中性报告；手柄已被占用时抛 <see cref="ControllerOperationException"/>（Busy）。
+    /// <paramref name="keepAwake"/> 为真时，绘制期间阻止系统休眠与屏幕保护（见 <see cref="KeepAwake"/>）。
     /// </summary>
-    void Run(Action<IPadInput, CancellationToken> draw, CancellationToken token);
+    void Run(Action<IPadInput, CancellationToken> draw, bool keepAwake, CancellationToken token);
 }
 
 /// <summary>
 /// 与脚本运行相同的独占机制：经 <see cref="HostRunCoordinator"/> 取得运行租约。
-/// 画图期间脚本运行、虚拟手柄与键盘映射等手动输入都会被拒绝，避免误触把画弄歪。
+/// 画图期间脚本运行、虚拟手柄与键盘映射等手动输入都会被拒绝，避免误触把画弄歪；
+/// 可选地阻止系统休眠与屏幕保护（见 <see cref="KeepAwake"/>）。
 /// </summary>
 public sealed class DeviceDrawingRunner(IControllerSession controller) : IDrawingRunner
 {
@@ -25,6 +27,9 @@ public sealed class DeviceDrawingRunner(IControllerSession controller) : IDrawin
 
     public bool IsConnected => controller.InputConnected;
 
-    public void Run(Action<IPadInput, CancellationToken> draw, CancellationToken token)
-        => _runs.Run("drawing-board", null, requiresInput: true, token, scope => draw(scope.CreatePad(), scope.Token));
+    public void Run(Action<IPadInput, CancellationToken> draw, bool keepAwake, CancellationToken token)
+    {
+        using KeepAwake? awake = keepAwake ? KeepAwake.Acquire() : null;
+        _runs.Run("drawing-board", null, requiresInput: true, token, scope => draw(scope.CreatePad(), scope.Token));
+    }
 }
