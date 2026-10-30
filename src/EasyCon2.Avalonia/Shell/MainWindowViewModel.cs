@@ -274,6 +274,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public ICommand OpenAudioLabelsCommand { get; }
     public ICommand OpenAudioMatchTestCommand { get; }
     public ICommand OpenESPConfigCommand { get; }
+    public ICommand OpenDrawingBoardCommand { get; }
     public ICommand OpenAlertConfigCommand { get; }
     public ICommand OpenModelsConfigCommand { get; }
     public ICommand OpenMcpConfigCommand { get; }
@@ -462,6 +463,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OpenAudioLabelsCommand = new RelayCommand(() => _windowService.Show(WindowKeys.AudioLabels));
         OpenAudioMatchTestCommand = new RelayCommand(() => _windowService.Show(WindowKeys.AudioMatchTest));
         OpenESPConfigCommand = new RelayCommand(OpenESPConfig);
+        OpenDrawingBoardCommand = new RelayCommand(() => _windowService.Show(WindowKeys.DrawingBoard));
         OpenAlertConfigCommand = new RelayCommand(OpenAlertConfig);
         OpenModelsConfigCommand = new RelayCommand(OpenModelsConfig);
         OpenMcpConfigCommand = new RelayCommand(OpenMcpConfig);

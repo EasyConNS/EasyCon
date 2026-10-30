@@ -12,6 +12,7 @@
 | [Functions.md](Functions.md) | 内置函数手册（按功能域；速查表含桌面/单片机可用性） |
 | [AudioSource.md](AudioSource.md) | 连接 Windows 游戏音频输入、查看电平及连接排查 |
 | [AudioLabels.md](AudioLabels.md) | 声音标签制作、ECS 目录、LOAD/SCORE/UNLOAD 后台识别示例、0～100 整数分数校准与排错 |
+| [DrawingBoard.md](DrawingBoard.md) | 喷射战士画板：图片处理（适配/明暗/抖动/去杂点/轮廓）、绘制设置、橡皮擦模式、框选区域、耗时估算与常见问题 |
 
 ## 🏗️ 架构与编译管线（改编译器/宿主前必读）
 

@@ -108,13 +108,19 @@ public class DialogService : IDialogService
         return dialog.Args;
     }
 
-    public async Task<bool> ConfirmAsync(string title, string message)
+    public Task<bool> ConfirmAsync(string title, string message)
+        => ShowButtonDialogAsync(title, message, withCancel: true);
+
+    public Task ShowMessageAsync(string title, string message)
+        => ShowButtonDialogAsync(title, message, withCancel: false);
+
+    private async Task<bool> ShowButtonDialogAsync(string title, string message, bool withCancel)
     {
         var owner = Owner;
         if (owner == null) return false;
 
         var confirmed = false;
-        var okButton = new Button { Content = "确定", MinWidth = 88, Margin = new Thickness(0, 0, 12, 0) };
+        var okButton = new Button { Content = "确定", MinWidth = 88, Margin = withCancel ? new Thickness(0, 0, 12, 0) : default };
         var cancelButton = new Button { Content = "取消", MinWidth = 88 };
 
         var buttons = new StackPanel
@@ -124,7 +130,8 @@ public class DialogService : IDialogService
             Margin = new Thickness(0, 20, 0, 0)
         };
         buttons.Children.Add(okButton);
-        buttons.Children.Add(cancelButton);
+        if (withCancel)
+            buttons.Children.Add(cancelButton);
 
         var content = new StackPanel { Margin = new Thickness(24) };
         content.Children.Add(new TextBlock

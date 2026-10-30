@@ -201,6 +201,7 @@ OpenCV bindings come from the `OpenCvSharp5` NuGet packages (OpenCV 5.0); native
   capability-default degradation implemented)
 - `docs/Script.md` — ECS scripting language reference
 - `docs/Functions.md` — script function handbook (script-author-facing, CN)
+- `docs/DrawingBoard.md` — Splatoon drawing board user guide (CN) + maintainer notes on `src/EasyCon2.Avalonia/DrawingBoard/`
 - `docs/McuBytecodeDelivery.md` — plan of record for compiling and flashing MCU bytecode
 - `docs/Flow.md` — node-graph orchestration spec: `*.flow.json` format, node catalog/semantics,
   execution model (watchdog/timing/stop/slow sensing), HTTP + MCP API, Python canvas, known gaps

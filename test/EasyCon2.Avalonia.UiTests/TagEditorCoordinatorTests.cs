@@ -63,6 +63,9 @@ public class TagEditorCoordinatorTests
             => throw new InvalidOperationException("测试中不应打开参数对话框");
         public Task<bool> ConfirmAsync(string title, string message)
             => throw new InvalidOperationException("测试中不应打开确认对话框");
+
+        public Task ShowMessageAsync(string title, string message)
+            => throw new InvalidOperationException("测试中不应打开提示对话框");
     }
 
     /// <summary>记录型日志服务：把 AddLog 的消息收集下来供断言。</summary>
