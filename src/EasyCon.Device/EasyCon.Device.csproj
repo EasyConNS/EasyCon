@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="System.IO.Ports" />
+    <InternalsVisibleTo Include="EasyCon.Device.Tests" />
   </ItemGroup>
 
 </Project>

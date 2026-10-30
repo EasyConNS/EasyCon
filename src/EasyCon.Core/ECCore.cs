@@ -10,7 +10,7 @@ public partial class ECCore
 
     public static IEnumerable<(string, int)> GetCaptureTypes() => ECCapture.GetCaptureTypes();
 
-    public static List<string> GetDeviceNames() => EasyDevice.ECDevice.GetPortNames();
+    public static List<string> GetDeviceNames() => EasyDevice.ECDevice.GetConnectionNames();
 
     public static IEnumerable<SearchMethod> GetSearchMethods() => ECSearch.GetEnableSearchMethods();
 

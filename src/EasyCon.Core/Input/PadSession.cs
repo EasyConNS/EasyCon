@@ -37,6 +37,11 @@ internal sealed class PadSession : IDisposable
     }
 
     public bool IsConnected => _ready && _device.IsConnected();
+    public bool SupportsLegacyCommands => _device.SupportsLegacyCommands;
+    public string? FirmwareName => _device.FirmwareName;
+    public string? FirmwareVersion => _device.FirmwareVersion;
+    public bool? ConsoleConnected => _device.ConsoleConnected;
+    public string? LastConnectionError => _device.LastConnectionError;
     public string? Endpoint { get; private set; }
     public long InputEpoch { get { lock (_gate) return _owner.Epoch; } }
     public bool HeldByUser { get; private set; }
@@ -100,7 +105,9 @@ internal sealed class PadSession : IDisposable
             _ownership = null;
             string port = command.Port ?? throw new ControllerOperationException("InvalidPort", "缺少通信端口");
             string endpoint = NormalizeEndpoint(port);
-            try { _ownership = new SourceOwnership("serial:" + endpoint); }
+            string ownershipEndpoint = endpoint.StartsWith("pokeldn:", StringComparison.Ordinal)
+                && endpoint != ECDevice.PokeldnServiceEndpoint ? endpoint["pokeldn:".Length..] : endpoint;
+            try { _ownership = new SourceOwnership("serial:" + ownershipEndpoint); }
             catch (IOException ex) { throw new ControllerOperationException("Busy", ex.Message); }
             try
             {
@@ -199,6 +206,10 @@ internal sealed class PadSession : IDisposable
     private static string NormalizeEndpoint(string port)
     {
         string endpoint = port.Trim();
+        if (endpoint == ECDevice.PokeldnServiceName || endpoint.Equals(ECDevice.PokeldnServiceEndpoint, StringComparison.OrdinalIgnoreCase))
+            return ECDevice.PokeldnServiceEndpoint;
+        if (endpoint.StartsWith("pokeldn:", StringComparison.OrdinalIgnoreCase))
+            return "pokeldn:" + NormalizeEndpoint(endpoint["pokeldn:".Length..]);
         if (OperatingSystem.IsWindows())
         {
             endpoint = endpoint.StartsWith(@"\\.\", StringComparison.Ordinal) ? endpoint[4..] : endpoint;
