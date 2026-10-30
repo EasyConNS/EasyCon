@@ -7,6 +7,7 @@ public interface IDeviceService
 {
     bool IsConnected { get; }
     string? ActiveEndpoint => GetDevice()?.InputEndpoint;
+    bool SupportsLegacyCommands => true;
     bool ShowDebugInfo { get; set; }
     event Action? ConnectionLost;
     /// <summary>

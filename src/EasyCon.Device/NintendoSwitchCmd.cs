@@ -1,4 +1,5 @@
 using EasyDevice.Connection;
+using EasyDevice.Connection.Pokeldn;
 
 namespace EasyDevice;
 
@@ -11,64 +12,86 @@ public enum Status
 
 public partial class NintendoSwitch
 {
-    private IConnection clientCon { get; set; }
+    private IConnection? clientCon { get; set; }
+
+    public bool SupportsLegacyCommands => clientCon?.SupportsLegacyCommands == true;
+    public string? FirmwareName => clientCon?.FirmwareName;
+    public string? FirmwareVersion => clientCon?.FirmwareVersion;
+    public bool? ConsoleConnected => clientCon?.ConsoleConnected;
+    public string? LastConnectionError { get; private set; }
 
     /// <summary>创建底层连接；测试可覆写以注入假连接（不改变协议与队列逻辑）。</summary>
     protected virtual IConnection CreateConnection(string connStr, int baudrate)
         => new TTLSerialClient(connStr, baudrate);
 
-    /// <summary>创建 pokeldn 手柄固件连接（921600，A5 5A 帧协议）；测试可覆写注入假连接。</summary>
+    /// <summary>创建 pokeldn 串口或官方服务连接；保留第三档探测的测试接缝。</summary>
     protected virtual IConnection CreatePokeldnConnection(string connStr)
-        => new PokeldnSerialClient(connStr, PokeldnSerialClient.DefaultBaudRate);
+    {
+        if (connStr.Equals(ECDevice.PokeldnServiceEndpoint, StringComparison.OrdinalIgnoreCase)
+            || connStr == ECDevice.PokeldnServiceName)
+            return new PokeldnConnection(connStr, new PokeldnServiceTransport());
+        if (connStr.StartsWith("pokeldn:", StringComparison.OrdinalIgnoreCase))
+        {
+            connStr = connStr["pokeldn:".Length..];
+            if (string.IsNullOrWhiteSpace(connStr) || connStr.StartsWith("//", StringComparison.Ordinal))
+                throw new ArgumentException("pokeldn 连接地址应为 pokeldn:COM3、pokeldn:/dev/ttyUSB0 或 pokeldn://service。");
+        }
+        return new PokeldnSerialClient(connStr);
+    }
 
     private ConnectResult _TryConnect(string connStr, int baudrate = 115200, bool pokeldn = false)
     {
-        if (connStr == "")
+        Disconnect();
+        LastConnectionError = null;
+        IConnection connection;
+        try
+        {
+            connection = pokeldn ? CreatePokeldnConnection(connStr) : CreateConnection(connStr, baudrate);
+        }
+        catch (ArgumentException ex)
+        {
+            LastConnectionError = ex.Message;
             return ConnectResult.InvalidArgument;
-
-        using EventWaitHandle ewh = new(false, EventResetMode.AutoReset);
-        var result = ConnectResult.None;
-        bool listening = true;
+        }
+        clientCon = connection;
+        TaskCompletionSource<ConnectResult> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         void statuschanged(Status status)
         {
-            lock (ewh)
-            {
-                if (!listening || result != ConnectResult.None)
-                    return;
-                if (status == Status.Connected)
-                {
-                    result = ConnectResult.Success;
-                    ewh.Set();
-                }
-                if (status == Status.Error)
-                {
-                    result = ConnectResult.Error;
-                    ewh.Set();
-                }
-            }
+            if (status == Status.Connected)
+                completion.TrySetResult(ConnectResult.Success);
+            if (status == Status.Error)
+                completion.TrySetResult(ConnectResult.Error);
         }
-
-        Disconnect();
-        IConnection connection = pokeldn ? CreatePokeldnConnection(connStr) : CreateConnection(connStr, baudrate);
-        clientCon = connection;
         connection.BytesSent += (port, bytes) => { if (ReferenceEquals(clientCon, connection)) BytesSent?.Invoke(port, bytes); };
         connection.BytesReceived += (port, bytes) => { if (ReferenceEquals(clientCon, connection)) BytesReceived?.Invoke(port, bytes); };
-        connection.StatusChanged += status => { if (ReferenceEquals(clientCon, connection)) StatusChanged?.Invoke(status); };
+        connection.StatusChanged += status =>
+        {
+            if (ReferenceEquals(clientCon, connection))
+            {
+                if (status == Status.Error)
+                {
+                    LastConnectionError = connection.LastError;
+                    Log?.Invoke(LastConnectionError ?? "设备连接已断开。");
+                }
+                StatusChanged?.Invoke(status);
+            }
+        };
         connection.StatusChanged += statuschanged;
         try
         {
             connection.Connect();
-            if (!ewh.WaitOne(1000)) result = ConnectResult.Timeout;
+            ConnectResult result = completion.Task.Wait(connection.ConnectTimeoutMilliseconds)
+                ? completion.Task.Result : ConnectResult.Timeout;
             if (result != ConnectResult.Success)
             {
                 clientCon = null;
                 connection.Disconnect();
+                LastConnectionError = connection.LastError ?? LastConnectionError;
             }
             return result;
         }
         finally
         {
-            lock (ewh) listening = false;
             connection.StatusChanged -= statuschanged;
         }
     }
@@ -76,7 +99,7 @@ public partial class NintendoSwitch
     public void Disconnect()
     {
         CancelStaleLoop();
-        IConnection connection = clientCon;
+        IConnection? connection = clientCon;
         clientCon = null;
         connection?.Disconnect();
     }
@@ -84,7 +107,7 @@ public partial class NintendoSwitch
     /// <summary>复位并等待串口实际写出中性包；不表示主机/游戏已确认。</summary>
     public async Task<bool> ResetAndWaitForWriteAsync(TimeSpan timeout, CancellationToken token = default)
     {
-        IConnection connection = clientCon;
+        IConnection? connection = clientCon;
         if (connection == null || !IsConnected()) { Reset(); return false; }
         byte[] neutral = new SwitchReport().GetBytes().ToArray();
         TaskCompletionSource<bool> written = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -114,16 +137,18 @@ public partial class NintendoSwitch
 
     public bool IsConnected() => clientCon?.CurrentStatus == Status.Connected;
 
-    void WriteReport(Span<byte> b)
+    void WriteReport(SwitchReport report)
     {
         Log?.Invoke($"[Send {DateTime.Now:ss.fff}] {_report}");
 
         var con = clientCon;   // 局部快照：Disconnect 可并发置 null
-        con?.Write(b.ToArray());
+        con?.WriteReport(report);
     }
 
     bool SendSync(Func<byte, bool> predicate, int timeout = 100, params byte[] bytes)
     {
+        if (!RequireLegacyCommands())
+            return false;
         var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
         void h(string port, byte[] bytes_)
         {
@@ -154,6 +179,8 @@ public partial class NintendoSwitch
 
     bool ResetControl()
     {
+        if (!RequireLegacyCommands())
+            return false;
         var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
         void h(string port, byte[] bytes_)
         {
@@ -179,6 +206,8 @@ public partial class NintendoSwitch
 
     public bool Flash(byte[] asmBytes)
     {
+        if (!RequireLegacyCommands())
+            return false;
         const int PacketSize = 20;
         List<byte> list = new(asmBytes);
         for (int i = 0; i < list.Count; i += PacketSize)
@@ -281,6 +310,8 @@ public partial class NintendoSwitch
 
     public bool SaveAmiibo(byte index, byte[] amiibo)
     {
+        if (!RequireLegacyCommands())
+            return false;
         const int PacketSize = 20;
         List<byte> list = [.. amiibo];
         for (int i = 0; i < list.Count; i += PacketSize)
@@ -319,5 +350,14 @@ public partial class NintendoSwitch
     public bool ChangeAmiiboIndex(byte index)
     {
         return SendSync(b => b == Reply.Ack, 200, EzDvCommand.Ready, index, EzDvCommand.ChangeAmiiboIndex);
+    }
+
+    private bool RequireLegacyCommands()
+    {
+        if (SupportsLegacyCommands)
+            return true;
+        if (IsConnected())
+            Log?.Invoke("pokeldn-pad 仅支持在线手柄控制；不支持伊机控离线脚本烧录、远程运行、Amiibo、颜色及解除配对命令。");
+        return false;
     }
 }

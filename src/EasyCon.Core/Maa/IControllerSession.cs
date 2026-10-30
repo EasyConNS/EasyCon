@@ -14,6 +14,11 @@ public enum CleanupStatus { NotRequired, Written, ReleaseUnconfirmed }
 public interface IControllerSession : IReporter, IDisposable
 {
     bool InputConnected { get; }
+    bool SupportsLegacyCommands => true;
+    string? FirmwareName => null;
+    string? FirmwareVersion => null;
+    bool? ConsoleConnected => null;
+    string? LastConnectionError => null;
     string? InputEndpoint { get; }
     long InputEpoch { get; }
     long ConnectionEpoch { get; }

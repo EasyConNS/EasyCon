@@ -15,6 +15,7 @@ public class DeviceService : IDeviceService, IDisposable
     private bool _showDebugInfo;
 
     public bool IsConnected => _nintendoSwitch.InputConnected;
+    public bool SupportsLegacyCommands => _nintendoSwitch.SupportsLegacyCommands;
     public bool ShowDebugInfo
     {
         get => _showDebugInfo;
@@ -59,10 +60,14 @@ public class DeviceService : IDeviceService, IDisposable
         if (result == ControllerConnectResult.Success)
         {
             _isConnected = true;
+            _logService.AddLog($"手柄协议: {_nintendoSwitch.FirmwareName} {_nintendoSwitch.FirmwareVersion}");
+            if (_nintendoSwitch.ConsoleConnected == false)
+                _logService.AddLog("已连接手柄板，NS 尚未接管手柄；请检查 USB 连接或在 NS 的更改握法/顺序中配对。");
             ConnectionStateChanged?.Invoke();
             return true;
         }
-        _logService.AddLog($"单片机连接失败: {result}");
+        _isConnected = false;
+        _logService.AddLog($"单片机连接失败: {result} {_nintendoSwitch.LastConnectionError}");
         // 失败也广播：重连尝试可能已摘掉旧连接，订阅方按 IsConnected 同步
         ConnectionStateChanged?.Invoke();
         return false;
@@ -106,32 +111,40 @@ public class DeviceService : IDeviceService, IDisposable
 
     public bool RemoteStart()
     {
-        if (!_isConnected) return false;
+        if (!RequireLegacyCommands()) return false;
         return _nintendoSwitch.RemoteStart();
     }
 
     public bool RemoteStop()
     {
-        if (!_isConnected) return false;
+        if (!RequireLegacyCommands()) return false;
         return _nintendoSwitch.RemoteStop();
     }
 
     public bool Flash(byte[] asmBytes)
     {
-        if (!_isConnected) return false;
+        if (!RequireLegacyCommands()) return false;
         return _nintendoSwitch.Flash(asmBytes);
     }
 
     public int GetVersion()
     {
-        if (!_isConnected) return -1;
+        if (!RequireLegacyCommands()) return -1;
         return _nintendoSwitch.GetVersion();
     }
 
     public bool UnPair()
     {
-        if (!_isConnected) return false;
+        if (!RequireLegacyCommands()) return false;
         return _nintendoSwitch.UnPair();
+    }
+
+    private bool RequireLegacyCommands()
+    {
+        if (!IsConnected) return false;
+        if (SupportsLegacyCommands) return true;
+        _logService.AddLog("pokeldn-pad 支持在线按键和电脑端脚本；不支持伊机控离线烧录、远程运行及解除配对。请使用运行脚本/停止脚本，配对在 NS 上完成。");
+        return false;
     }
 
     private void OnNSLog(string message)
