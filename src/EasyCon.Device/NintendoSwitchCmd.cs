@@ -1,5 +1,4 @@
 using EasyDevice.Connection;
-using EasyDevice.Connection.Pokeldn;
 
 namespace EasyDevice;
 
@@ -20,33 +19,14 @@ public partial class NintendoSwitch
     public bool? ConsoleConnected => clientCon?.ConsoleConnected;
     public string? LastConnectionError { get; private set; }
 
-    /// <summary>创建底层连接；测试可覆写以注入假连接（不改变协议与队列逻辑）。</summary>
-    protected virtual IConnection CreateConnection(string connStr, int baudrate)
-        => new TTLSerialClient(connStr, baudrate);
-
-    /// <summary>创建 pokeldn 串口或官方服务连接；保留第三档探测的测试接缝。</summary>
-    protected virtual IConnection CreatePokeldnConnection(string connStr)
-    {
-        if (connStr.Equals(ECDevice.PokeldnServiceEndpoint, StringComparison.OrdinalIgnoreCase)
-            || connStr == ECDevice.PokeldnServiceName)
-            return new PokeldnConnection(connStr, new PokeldnServiceTransport());
-        if (connStr.StartsWith("pokeldn:", StringComparison.OrdinalIgnoreCase))
-        {
-            connStr = connStr["pokeldn:".Length..];
-            if (string.IsNullOrWhiteSpace(connStr) || connStr.StartsWith("//", StringComparison.Ordinal))
-                throw new ArgumentException("pokeldn 连接地址应为 pokeldn:COM3、pokeldn:/dev/ttyUSB0 或 pokeldn://service。");
-        }
-        return new PokeldnSerialClient(connStr);
-    }
-
-    private ConnectResult _TryConnect(string connStr, int baudrate = 115200, bool pokeldn = false)
+    private ConnectResult _TryConnect(Func<IConnection> createConnection)
     {
         Disconnect();
         LastConnectionError = null;
         IConnection connection;
         try
         {
-            connection = pokeldn ? CreatePokeldnConnection(connStr) : CreateConnection(connStr, baudrate);
+            connection = createConnection();
         }
         catch (ArgumentException ex)
         {
@@ -357,7 +337,7 @@ public partial class NintendoSwitch
         if (SupportsLegacyCommands)
             return true;
         if (IsConnected())
-            Log?.Invoke("pokeldn-pad 仅支持在线手柄控制；不支持伊机控离线脚本烧录、远程运行、Amiibo、颜色及解除配对命令。");
+            Log?.Invoke($"{FirmwareName} 仅支持在线手柄控制；不支持伊机控离线脚本烧录、远程运行、Amiibo、颜色及解除配对命令。");
         return false;
     }
 }

@@ -134,7 +134,7 @@ runScriptCommand.SetAction(async (parseResult, cancellationToken) =>
         backend: parseResult.GetResult(deviceTypeOption)?.Implicit == false ? refs.ToString() : null);
     if (profiles?.Controller != null)
     {
-        if (profiles.Controller.Transport != "Serial") throw new InvalidDataException("仅支持 Serial 手柄配置");
+        profiles.Controller.Validate();
         COM = profiles.Controller.Endpoint ?? "";
     }
 

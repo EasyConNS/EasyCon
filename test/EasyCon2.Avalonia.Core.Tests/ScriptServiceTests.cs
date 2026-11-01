@@ -429,6 +429,22 @@ public partial class ScriptServiceTests
         });
     }
 
+    [Test]
+    public void ConfiguredBridgeSelection_IsPreservedWithoutPretendingItWasDiscovered()
+    {
+        FakeDeviceService device = new() { AvailablePorts = [] };
+        _devices.Add(device);
+        SwitchConnectionViewModel input = new(device, new FakeLogService(), SynchronousUiDispatcher.Instance);
+        Assert.That(input.SerialPortOptions, Is.Empty);
+        input.SelectedSerialPort = "tcp://localhost:31789";
+        input.RefreshSerialPortsCommand.Execute(null);
+        Assert.That(input.SelectedSerialPort, Is.EqualTo("tcp://localhost:31789"));
+        Assert.That(input.SerialPortOptions, Is.EqualTo(new[] { "tcp://localhost:31789" }));
+        Assert.That(input.SelectionUnavailable, Is.False);
+        input.SelectedSerialPort = "tcp://localhost";
+        Assert.That(input.SelectionUnavailable, Is.True);
+    }
+
     private sealed class RecordingAlert : IAlertService
     {
         public TaskCompletionSource<string> Message { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);

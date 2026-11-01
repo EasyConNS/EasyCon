@@ -12,7 +12,7 @@ public class PokeldnHostTests
     {
         Device device = new();
         using MaaControllerSession controller = new(device);
-        Assert.That(controller.TryConnect("pokeldn:fake:metadata"), Is.EqualTo(ControllerConnectResult.Success));
+        Assert.That(controller.TryConnect("fake:metadata"), Is.EqualTo(ControllerConnectResult.Success));
         Assert.Multiple(() =>
         {
             Assert.That(controller.InputConnected, Is.True);
@@ -25,9 +25,9 @@ public class PokeldnHostTests
         });
     }
 
-    [TestCase("fake:pokeldn-owned", "pokeldn:fake:pokeldn-owned")]
-    [TestCase(ECDevice.PokeldnServiceName, ECDevice.PokeldnServiceEndpoint)]
-    [TestCase("POKELDN://SERVICE", ECDevice.PokeldnServiceName)]
+    [TestCase("fake:owned", " fake:owned ")]
+    [TestCase("tcp://localhost:31999", "TCP://LOCALHOST:31999/")]
+    [TestCase("tcp://[::1]:31999", "tcp://[0:0:0:0:0:0:0:1]:31999/")]
     public void EndpointAliases_CannotBypassExclusiveOwnership(string firstEndpoint, string secondEndpoint)
     {
         using MaaControllerSession first = new(new Device());
@@ -43,6 +43,11 @@ public class PokeldnHostTests
     private sealed class Device : NintendoSwitch
     {
         public int OpenAttempts { get; private set; }
+        protected override IEnumerable<IConnectionProvider> GetConnectionProviders() =>
+        [
+            new SerialConnectionProvider([new SerialProtocol(115200, CreateConnection)]),
+            new BridgeConnectionProvider([endpoint => CreateConnection(endpoint.Address, 0)])
+        ];
         protected override IConnection CreateConnection(string connStr, int baudrate)
         {
             OpenAttempts++;

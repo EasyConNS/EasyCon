@@ -143,7 +143,7 @@ public class DeviceService : IDeviceService, IDisposable
     {
         if (!IsConnected) return false;
         if (SupportsLegacyCommands) return true;
-        _logService.AddLog("pokeldn-pad 支持在线按键和电脑端脚本；不支持伊机控离线烧录、远程运行及解除配对。请使用运行脚本/停止脚本，配对在 NS 上完成。");
+        _logService.AddLog("当前连接支持在线按键和电脑端脚本；不支持伊机控离线烧录、远程运行及解除配对。请使用运行脚本/停止脚本，配对在 NS 上完成。");
         return false;
     }
 

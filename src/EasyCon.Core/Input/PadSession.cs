@@ -104,10 +104,9 @@ internal sealed class PadSession : IDisposable
             _ownership?.Dispose();
             _ownership = null;
             string port = command.Port ?? throw new ControllerOperationException("InvalidPort", "缺少通信端口");
-            string endpoint = NormalizeEndpoint(port);
-            string ownershipEndpoint = endpoint.StartsWith("pokeldn:", StringComparison.Ordinal)
-                && endpoint != ECDevice.PokeldnServiceEndpoint ? endpoint["pokeldn:".Length..] : endpoint;
-            try { _ownership = new SourceOwnership("serial:" + ownershipEndpoint); }
+            ConnectionEndpoint target = ConnectionEndpoint.Parse(port);
+            string endpoint = target.Address;
+            try { _ownership = new SourceOwnership(target.OwnershipKey); }
             catch (IOException ex) { throw new ControllerOperationException("Busy", ex.Message); }
             try
             {
@@ -203,23 +202,6 @@ internal sealed class PadSession : IDisposable
         }
     }
 
-    private static string NormalizeEndpoint(string port)
-    {
-        string endpoint = port.Trim();
-        if (endpoint == ECDevice.PokeldnServiceName || endpoint.Equals(ECDevice.PokeldnServiceEndpoint, StringComparison.OrdinalIgnoreCase))
-            return ECDevice.PokeldnServiceEndpoint;
-        if (endpoint.StartsWith("pokeldn:", StringComparison.OrdinalIgnoreCase))
-            return "pokeldn:" + NormalizeEndpoint(endpoint["pokeldn:".Length..]);
-        if (OperatingSystem.IsWindows())
-        {
-            endpoint = endpoint.StartsWith(@"\\.\", StringComparison.Ordinal) ? endpoint[4..] : endpoint;
-            return endpoint.StartsWith("COM", StringComparison.OrdinalIgnoreCase) && endpoint.Length > 3 && endpoint[3..].All(char.IsAsciiDigit)
-                ? endpoint.ToUpperInvariant() : endpoint;
-        }
-        if (Path.IsPathRooted(endpoint))
-            return new FileInfo(endpoint).ResolveLinkTarget(true)?.FullName ?? Path.GetFullPath(endpoint);
-        return endpoint;
-    }
     private static ECKey RequiredKey(ControllerCommand command) => command.Key?.ToKey() ?? throw new ControllerOperationException("InvalidKey", "缺少按键");
     private static byte[] RequiredData(ControllerCommand command) => command.Data ?? throw new ControllerOperationException("InvalidData", "缺少数据");
     private static void ValidateDirection(DirectionKey direction)

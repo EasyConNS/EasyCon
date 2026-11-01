@@ -49,15 +49,20 @@ public partial class NintendoSwitch : IReporter
 
     public ConnectResult TryConnect(string constr)
     {
-        if (string.IsNullOrWhiteSpace(constr))
-            return ConnectResult.InvalidArgument;
-        bool explicitPokeldn = constr.StartsWith("pokeldn:", StringComparison.OrdinalIgnoreCase)
-            || constr == ECDevice.PokeldnServiceName;
-        int[] baudrates = explicitPokeldn ? [PokeldnSerialClient.DefaultBaudRate] : [115200, 9600, PokeldnSerialClient.DefaultBaudRate];
-        ConnectResult result = ConnectResult.None;
-        foreach (int baudrate in baudrates)
+        ConnectionEndpoint endpoint;
+        try
         {
-            result = _TryConnect(constr, baudrate, pokeldn: baudrate == PokeldnSerialClient.DefaultBaudRate);
+            endpoint = ConnectionEndpoint.Parse(constr);
+        }
+        catch (ArgumentException ex)
+        {
+            LastConnectionError = ex.Message;
+            return ConnectResult.InvalidArgument;
+        }
+        ConnectResult result = ConnectResult.None;
+        foreach (Func<IConnection> candidate in GetConnectionProviders().SelectMany(provider => provider.GetCandidates(endpoint)))
+        {
+            result = _TryConnect(candidate);
             if (result == ConnectResult.Success)
             {
                 source = new();
@@ -80,6 +85,11 @@ public partial class NintendoSwitch : IReporter
             }
             if (result == ConnectResult.InvalidArgument)
                 break;
+        }
+        if (result == ConnectResult.None)
+        {
+            LastConnectionError = $"没有适用于 {endpoint.Transport} 的连接协议。";
+            return ConnectResult.InvalidArgument;
         }
         return result;
     }

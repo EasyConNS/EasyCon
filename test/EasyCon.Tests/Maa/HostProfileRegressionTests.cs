@@ -17,6 +17,39 @@ public sealed class HostProfileRegressionTests
         return new HostProfiles { Controller = new("COM3"), Capture = new(source, 1, "DSHOW", DisplayKey: source.DisplayKey) };
     }
 
+    [Test]
+    public void BridgeOverride_UpdatesTransport_AndPreservesCapture()
+    {
+        HostProfiles original = Saved();
+        HostProfiles bridge = original.WithOverrides(port: "tcp://localhost:31789");
+        Assert.That(bridge.Controller!.Transport, Is.EqualTo("TcpBridge"));
+        Assert.That(bridge.Capture, Is.SameAs(original.Capture));
+        HostProfiles serial = bridge.WithOverrides(port: "COM5");
+        Assert.That(serial.Controller!.Transport, Is.EqualTo("Serial"));
+        Assert.That(serial.Capture, Is.SameAs(original.Capture));
+    }
+
+    [Test]
+    public void BridgeProfile_RoundTripsGuiConfigurationAndCliLoader()
+    {
+        string path = Path.Combine(TestContext.CurrentContext.WorkDirectory, Guid.NewGuid() + ".json");
+        ConfigState settings = new() { ControllerProfile = ControllerProfile.FromEndpoint("tcp://localhost:31789") };
+        try
+        {
+            File.WriteAllText(path, JsonSerializer.Serialize(settings));
+            HostProfiles profiles = HostProfiles.Load(path);
+            Assert.That(profiles.Controller, Is.EqualTo(settings.ControllerProfile));
+        }
+        finally { File.Delete(path); }
+    }
+
+    [TestCase("tcp://localhost:31789", "Serial")]
+    [TestCase("COM3", "TcpBridge")]
+    [TestCase("tcp://localhost", "TcpBridge")]
+    [TestCase("COM3", "unknown")]
+    public void ControllerProfile_RejectsTransportMismatch(string endpoint, string transport)
+        => Assert.Throws<InvalidDataException>(() => new ControllerProfile(endpoint, transport).Validate());
+
     [TestCase("DSHOW")]
     [TestCase("dshow")]
     public void SameBackendOverride_PreservesIdentity_AndResolvesReordering(string backend)

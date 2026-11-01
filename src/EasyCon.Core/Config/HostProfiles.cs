@@ -1,12 +1,32 @@
 #nullable enable
 using EasyCon.Capture;
+using EasyDevice.Connection;
 using OpenCvSharp;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace EasyCon.Core.Config;
 
-public sealed record ControllerProfile(string? Endpoint = null, string Transport = "Serial");
+public sealed record ControllerProfile(string? Endpoint = null, string Transport = "Serial")
+{
+    public static ControllerProfile FromEndpoint(string? endpoint) => new(endpoint,
+        endpoint == null ? nameof(ConnectionTransport.Serial) : ConnectionEndpoint.Parse(endpoint).Transport.ToString());
+
+    public ControllerProfile Validate()
+    {
+        if (!Enum.GetNames<ConnectionTransport>().Contains(Transport, StringComparer.Ordinal))
+            throw new InvalidDataException($"不支持的手柄传输方式 {Transport}");
+        if (Endpoint != null)
+        {
+            ConnectionEndpoint target;
+            try { target = ConnectionEndpoint.Parse(Endpoint); }
+            catch (ArgumentException ex) { throw new InvalidDataException(ex.Message, ex); }
+            if (target.Transport.ToString() != Transport)
+                throw new InvalidDataException("手柄地址与 profile 传输方式不一致");
+        }
+        return this;
+    }
+}
 public sealed record CaptureProfile(CaptureSourceDescriptor? Source = null, int? Index = null,
     string Backend = "ANY", FrameNormalization? Normalization = null, string? DisplayKey = null)
 {
@@ -49,7 +69,7 @@ public sealed record HostProfiles
             CaptureSourceCatalog.ResolveBackend(ParseCaptureBackend(Capture?.Backend ?? "ANY"));
         HostProfiles result = this with
         {
-            Controller = port == null ? Controller : (Controller ?? new()) with { Endpoint = port },
+            Controller = port == null ? Controller : ControllerProfile.FromEndpoint(port),
             Capture = captureIndex == null && backend == null ? Capture : (Capture ?? new()) with
             {
                 Source = captureIndex != null || backendChanged ? null : Capture?.Source,
@@ -63,7 +83,7 @@ public sealed record HostProfiles
 
     public HostProfiles Validate()
     {
-        if (Controller is { Transport: not "Serial" }) throw new InvalidDataException("仅支持 Serial 手柄配置");
+        Controller?.Validate();
         Capture?.Validate();
         return this;
     }
