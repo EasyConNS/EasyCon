@@ -102,7 +102,7 @@ public partial class NintendoSwitch
 
                 System.Diagnostics.Debug.WriteLine($"[Send {DateTime.Now:ss.fff}] {_report}");
 
-                WriteReport(_report.GetBytes());
+                WriteReport(_report);
                 _nextSendTime = DateTime.Now.AddMilliseconds(MINIMAL_INTERVAL);
                 _ewh.Reset();
             }

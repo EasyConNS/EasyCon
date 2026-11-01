@@ -30,6 +30,11 @@ public sealed class MaaControllerSession : IControllerSession
     }
 
     public bool InputConnected => _pad.IsConnected;
+    public bool SupportsLegacyCommands => _pad.SupportsLegacyCommands;
+    public string? FirmwareName => _pad.FirmwareName;
+    public string? FirmwareVersion => _pad.FirmwareVersion;
+    public bool? ConsoleConnected => _pad.ConsoleConnected;
+    public string? LastConnectionError => _pad.LastConnectionError;
     public string? InputEndpoint => _pad.Endpoint;
     public long InputEpoch => _pad.InputEpoch;
     public long ConnectionEpoch => _pad.ConnectionEpoch;

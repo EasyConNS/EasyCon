@@ -49,40 +49,38 @@ public partial class NintendoSwitch : IReporter
 
     public ConnectResult TryConnect(string constr)
     {
-        void StartRunLoop()
+        if (string.IsNullOrWhiteSpace(constr))
+            return ConnectResult.InvalidArgument;
+        bool explicitPokeldn = constr.StartsWith("pokeldn:", StringComparison.OrdinalIgnoreCase)
+            || constr == ECDevice.PokeldnServiceName;
+        int[] baudrates = explicitPokeldn ? [PokeldnSerialClient.DefaultBaudRate] : [115200, 9600, PokeldnSerialClient.DefaultBaudRate];
+        ConnectResult result = ConnectResult.None;
+        foreach (int baudrate in baudrates)
         {
-            CancelStaleLoop();
-            source = new();
-            CancellationToken token = source.Token;
-            // Loop 长期阻塞等待设备事件，使用专用线程，避免短按等待线程池调度后被释放覆盖。
-            _writeLoop = Task.Factory.StartNew(() =>
-            {
-                Loop(token);
-            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
-        }
-
-        var result = _TryConnect(constr);
-
-        if (result != ConnectResult.Success)
-        {
-            Thread.Sleep(100);
-            result = _TryConnect(constr, 9600);
-        }
-
-        if (result != ConnectResult.Success)
-        {
-            // 第三档：按公开协议独立实现的 pokeldn 手柄固件探测（921600，STATUS 查询握手）。
-            // EasyCon 握手在其固件上无应答， pokeldn STATUS 查询在 EasyCon 固件上亦无应答，可安全互探。
-            result = _TryConnect(constr, PokeldnSerialClient.DefaultBaudRate, pokeldn: true);
+            result = _TryConnect(constr, baudrate, pokeldn: baudrate == PokeldnSerialClient.DefaultBaudRate);
             if (result == ConnectResult.Success)
-                Log?.Invoke("已识别 pokeldn 手柄固件（921600）");
+            {
+                source = new();
+                CancellationToken token = source.Token;
+                lock (this)
+                {
+                    _keystrokes.Clear();
+                    _report.Reset();
+                    _leftStick = _rightStick = _hat = DirectionKey.None;
+                    _reset = false;
+                    _ewh.Reset();
+                }
+                // 保留上游专用线程：Loop 会长期等待设备事件。
+                _writeLoop = Task.Factory.StartNew(() => Loop(token), CancellationToken.None,
+                    TaskCreationOptions.LongRunning, TaskScheduler.Default);
+                Log?.Invoke($"已连接 {FirmwareName} {FirmwareVersion}");
+                if (ConsoleConnected == false)
+                    Log?.Invoke("手柄固件已连接，NS 尚未接管手柄；请检查 USB 连接或在 NS 上更改握法/顺序完成配对。");
+                break;
+            }
+            if (result == ConnectResult.InvalidArgument)
+                break;
         }
-
-        if (result == ConnectResult.Success)
-        {
-            StartRunLoop();
-        }
-
         return result;
     }
 

@@ -68,6 +68,12 @@ public partial class FlashFirmwareViewModel : ObservableObject
             return;
         }
 
+        if (!_deviceService.SupportsLegacyCommands)
+        {
+            _logService.AddLog("pokeldn-pad 不支持伊机控离线脚本烧录，请使用电脑端运行脚本。");
+            return;
+        }
+
         var editorText = _getEditorText();
         if (string.IsNullOrWhiteSpace(editorText))
         {

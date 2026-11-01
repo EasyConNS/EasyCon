@@ -78,6 +78,7 @@
 ## 🔧 硬件支持
 
 - **单片机固件**: [EasyMCU](https://github.com/EasyConNS/EasyMCU) - 支持 ESP32、Arduino 等兼容单片机
+- **pokeldn 手柄固件**: [接线与使用说明](docs/Pokeldn.md) - 普通 ESP32 串口直连；ESP32-S3 通过官方本地 BLE 服务，支持在线手柄及电脑端脚本
 - **[指令集说明](https://docs.qq.com/sheet/DZm1ydlZadkpncUNo?c=A88A0AZ0)** - 虚拟机指令集完整文档
 
 ---
