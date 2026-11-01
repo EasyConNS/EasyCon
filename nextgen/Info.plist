@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>org.easycon.sense</string>
+    <key>CFBundleName</key>
+    <string>EasyCon Sense</string>
+    <key>NSCameraUsageDescription</key>
+    <string>EasyCon reads video from the capture input you select.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>EasyCon reads audio from the input device you select.</string>
+</dict>
+</plist>

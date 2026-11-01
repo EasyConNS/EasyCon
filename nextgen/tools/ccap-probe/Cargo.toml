@@ -1,0 +1,21 @@
+[package]
+name = "easycon-ccap-probe"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Keep the experiment's dependencies separate from the production runtime.
+[workspace]
+
+[dependencies]
+ccap = { package = "ccap-rs", version = "=1.6.0" }
+clap = { version = "4", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+easycon-sense = { path = "../.." }
+tokio = { version = "1", features = ["macros", "rt", "time"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+
+[lints.rust]
+unsafe_code = "forbid"

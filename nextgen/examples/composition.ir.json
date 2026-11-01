@@ -1,0 +1,126 @@
+{
+  "ir_version": "0.1",
+  "entry": "main",
+  "definitions": {
+    "main": {
+      "params": {},
+      "output": {
+        "type": "int"
+      },
+      "body": {
+        "node_id": "pipeline",
+        "flow": {
+          "kind": "seq",
+          "steps": [
+            {
+              "node_id": "bind-count",
+              "flow": {
+                "kind": "bind",
+                "name": "count",
+                "expr": {
+                  "expr": "literal",
+                  "value": {
+                    "type": "int",
+                    "value": "40"
+                  }
+                },
+                "next": {
+                  "node_id": "return-count",
+                  "flow": {
+                    "kind": "eval",
+                    "expr": {
+                      "expr": "var",
+                      "name": "count"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "node_id": "select",
+              "result_bind": "selected",
+              "flow": {
+                "kind": "choose",
+                "cond": {
+                  "expr": "binary",
+                  "op": "gt",
+                  "left": {
+                    "expr": "var",
+                    "name": "count"
+                  },
+                  "right": {
+                    "expr": "literal",
+                    "value": {
+                      "type": "int",
+                      "value": "0"
+                    }
+                  }
+                },
+                "then": {
+                  "node_id": "positive",
+                  "flow": {
+                    "kind": "eval",
+                    "expr": {
+                      "expr": "var",
+                      "name": "count"
+                    }
+                  }
+                },
+                "else_": {
+                  "node_id": "nonpositive",
+                  "flow": {
+                    "kind": "eval",
+                    "expr": {
+                      "expr": "literal",
+                      "value": {
+                        "type": "int",
+                        "value": "0"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "node_id": "pipe",
+              "flow": {
+                "kind": "pipe",
+                "source": {
+                  "node_id": "source",
+                  "flow": {
+                    "kind": "eval",
+                    "expr": {
+                      "expr": "var",
+                      "name": "selected"
+                    }
+                  }
+                },
+                "sink": {
+                  "node_id": "add-two",
+                  "flow": {
+                    "kind": "eval",
+                    "expr": {
+                      "expr": "binary",
+                      "op": "add",
+                      "left": {
+                        "expr": "var",
+                        "name": "$prev"
+                      },
+                      "right": {
+                        "expr": "literal",
+                        "value": {
+                          "type": "int",
+                          "value": "2"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

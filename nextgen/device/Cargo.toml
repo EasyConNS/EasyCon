@@ -1,0 +1,13 @@
+[package]
+name = "easycon-device"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+serialport = "4.10.1"
+thiserror = "2"
+tokio-util = { version = "0.7", features = ["rt"] }
+
+[lints.rust]
+unsafe_code = "forbid"

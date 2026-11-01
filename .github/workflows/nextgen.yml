@@ -1,0 +1,164 @@
+name: Rust Foundation Core
+
+on:
+  push:
+    paths:
+      - 'nextgen/**'
+      - '.github/workflows/nextgen.yml'
+  pull_request:
+    paths:
+      - 'nextgen/**'
+      - '.github/workflows/nextgen.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-sense-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nextgen/web
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: nextgen/web/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: nextgen
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Test official SDK preparation offline
+        run: python -m unittest discover -s native -p "test_*.py"
+      - name: Install Linux native build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libasound2-dev libudev-dev libclang-dev clang
+      - name: Install stable Rust
+        run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+      - name: Check formatting
+        run: cargo fmt --all --check
+      - name: Check lints
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
+      - name: Test without hardware
+        run: cargo test --locked --workspace --all-targets
+      - name: Check public API examples
+        run: cargo test --locked --workspace --doc
+      - name: Test OCR features without native runtime or models
+        run: cargo test --locked --workspace --all-targets --all-features
+      - name: CLI smoke test
+        run: |
+          cargo run --locked -- --help
+          cargo run --locked -- primitives
+      - name: IR CLI offline smoke test
+        run: |
+          cargo run --locked --bin easycon-ir -- validate examples/composition.ir.json
+          cargo run --locked --bin easycon-ir -- run examples/composition.ir.json
+          cargo run --locked --bin easycon-ir -- validate examples/combinators.ir.json
+          cargo run --locked --bin easycon-ir -- run examples/combinators.ir.json
+      - name: Project host preflight without native libraries or devices
+        run: cargo run --locked --bin easycon-run -- examples/capture-match/workflow.json --check
+      - name: Gamepad CLI offline smoke test
+        run: |
+          cargo run --locked --bin easycon-pad -- --help
+          cargo run --locked --bin easycon-pad -- encode --backend easycon --buttons 0x4
+          cargo run --locked --bin easycon-pad -- encode --backend pokeldn --buttons 0x4
+      - name: Vision CLI offline smoke test
+        run: |
+          cargo run --locked --bin easycon-vision -- --help
+          cargo run --locked --bin easycon-vision -- stats --image tests/fixtures/hello.png
+          cargo run --locked --bin easycon-vision -- diff --left tests/fixtures/hello.png --right tests/fixtures/hello.png
+
+  ocr-backends:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: nextgen
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libasound2-dev libudev-dev libclang-dev clang libtesseract5 tesseract-ocr-eng tesseract-ocr-chi-sim
+      - name: Install stable Rust
+        run: rustup toolchain install stable --profile minimal --component clippy
+      - name: Lint OCR backends
+        run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+      - name: Test OCR backends
+        run: cargo test --locked --workspace --all-targets --all-features
+      - name: Tesseract dynamic runtime regression
+        env:
+          EASYCON_TESSERACT_LIBRARY: /usr/lib/x86_64-linux-gnu/libtesseract.so.5
+          EASYCON_TESSDATA: /usr/share/tesseract-ocr/5/tessdata
+        run: cargo test --locked --all-features --lib real_tesseract -- --ignored
+
+  opencv-windows:
+    runs-on: windows-2022
+    defaults:
+      run:
+        working-directory: nextgen
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Cache official OpenCV release asset
+        uses: actions/cache@v4
+        with:
+          path: nextgen/.deps/opencv/*.exe
+          key: opencv-official-windows-x64-5.0.0-9c6c1fcea58acdf06edba13148b2246e00c2658143fa51e61ecd370db8c39f63
+      - name: Verify official SDK and build only the EasyCon bridge
+        run: python native/setup_windows.py --arch x64 --build
+      - name: Verify packaged runtime
+        run: python native/prepare.py --rid win-x64
+      - name: Install stable Rust
+        run: rustup toolchain install stable --profile minimal
+      - name: Native template matching tests (all six modes)
+        run: cargo test --locked --lib real_opencv -- --ignored
+      - name: Native matching CLI smoke test
+        run: cargo run --locked --bin easycon-vision -- match --image tests/fixtures/hello.png --template tests/fixtures/hello.png
+      - name: Build and package workflow host with automatic native loading
+        run: |
+          cargo build --locked --release --all-features --bin easycon-run
+          python native/package.py --executable target/release/easycon-run.exe --rid win-x64 --output dist/easycon-run
+          dist/easycon-run/easycon-run.exe examples/capture-match/workflow.json --check
+      - name: Upload Windows native runtime with provenance and checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencv-native-win-x64
+          path: |
+            nextgen/native/archives/win-x64.zip
+            nextgen/native/archives/win-x64.json
+          if-no-files-found: error
+      - name: Upload workflow host with bundled native OpenCV
+        uses: actions/upload-artifact@v4
+        with:
+          name: easycon-run-win-x64
+          path: nextgen/dist/easycon-run/
+          if-no-files-found: error

@@ -1,0 +1,236 @@
+{
+  "ir_version": "0.1",
+  "entry": "main",
+  "tesseract": {
+    "tess": {
+      "models": [
+        "models/eng.traineddata",
+        "models/chi_sim.traineddata"
+      ],
+      "page_segmentation": 7
+    }
+  },
+  "ppocr": {
+    "paddle": {
+      "model": "models/ppocr.onnx",
+      "dictionary": "models/ppocr.txt"
+    }
+  },
+  "definitions": {
+    "main": {
+      "params": {
+        "text": {
+          "type": "record",
+          "of": {
+            "image": {
+              "type": "image"
+            },
+            "config": {
+              "type": "record",
+              "of": {
+                "mode": {
+                  "type": "symbol",
+                  "of": "template_mode"
+                },
+                "region": {
+                  "type": "option",
+                  "of": {
+                    "type": "record",
+                    "of": {
+                      "x": {
+                        "type": "int"
+                      },
+                      "y": {
+                        "type": "int"
+                      },
+                      "width": {
+                        "type": "int"
+                      },
+                      "height": {
+                        "type": "int"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tess": {
+          "type": "source",
+          "of": "ocr"
+        },
+        "paddle": {
+          "type": "source",
+          "of": "ocr"
+        }
+      },
+      "output": {
+        "type": "record",
+        "of": {
+          "tesseract": {
+            "type": "str"
+          },
+          "ppocr": {
+            "type": "str"
+          }
+        }
+      },
+      "body": {
+        "node_id": "read-with-both",
+        "flow": {
+          "kind": "seq",
+          "steps": [
+            {
+              "node_id": "read-tesseract",
+              "result_bind": "tess_result",
+              "flow": {
+                "kind": "primitive",
+                "name": "ocr",
+                "version": 1,
+                "args": [
+                  {
+                    "name": "kind",
+                    "expr": {
+                      "expr": "literal",
+                      "value": {
+                        "type": "symbol",
+                        "value": {
+                          "kind": "ocr_kind",
+                          "name": "Tesseract"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "name": "engine",
+                    "expr": {
+                      "expr": "var",
+                      "name": "tess"
+                    }
+                  },
+                  {
+                    "name": "image",
+                    "expr": {
+                      "expr": "field",
+                      "base": {
+                        "expr": "var",
+                        "name": "text"
+                      },
+                      "name": "image"
+                    }
+                  },
+                  {
+                    "name": "region",
+                    "expr": {
+                      "expr": "field",
+                      "base": {
+                        "expr": "field",
+                        "base": {
+                          "expr": "var",
+                          "name": "text"
+                        },
+                        "name": "config"
+                      },
+                      "name": "region"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "node_id": "read-ppocr",
+              "result_bind": "ppocr_result",
+              "flow": {
+                "kind": "primitive",
+                "name": "ocr",
+                "version": 1,
+                "args": [
+                  {
+                    "name": "kind",
+                    "expr": {
+                      "expr": "literal",
+                      "value": {
+                        "type": "symbol",
+                        "value": {
+                          "kind": "ocr_kind",
+                          "name": "PpOcr"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "name": "engine",
+                    "expr": {
+                      "expr": "var",
+                      "name": "paddle"
+                    }
+                  },
+                  {
+                    "name": "image",
+                    "expr": {
+                      "expr": "field",
+                      "base": {
+                        "expr": "var",
+                        "name": "text"
+                      },
+                      "name": "image"
+                    }
+                  },
+                  {
+                    "name": "region",
+                    "expr": {
+                      "expr": "field",
+                      "base": {
+                        "expr": "field",
+                        "base": {
+                          "expr": "var",
+                          "name": "text"
+                        },
+                        "name": "config"
+                      },
+                      "name": "region"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "node_id": "texts",
+              "flow": {
+                "kind": "eval",
+                "expr": {
+                  "expr": "record",
+                  "fields": [
+                    {
+                      "name": "tesseract",
+                      "expr": {
+                        "expr": "field",
+                        "base": {
+                          "expr": "var",
+                          "name": "tess_result"
+                        },
+                        "name": "text"
+                      }
+                    },
+                    {
+                      "name": "ppocr",
+                      "expr": {
+                        "expr": "field",
+                        "base": {
+                          "expr": "var",
+                          "name": "ppocr_result"
+                        },
+                        "name": "text"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

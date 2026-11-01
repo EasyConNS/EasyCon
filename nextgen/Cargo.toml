@@ -1,0 +1,36 @@
+[package]
+name = "easycon-sense"
+version = "0.1.0"
+edition = "2024"
+publish = false
+default-run = "easycon-sense"
+
+[workspace]
+resolver = "3"
+members = ["device", "opencv-runtime", "tesseract-runtime", "web-host"]
+
+[features]
+default = []
+ocr-tesseract = ["dep:easycon-tesseract-runtime"]
+ocr-ppocr = []
+
+[dependencies]
+easycon-opencv-runtime = { path = "opencv-runtime" }
+easycon-device = { path = "device" }
+clap = { version = "4", features = ["derive"] }
+cpal = "0.18.2"
+ccap = { package = "ccap-rs", version = "=1.6.0" }
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "sync", "time"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg", "pnm", "tiff"] }
+easycon-tesseract-runtime = { path = "tesseract-runtime", optional = true }
+base64 = "0.22.1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }
+
+[lints.rust]
+unsafe_code = "forbid"

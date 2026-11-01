@@ -1,0 +1,5 @@
+/target/
+/.deps/
+/dist/
+!/src/bin/
+!/src/bin/*.rs

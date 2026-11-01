@@ -1,0 +1,427 @@
+{
+  "ir_version": "0.1",
+  "entry": "main",
+  "definitions": {
+    "main": {
+      "params": {
+        "target": {
+          "type": "record",
+          "of": {
+            "image": {
+              "type": "image"
+            },
+            "config": {
+              "type": "record",
+              "of": {
+                "mode": {
+                  "type": "symbol",
+                  "of": "template_mode"
+                },
+                "region": {
+                  "type": "option",
+                  "of": {
+                    "type": "record",
+                    "of": {
+                      "x": {
+                        "type": "int"
+                      },
+                      "y": {
+                        "type": "int"
+                      },
+                      "width": {
+                        "type": "int"
+                      },
+                      "height": {
+                        "type": "int"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "capture": {
+          "type": "source",
+          "of": "video"
+        },
+        "pad": {
+          "type": "source",
+          "of": "gamepad"
+        },
+        "matcher": {
+          "type": "source",
+          "of": "template_matcher"
+        }
+      },
+      "output": {
+        "type": "record",
+        "of": {
+          "after": {
+            "type": "option",
+            "of": {
+              "type": "sample_id"
+            }
+          },
+          "score": {
+            "type": "float"
+          }
+        }
+      },
+      "body": {
+        "node_id": "run-deadline",
+        "flow": {
+          "kind": "timeout",
+          "duration_ms": {
+            "expr": "literal",
+            "value": {
+              "type": "int",
+              "value": "60000"
+            }
+          },
+          "body": {
+            "node_id": "find-target",
+            "flow": {
+              "kind": "loop_until",
+              "body": {
+                "node_id": "observe-and-act",
+                "flow": {
+                  "kind": "seq",
+                  "steps": [
+                    {
+                      "node_id": "capture-fresh",
+                      "result_bind": "frame",
+                      "flow": {
+                        "kind": "primitive",
+                        "name": "capture",
+                        "version": 1,
+                        "args": [
+                          {
+                            "name": "source",
+                            "expr": {
+                              "expr": "var",
+                              "name": "capture"
+                            }
+                          },
+                          {
+                            "name": "after",
+                            "expr": {
+                              "expr": "var",
+                              "name": "$state"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "node_id": "match-target",
+                      "result_bind": "match",
+                      "flow": {
+                        "kind": "primitive",
+                        "name": "match_template",
+                        "version": 1,
+                        "args": [
+                          {
+                            "name": "matcher",
+                            "expr": {
+                              "expr": "var",
+                              "name": "matcher"
+                            }
+                          },
+                          {
+                            "name": "image",
+                            "expr": {
+                              "expr": "call",
+                              "name": "image_from_frame",
+                              "version": 1,
+                              "args": [
+                                {
+                                  "expr": "var",
+                                  "name": "frame"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": "template",
+                            "expr": {
+                              "expr": "field",
+                              "base": {
+                                "expr": "var",
+                                "name": "target"
+                              },
+                              "name": "image"
+                            }
+                          },
+                          {
+                            "name": "config",
+                            "expr": {
+                              "expr": "field",
+                              "base": {
+                                "expr": "var",
+                                "name": "target"
+                              },
+                              "name": "config"
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "node_id": "confidence",
+                      "result_bind": "score",
+                      "flow": {
+                        "kind": "eval",
+                        "expr": {
+                          "expr": "call",
+                          "name": "unwrap",
+                          "version": 1,
+                          "args": [
+                            {
+                              "expr": "field",
+                              "base": {
+                                "expr": "var",
+                                "name": "match"
+                              },
+                              "name": "confidence"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "node_id": "press-only-below-threshold",
+                      "flow": {
+                        "kind": "choose",
+                        "cond": {
+                          "expr": "binary",
+                          "op": "lt",
+                          "left": {
+                            "expr": "var",
+                            "name": "score"
+                          },
+                          "right": {
+                            "expr": "literal",
+                            "value": {
+                              "type": "float",
+                              "value": 0.9
+                            }
+                          }
+                        },
+                        "then": {
+                          "node_id": "click-a",
+                          "flow": {
+                            "kind": "seq",
+                            "steps": [
+                              {
+                                "node_id": "press-a",
+                                "flow": {
+                                  "kind": "primitive",
+                                  "name": "pad_press",
+                                  "version": 1,
+                                  "args": [
+                                    {
+                                      "name": "target",
+                                      "expr": {
+                                        "expr": "var",
+                                        "name": "pad"
+                                      }
+                                    },
+                                    {
+                                      "name": "buttons",
+                                      "expr": {
+                                        "expr": "list",
+                                        "element": {
+                                          "type": "symbol",
+                                          "of": "button"
+                                        },
+                                        "items": [
+                                          {
+                                            "expr": "literal",
+                                            "value": {
+                                              "type": "symbol",
+                                              "value": {
+                                                "kind": "button",
+                                                "name": "A"
+                                              }
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "node_id": "hold-a",
+                                "flow": {
+                                  "kind": "primitive",
+                                  "name": "sleep",
+                                  "version": 1,
+                                  "args": [
+                                    {
+                                      "name": "duration_ms",
+                                      "expr": {
+                                        "expr": "literal",
+                                        "value": {
+                                          "type": "int",
+                                          "value": "80"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "node_id": "release-a",
+                                "flow": {
+                                  "kind": "primitive",
+                                  "name": "pad_release",
+                                  "version": 1,
+                                  "args": [
+                                    {
+                                      "name": "target",
+                                      "expr": {
+                                        "expr": "var",
+                                        "name": "pad"
+                                      }
+                                    },
+                                    {
+                                      "name": "buttons",
+                                      "expr": {
+                                        "expr": "list",
+                                        "element": {
+                                          "type": "symbol",
+                                          "of": "button"
+                                        },
+                                        "items": [
+                                          {
+                                            "expr": "literal",
+                                            "value": {
+                                              "type": "symbol",
+                                              "value": {
+                                                "kind": "button",
+                                                "name": "A"
+                                              }
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "node_id": "screen-settle",
+                                "flow": {
+                                  "kind": "primitive",
+                                  "name": "sleep",
+                                  "version": 1,
+                                  "args": [
+                                    {
+                                      "name": "duration_ms",
+                                      "expr": {
+                                        "expr": "literal",
+                                        "value": {
+                                          "type": "int",
+                                          "value": "300"
+                                        }
+                                      }
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        "else_": {
+                          "node_id": "target-found",
+                          "flow": {
+                            "kind": "seq",
+                            "steps": []
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "node_id": "iteration-result",
+                      "flow": {
+                        "kind": "eval",
+                        "expr": {
+                          "expr": "record",
+                          "fields": [
+                            {
+                              "name": "after",
+                              "expr": {
+                                "expr": "some",
+                                "value": {
+                                  "expr": "field",
+                                  "base": {
+                                    "expr": "var",
+                                    "name": "frame"
+                                  },
+                                  "name": "id"
+                                }
+                              }
+                            },
+                            {
+                              "name": "score",
+                              "expr": {
+                                "expr": "var",
+                                "name": "score"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              "cond": {
+                "expr": "binary",
+                "op": "ge",
+                "left": {
+                  "expr": "field",
+                  "base": {
+                    "expr": "var",
+                    "name": "$result"
+                  },
+                  "name": "score"
+                },
+                "right": {
+                  "expr": "literal",
+                  "value": {
+                    "type": "float",
+                    "value": 0.9
+                  }
+                }
+              },
+              "max_iters": {
+                "expr": "literal",
+                "value": {
+                  "type": "int",
+                  "value": "1000"
+                }
+              },
+              "state_init": {
+                "expr": "none",
+                "element": {
+                  "type": "sample_id"
+                }
+              },
+              "state_next": {
+                "expr": "field",
+                "base": {
+                  "expr": "var",
+                  "name": "$result"
+                },
+                "name": "after"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

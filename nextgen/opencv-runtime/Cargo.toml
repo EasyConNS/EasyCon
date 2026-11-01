@@ -1,0 +1,12 @@
+[package]
+name = "easycon-opencv-runtime"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+libloading = "0.8.9"
+thiserror = "2"
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"

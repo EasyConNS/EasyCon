@@ -1,0 +1,303 @@
+{
+  "ir_version": "0.1",
+  "entry": "main",
+  "definitions": {
+    "main": {
+      "params": {},
+      "output": {
+        "type": "int"
+      },
+      "body": {
+        "node_id": "recover",
+        "flow": {
+          "kind": "catch",
+          "body": {
+            "node_id": "overall",
+            "flow": {
+              "kind": "timeout",
+              "duration_ms": {
+                "expr": "literal",
+                "value": {
+                  "type": "int",
+                  "value": "250"
+                }
+              },
+              "body": {
+                "node_id": "first-success",
+                "flow": {
+                  "kind": "par",
+                  "mode": "any",
+                  "branches": [
+                    {
+                      "node_id": "fast",
+                      "flow": {
+                        "kind": "seq",
+                        "steps": [
+                          {
+                            "node_id": "fast-wait",
+                            "flow": {
+                              "kind": "primitive",
+                              "name": "sleep",
+                              "version": 1,
+                              "args": [
+                                {
+                                  "name": "duration_ms",
+                                  "expr": {
+                                    "expr": "literal",
+                                    "value": {
+                                      "type": "int",
+                                      "value": "5"
+                                    }
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "node_id": "multiply",
+                            "flow": {
+                              "kind": "pipe",
+                              "source": {
+                                "node_id": "fallback",
+                                "flow": {
+                                  "kind": "fallback",
+                                  "primary": {
+                                    "node_id": "expired",
+                                    "flow": {
+                                      "kind": "timeout",
+                                      "duration_ms": {
+                                        "expr": "literal",
+                                        "value": {
+                                          "type": "int",
+                                          "value": "0"
+                                        }
+                                      },
+                                      "body": {
+                                        "node_id": "skipped",
+                                        "flow": {
+                                          "kind": "eval",
+                                          "expr": {
+                                            "expr": "literal",
+                                            "value": {
+                                              "type": "int",
+                                              "value": "0"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "secondary": {
+                                    "node_id": "retry-sum",
+                                    "flow": {
+                                      "kind": "retry",
+                                      "body": {
+                                        "node_id": "sum-call",
+                                        "flow": {
+                                          "kind": "subflow_call",
+                                          "target": {
+                                            "expr": "flow_ref",
+                                            "definition": "sum"
+                                          },
+                                          "args": [
+                                            {
+                                              "name": "limit",
+                                              "expr": {
+                                                "expr": "literal",
+                                                "value": {
+                                                  "type": "int",
+                                                  "value": "3"
+                                                }
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "max": {
+                                        "expr": "literal",
+                                        "value": {
+                                          "type": "int",
+                                          "value": "2"
+                                        }
+                                      },
+                                      "retry_on": {
+                                        "expr": "list",
+                                        "element": {
+                                          "type": "str"
+                                        },
+                                        "items": [
+                                          {
+                                            "expr": "literal",
+                                            "value": {
+                                              "type": "str",
+                                              "value": "Timeout"
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      "backoff": {
+                                        "kind": "fixed",
+                                        "ms": {
+                                          "expr": "literal",
+                                          "value": {
+                                            "type": "int",
+                                            "value": "2"
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              },
+                              "sink": {
+                                "node_id": "answer",
+                                "flow": {
+                                  "kind": "eval",
+                                  "expr": {
+                                    "expr": "binary",
+                                    "op": "mul",
+                                    "left": {
+                                      "expr": "var",
+                                      "name": "$prev"
+                                    },
+                                    "right": {
+                                      "expr": "literal",
+                                      "value": {
+                                        "type": "int",
+                                        "value": "7"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "node_id": "slow",
+                      "flow": {
+                        "kind": "seq",
+                        "steps": [
+                          {
+                            "node_id": "slow-wait",
+                            "flow": {
+                              "kind": "primitive",
+                              "name": "sleep",
+                              "version": 1,
+                              "args": [
+                                {
+                                  "name": "duration_ms",
+                                  "expr": {
+                                    "expr": "literal",
+                                    "value": {
+                                      "type": "int",
+                                      "value": "10000"
+                                    }
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "node_id": "slow-result",
+                            "flow": {
+                              "kind": "eval",
+                              "expr": {
+                                "expr": "literal",
+                                "value": {
+                                  "type": "int",
+                                  "value": "0"
+                                }
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "bind_error": "error",
+          "handler": {
+            "node_id": "last-resort",
+            "flow": {
+              "kind": "eval",
+              "expr": {
+                "expr": "literal",
+                "value": {
+                  "type": "int",
+                  "value": "-1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "sum": {
+      "params": {
+        "limit": {
+          "type": "int"
+        }
+      },
+      "output": {
+        "type": "int"
+      },
+      "body": {
+        "node_id": "sum-loop",
+        "flow": {
+          "kind": "loop_until",
+          "body": {
+            "node_id": "sum-step",
+            "flow": {
+              "kind": "eval",
+              "expr": {
+                "expr": "binary",
+                "op": "add",
+                "left": {
+                  "expr": "var",
+                  "name": "$state"
+                },
+                "right": {
+                  "expr": "var",
+                  "name": "$iteration"
+                }
+              }
+            }
+          },
+          "cond": {
+            "expr": "binary",
+            "op": "ge",
+            "left": {
+              "expr": "var",
+              "name": "$iteration"
+            },
+            "right": {
+              "expr": "var",
+              "name": "limit"
+            }
+          },
+          "max_iters": {
+            "expr": "var",
+            "name": "limit"
+          },
+          "state_init": {
+            "expr": "literal",
+            "value": {
+              "type": "int",
+              "value": "0"
+            }
+          },
+          "state_next": {
+            "expr": "var",
+            "name": "$result"
+          }
+        }
+      }
+    }
+  }
+}
