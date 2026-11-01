@@ -2,14 +2,14 @@
 
 ## 模块概述
 
-Device模块负责与伊机控下位机（单片机）的串口通信，将上层的手柄操作指令发送到硬件设备。模块实现了完整的Nintendo Switch控制器协议，支持按键、摇杆、Amiibo等所有操控功能。
+Device 模块负责通过串口或桥接服务连接手柄设备，将上层的手柄操作发送到硬件。各连接实现声明固件信息和能力；按键、摇杆通用，Amiibo 等扩展命令取决于设备协议。
 
 ## 核心功能
 
 ### 设备连接
 - 串口设备发现（`ECDevice` 枚举本机串口）
-- TTL 串口连接（`TTLSerialClient`：115200 失败回退 9600）
-- pokeldn-pad：旧协议探测失败后尝试 921600；ESP32-S3 可选择 `pokeldn (BLE 服务)`
+- 通用串口协议注册（`SerialConnectionProvider`）：默认依次探测原生协议 115200、9600 和 pokeldn-pad 921600
+- 通用 TCP 桥接注册（`BridgeConnectionProvider`）：显式指定 `tcp://主机:端口`，默认适配 pokeldn 官方 BLE 服务
 - 断线经 `StatusChanged` 上报，由上层（DeviceService）负责重连
 
 ### Switch控制器协议
@@ -29,8 +29,10 @@ Device模块负责与伊机控下位机（单片机）的串口通信，将上�
 
 ## 关键类
 
-- **NintendoSwitch** — 高层设备API（partial类，JoyStickDevice/NintendoSwitchPriv/NintendoSwitchCmd 三分），提供按键、摇杆、Amiibo等操作方法
+- **NintendoSwitch** — 高层设备 API（partial 类），提供按键、摇杆等操作；协议组合集中于 `NintendoSwitchConnections.cs`
 - **ECDevice** — 设备发现，枚举可用串口
+- **ConnectionEndpoint** — 规范化串口/TCP 地址及来源占用标识，不识别固件名称
+- **IConnectionProvider** — 按传输类型提供延迟创建的候选协议，支持宿主注入
 - **ECKey / KeyStroke** — 按键模型，封装按键编码和按下/释放动作
 - **SwitchReport** — 7 字节控制器状态（2 字节 Button + HAT + LX/LY/RX/RY），支持原生固件的 7 位打包序列化
 - **TTLSerialClient** — 原生固件连接：后台写循环、状态机（Connecting/Connected/Error）、一次性使用（断开后由上层重建）
@@ -38,16 +40,18 @@ Device模块负责与伊机控下位机（单片机）的串口通信，将上�
 
 ## 连接层设计
 
-连接抽象为 `IConnection` 基类（public，作为测试接缝：测试可子类化 `NintendoSwitch` 并覆写
-`protected virtual CreateConnection` 注入假连接，见 test/EasyCon.SDLInput.Tests）。
+连接抽象为 `IConnection` 基类（public）。`NintendoSwitch` 构造函数可注入
+`IConnectionProvider` 集合，分别注册串口和桥接协议，不改变报告队列和上层调用。
+原有 `protected virtual CreateConnection` 测试接缝保留，见 test/EasyCon.SDLInput.Tests。
 原生固件使用 **TTLSerialClient**：`Connect()` 启动后台写循环，`Disconnect()` 取消并
 有界等待循环退出（避免新旧串口句柄竞争同一 COM 口）。上层通过 `NintendoSwitch` 使用，
 无需关心底层连接实现。
 
 `IConnection.WriteReport` 在连接层选择 HID 编码；原生固件保持 7 位打包，pokeldn-pad 使用
 8 字节原始 HID。`SupportsLegacyCommands` 阻止向 pokeldn 发送烧录、Amiibo 等专有指令。
-连接列表还包含本机 pokeldn 服务入口，纯串口枚举 `GetPortNames()` 保持原语义。
-详细协议和限制见 [pokeldn 适配说明](../../docs/Pokeldn.md)。
+`GetPortNames()` 只枚举物理串口；GUI 保留用户配置的桥接地址，不添加固件专用服务列表项。
+地址配置、协议扩展和占用规则见 [通用设备连接](../../docs/DeviceConnections.md)，
+具体协议和硬件限制见 [pokeldn 适配说明](../../docs/Pokeldn.md)。
 
 ## 依赖项
 

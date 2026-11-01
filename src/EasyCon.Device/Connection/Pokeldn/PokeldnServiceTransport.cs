@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace EasyDevice.Connection.Pokeldn;
 
 /// <summary>官方 pokeldn.pad.service 的本机 JSON 行协议，由该服务持有 ESP32-S3 的 BLE 连接。</summary>
-internal sealed class PokeldnServiceTransport(int port = 47800) : IPokeldnTransport
+internal sealed class PokeldnServiceTransport(string host, int port) : IPokeldnTransport
 {
     private readonly TcpClient _client = new() { NoDelay = true };
     private StreamReader? _reader;
@@ -20,12 +20,12 @@ internal sealed class PokeldnServiceTransport(int port = 47800) : IPokeldnTransp
         timeout.CancelAfter(TimeSpan.FromSeconds(2));
         try
         {
-            _client.ConnectAsync(IPAddress.Loopback, port, timeout.Token).AsTask().GetAwaiter().GetResult();
+            _client.ConnectAsync(host, port, timeout.Token).AsTask().GetAwaiter().GetResult();
         }
         catch (Exception ex) when (ex is SocketException or OperationCanceledException)
         {
             token.ThrowIfCancellationRequested();
-            throw new IOException("无法连接 pokeldn 本地手柄服务。请先在 pokeldn 的 Control 页面连接 ESP32-S3，或运行 python -m pokeldn.pad.service。", ex);
+            throw new IOException($"无法连接桥接服务 {host}:{port}；请检查桥接地址及服务是否运行。", ex);
         }
         _stream = _client.GetStream();
         _reader = new StreamReader(_stream, Encoding.UTF8, false, 1024, leaveOpen: true);

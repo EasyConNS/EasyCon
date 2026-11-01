@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using EasyCon.Core.Services;
 using EasyCon2.Avalonia.Localization;
 using EasyCon2.Avalonia.Services;
+using EasyDevice.Connection;
 using System;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
@@ -29,7 +30,14 @@ public partial class SwitchConnectionViewModel : ObservableObject
     public string SelectionNotice => SelectionUnavailable ? "所选通信端口当前不可用，请刷新后重新选择" : "";
     partial void OnSelectedSerialPortChanged(string? value)
     {
-        SelectionUnavailable = value != null && !_availablePorts.Contains(value);
+        // 桥接地址来自显式配置，不参与物理串口枚举；是否可连接由连接尝试确认。
+        bool bridge = false;
+        if (value != null)
+        {
+            try { bridge = ConnectionEndpoint.Parse(value).Transport == ConnectionTransport.TcpBridge; }
+            catch (ArgumentException) { }
+        }
+        SelectionUnavailable = value != null && !bridge && !_availablePorts.Contains(value);
         OnPropertyChanged(nameof(SelectionNotice));
     }
 

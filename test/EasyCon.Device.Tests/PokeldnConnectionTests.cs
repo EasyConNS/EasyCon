@@ -15,7 +15,7 @@ public class PokeldnConnectionTests
         TestSwitch device = new(new PokeldnSerialClient("test", transport));
         try
         {
-            Assert.That(device.TryConnect("pokeldn:fake"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
+            Assert.That(device.TryConnect("fake"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
             Assert.That(transport.TakeReport(), Is.EqualTo(Convert.FromHexString("0000088080808000")));
             device.Down(ECKeyUtil.Button(SwitchButton.A));
             Assert.That(transport.TakeReport(), Is.EqualTo(Convert.FromHexString("0400088080808000")));
@@ -44,7 +44,7 @@ public class PokeldnConnectionTests
         TestSwitch device = new(connection);
         try
         {
-            Assert.That(device.TryConnect("pokeldn:fake"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
+            Assert.That(device.TryConnect("fake"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
             transport.TakeReport();
             transport.BlockWrites = true;
             Task<bool> confirmed = device.ResetAndWaitForWriteAsync(TimeSpan.FromSeconds(3));
@@ -68,7 +68,7 @@ public class PokeldnConnectionTests
         TestSwitch device = new(new PokeldnConnection("test", transport));
         try
         {
-            Assert.That(device.TryConnect("pokeldn:fake"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
+            Assert.That(device.TryConnect("fake"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
             transport.TakeReport();
             Assert.Multiple(() =>
             {
@@ -98,7 +98,7 @@ public class PokeldnConnectionTests
         TestSwitch device = new(new PokeldnConnection("test", transport));
         try
         {
-            Assert.That(device.TryConnect("pokeldn:fake"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
+            Assert.That(device.TryConnect("fake"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
             transport.FailStatus = true;
             Assert.That(SpinWait.SpinUntil(() => !device.IsConnected(), 3000), Is.True);
             Assert.That(device.LastConnectionError, Does.Contain("unplugged"));
@@ -107,25 +107,21 @@ public class PokeldnConnectionTests
     }
 
     [Test]
-    public void AutoDetection_KeepsLegacyBaudsBeforePokeldn_ExplicitSkipsLegacy()
+    public void AutoDetection_KeepsLegacyBaudsBeforePokeldn()
     {
         ProbeSwitch legacy = new(115200);
         ProbeSwitch pad = new(921600);
-        ProbeSwitch explicitPad = new(921600);
         try
         {
             Assert.That(legacy.TryConnect("fake"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
             Assert.That(legacy.Bauds, Is.EqualTo(new[] { 115200 }));
             Assert.That(pad.TryConnect("fake"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
             Assert.That(pad.Bauds, Is.EqualTo(new[] { 115200, 9600, 921600 }));
-            Assert.That(explicitPad.TryConnect("pokeldn:fake"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
-            Assert.That(explicitPad.Bauds, Is.EqualTo(new[] { 921600 }));
         }
         finally
         {
             legacy.Disconnect();
             pad.Disconnect();
-            explicitPad.Disconnect();
         }
     }
 
@@ -165,7 +161,7 @@ public class PokeldnConnectionTests
     {
         FakeTransport transport = new();
         TestSwitch device = new(new PokeldnConnection("test", transport));
-        Assert.That(device.TryConnect("pokeldn:fake"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
+        Assert.That(device.TryConnect("fake"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
         transport.TakeReport();
         device.Down(ECKeyUtil.Button(SwitchButton.A));
         transport.TakeReport();
@@ -193,8 +189,8 @@ public class PokeldnConnectionTests
 
     [TestCase("")]
     [TestCase(" ")]
-    [TestCase("pokeldn:")]
-    [TestCase("pokeldn://typo")]
+    [TestCase("tcp://localhost")]
+    [TestCase("tcp://localhost:0")]
     public void InvalidEndpoint_DoesNotAttemptHardware(string endpoint)
     {
         NintendoSwitch device = new();

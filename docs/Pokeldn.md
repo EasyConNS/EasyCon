@@ -3,8 +3,8 @@
 **状态：已实施；协议及模拟设备测试通过。用户已确认早期适配构建的 ESP32E 连接和控制可用；
 本次对齐上游后的构建及 S3 实机验证待完成。**
 
-实现基于 EasyConNS/EasyCon `dev` 提交 `8787f0bda441f85848ad0f978f780d6ebd82c93e`，
-在已有的实验性 `PokeldnSerialClient` 上补充可靠通信和 S3 服务连接。核对的 pokeldn
+本次连接层整理基于 EasyConNS/EasyCon `dev` 提交 `26538600fce7fa3269744a17e23bb59ce3192ca7`，
+在已合并的适配上分开注册通用串口与桥接协议。核对的 pokeldn
 提交为 `30cbb0a47541a4293ca92152838b03cd7c8b9615`，控制器固件版本 **1.3.0**（2026-10-30）。
 适配发生在 EasyCon 电脑端，使用上游原版固件，无需重编译 ESP32 固件。
 
@@ -18,7 +18,7 @@ pokeldn 有两个独立的固件项目：
 | 板子 | 应刷固件 | 电脑 → 板子 | 板子 → NS | EasyCon 入口 |
 |---|---|---|---|---|
 | 普通 ESP32 / WROOM-32 | `pokeldn-pad.bin` | USB 转串口，921600、8N1 | Bluetooth Classic Pro Controller | 对应 COM/tty 端口 |
-| ESP32-S3 | `pokeldn-pad-s3.bin` | 电脑 BLE，经 pokeldn 本地手柄服务 | 原生 USB，HORI HID | `pokeldn (BLE 服务)` |
+| ESP32-S3 | `pokeldn-pad-s3.bin` | 电脑 BLE，经 pokeldn 本地手柄服务 | 原生 USB，HORI HID | 服务的 `tcp://主机:端口` 地址 |
 | ESP32-C3 / C6 | 不支持手柄固件 | — | 缺少上述手柄所需的硬件组合 | — |
 
 S3 本次通过**官方 pokeldn 服务**桥接 BLE，并非 EasyCon 直接调用操作系统蓝牙 API。
@@ -34,11 +34,11 @@ S3 本次通过**官方 pokeldn 服务**桥接 BLE，并非 EasyCon 直接调用
 5. 确认日志出现 `pokeldn-pad (串口) 1.3.0`，然后使用虚拟手柄、键盘映射或电脑端脚本。
 
 普通端口按原有 `115200 → 9600` 探测 EasyCon 固件，失败后再探测 `921600` 的 pokeldn-pad。
-已知是 pokeldn 时，CLI/API 可显式指定 `pokeldn:COM3` 或 `pokeldn:/dev/ttyUSB0`，跳过旧协议探测。
+串口地址直接使用 `COM3` 或 `/dev/ttyUSB0`；协议由设备层的注册项探测，不使用固件专用前缀。
 开口可能触发开发板复位，握手会在约 3 秒内重试状态查询。连接后保持串口打开，不按每个按键重开。
 
 ```powershell
-ezcon run script.ecs --port pokeldn:COM3
+ezcon run script.ecs --port COM3
 ```
 
 ## ESP32-S3 使用步骤
@@ -48,7 +48,9 @@ ezcon run script.ecs --port pokeldn:COM3
    控制固件占用此接口作为 HID，不能将其当作电脑串口使用。
 3. 开启电脑蓝牙，在 pokeldn **Control** 页面连接 `POKELDN-PAD`，保持 pokeldn 运行。
    若同时插着普通 ESP32，先在 pokeldn 中确认连接的是目标 S3；官方服务会优先尝试串口板。
-4. EasyCon 设备下拉框选择 **pokeldn (BLE 服务)**，点击连接。
+4. 在 EasyCon 的 `controller_profile` 配置中填写桥接地址 `tcp://127.0.0.1:47800`、
+   传输方式 `TcpBridge`，重启后从设备下拉框选择该地址并连接。完整配置见
+   [通用设备连接说明](DeviceConnections.md#配置桥接地址)。
 5. 使用 EasyCon 控制。连接时会停止板上已有宏并释放按键；不要同时在 pokeldn Control 页面发按键或启动宏。
 
 也可在已配置依赖的 pokeldn 源码环境启动官方服务：
@@ -60,12 +62,18 @@ python -m pokeldn.pad.service
 然后在 EasyCon CLI 中使用：
 
 ```powershell
-ezcon run script.ecs --port pokeldn://service
+ezcon run script.ecs --port tcp://127.0.0.1:47800
 ```
 
-服务固定为本机 `127.0.0.1:47800`，无需开放防火墙端口。EasyCon 不会自动启动、下载或退出 pokeldn
-进程。EasyCon 断开时发送释放和 `disconnect`，服务进程继续运行。
+上游服务默认监听本机 `127.0.0.1:47800`，该地址仅是配置示例，EasyCon 不固定服务端口。
+设备扫描只枚举物理串口，桥接地址由用户显式配置；不会为未安装的服务添加固定列表项。
+EasyCon 不会自动启动、下载或退出 pokeldn 进程。EasyCon 断开时发送释放和 `disconnect`，
+服务进程继续运行。
 macOS 的 BLE 权限和服务启动方式沿用 pokeldn 官方应用的设置。
+
+从早期适配迁移：`pokeldn:COM3` / `pokeldn:/dev/ttyUSB0` 改为 `COM3` / `/dev/ttyUSB0`；
+`pokeldn://service` 和 `pokeldn (BLE 服务)` 改为上述 TCP 地址，并将配置的 `Transport` 改为 `TcpBridge`。
+旧的固件专用地址不再解析。
 
 ## 已适配的能力与边界
 
@@ -96,7 +104,13 @@ macOS 的 BLE 权限和服务启动方式沿用 pokeldn 官方应用的设置。
 新增 `IConnection.WriteReport` 让连接实现选择编码；旧连接继续使用原有序列化。
 保留 `PokeldnSerialClient` 的公开入口、翻译方法和 `CreatePokeldnConnection` 测试接缝。
 `BytesSent` 在收到固件/服务 ACK 后回传原来的 7 位打包 HID，保持 Maa 会话确认中立报告的事件契约；
-这不代表 NS 或游戏已经处理输入。串口别名及服务的显示名/URI 共用同一个来源占用锁。
+这不代表 NS 或游戏已经处理输入。端点规范化和来源占用锁由通用 `ConnectionEndpoint` 负责，
+覆盖串口路径别名、TCP 主机名大小写、结尾斜杠和 IPv6 的等价写法，不依赖固件名称。
+
+串口与桥接分别通过 `SerialConnectionProvider` / `BridgeConnectionProvider` 注册。
+`NintendoSwitchConnections.cs` 组合默认协议，Core、GUI、CLI 仅处理传输地址和连接能力。
+桥接目前默认注册的是官方服务的 JSON 行协议适配器；其他蓝牙桥接服务需要实现对应协议，
+不能仅凭使用 TCP 就自动兼容。扩展方式见 [通用设备连接说明](DeviceConnections.md)。
 
 普通 ESP32 的 UART 帧：
 
@@ -137,8 +151,8 @@ S3 的 BLE 服务 UUID 为 `7a1e0001-5d2c-4c3e-9f4b-504f4b454c44`，末段 `0002
 
 ## 验证
 
-2026-10-30 本机验证：设备协议测试 **51/51**，新增 Maa 会话集成测试 **4/4**；
-Release 全项目测试 **1,883 通过、182 跳过、0 失败**，另有 29 项显式测试未选择运行。
+2026-11-01 本机验证：设备协议与连接注册测试 **65/65**，Maa 适配集成测试 **4/4**；
+Release 全项目测试 **1,904 通过、182 跳过、0 失败**，另有 29 项显式测试未选择运行。
 Release 构建及 `dotnet format --verify-no-changes` 通过。
 跳过项主要依赖本机未安装的 C99 编译器、OCR 模型/资料，以及非 Windows 平台功能。
 这些结果不替代 NS 实机验证。
@@ -151,7 +165,8 @@ dotnet format --verify-no-changes
 
 设备测试覆盖固定报文、14 个按钮位、9 个 HAT 值、摇杆边界、逐字节分片、粘包、噪声/坏校验、
 启动重试、负 ACK/超时/取消、真实设备队列输出、Reset/断开释放、空闲掉线、旧协议回归、
-能力拒绝，以及真实本机 TCP 上的官方服务请求/响应契约。
+能力拒绝，以及真实本机 TCP 上的官方服务请求/响应契约。另覆盖自定义协议注册、串口与桥接隔离、
+地址校验和别名独占、GUI/CLI 配置读写及桥接选择刷新。
 
 实机验收：分别检查两种板的 A 点按、组合键、十字键、摇杆边界、持续按下后停止脚本、主动断开、
 拔插重连，以及 S3 关闭 pokeldn 服务后能否在 EasyCon 观察到断线。首次配对和每种 NS 型号单独记录。

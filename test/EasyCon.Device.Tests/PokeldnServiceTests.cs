@@ -16,8 +16,8 @@ public class PokeldnServiceTests
     public async Task S3Service_UsesOfficialJsonProtocolThroughRealDeviceLoop()
     {
         using PadService server = new();
-        ServiceSwitch device = new(server.Port);
-        Assert.That(device.TryConnect(ECDevice.PokeldnServiceEndpoint), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
+        NintendoSwitch device = new();
+        Assert.That(device.TryConnect($"tcp://127.0.0.1:{server.Port}"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
         try
         {
             Assert.That(device.FirmwareVersion, Is.EqualTo("1.3.0"));
@@ -37,7 +37,7 @@ public class PokeldnServiceTests
     public void RefusedCommand_PropagatesServiceError()
     {
         using PadService server = new() { RefuseSend = true };
-        using PokeldnServiceTransport transport = new(server.Port);
+        using PokeldnServiceTransport transport = new("127.0.0.1", server.Port);
         transport.Connect(CancellationToken.None);
         IOException? error = Assert.Throws<IOException>(() => transport.SendReport(new byte[8], CancellationToken.None));
         Assert.That(error!.Message, Does.Contain("board refused"));
@@ -47,7 +47,7 @@ public class PokeldnServiceTests
     public void ServiceWithNoBoard_DoesNotClaimConnected()
     {
         using PadService server = new() { BoardConnected = false };
-        using PokeldnServiceTransport transport = new(server.Port);
+        using PokeldnServiceTransport transport = new("127.0.0.1", server.Port);
         Assert.Throws<IOException>(() => transport.Connect(CancellationToken.None));
     }
 
@@ -55,7 +55,7 @@ public class PokeldnServiceTests
     public void CanceledBleScan_DoesNotLeaveAConnectionWorkerWaiting()
     {
         using PadService server = new() { HangConnect = true };
-        using PokeldnServiceTransport transport = new(server.Port);
+        using PokeldnServiceTransport transport = new("127.0.0.1", server.Port);
         using CancellationTokenSource cancel = new(200);
         Assert.Throws<OperationCanceledException>(() => transport.Connect(cancel.Token));
     }
@@ -67,29 +67,23 @@ public class PokeldnServiceTests
         listener.Start();
         int unusedPort = ((IPEndPoint)listener.LocalEndpoint).Port;
         listener.Stop();
-        using PokeldnServiceTransport transport = new(unusedPort);
+        using PokeldnServiceTransport transport = new("127.0.0.1", unusedPort);
         IOException? error = Assert.Throws<IOException>(() => transport.Connect(CancellationToken.None));
-        Assert.That(error!.Message, Does.Contain("pokeldn.pad.service"));
+        Assert.That(error!.Message, Does.Contain($"127.0.0.1:{unusedPort}"));
     }
 
     [Test]
     public void DisconnectDuringFragmentedAck_DrainsReplyBeforeNeutralAndDisconnect()
     {
         using PadService server = new() { DelayLiveReportAck = true };
-        ServiceSwitch device = new(server.Port);
-        Assert.That(device.TryConnect(ECDevice.PokeldnServiceEndpoint), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
+        NintendoSwitch device = new();
+        Assert.That(device.TryConnect($"tcp://127.0.0.1:{server.Port}"), Is.EqualTo(NintendoSwitch.ConnectResult.Success));
         device.Down(ECKeyUtil.Button(SwitchButton.A));
         Assert.That(server.LiveReportAckStarted.Wait(2000), Is.True);
         device.Disconnect();
         Assert.That(server.Reports.Last(), Is.EqualTo("0000088080808000"));
         Assert.That(server.Operations.Last(), Is.EqualTo("disconnect"));
         Assert.That(SpinWait.SpinUntil(() => server.DisconnectAcknowledged, 1000), Is.True);
-    }
-
-    private sealed class ServiceSwitch(int port) : NintendoSwitch
-    {
-        protected override IConnection CreatePokeldnConnection(string connStr)
-            => new PokeldnConnection(connStr, new PokeldnServiceTransport(port));
     }
 
     private sealed class PadService : IDisposable

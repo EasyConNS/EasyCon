@@ -70,7 +70,7 @@ public partial class FlashFirmwareViewModel : ObservableObject
 
         if (!_deviceService.SupportsLegacyCommands)
         {
-            _logService.AddLog("pokeldn-pad 不支持伊机控离线脚本烧录，请使用电脑端运行脚本。");
+            _logService.AddLog("当前连接不支持伊机控离线脚本烧录，请使用电脑端运行脚本。");
             return;
         }
 

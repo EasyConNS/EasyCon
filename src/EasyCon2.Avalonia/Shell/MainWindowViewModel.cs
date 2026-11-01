@@ -595,7 +595,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private void CollectUserSettings(ConfigState cfg)
     {
         cfg.CaptureType = Capture.SelectedCaptureType ?? "ANY";
-        cfg.ControllerProfile = new ControllerProfile(Switch.SelectedSerialPort);
+        cfg.ControllerProfile = ControllerProfile.FromEndpoint(Switch.SelectedSerialPort);
         CaptureSourceDescriptor? source = _captureService.DescribeSelection(Capture.SelectedCaptureSource);
         if (source != null || cfg.CaptureProfile?.DisplayKey != Capture.SelectedCaptureSource || cfg.CaptureProfile?.Backend != cfg.CaptureType)
             cfg.CaptureProfile = new CaptureProfile(source, source?.Index, cfg.CaptureType, _captureService.Normalization, Capture.SelectedCaptureSource);
