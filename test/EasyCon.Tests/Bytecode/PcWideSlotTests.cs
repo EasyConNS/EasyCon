@@ -1,3 +1,4 @@
+using EasyCon.Core.Hosting;
 using EasyCon.Script;
 using EasyCon.Script.Bytecode;
 using EasyCon.Script.Modules;
@@ -11,12 +12,12 @@ namespace EasyCon.Tests.Bytecode;
 /// 每函数寄存器帧契约：参数和出站窗口按需分配，NSlots ≤ MaxRegisters；
 /// 寄存器预算超出即报溢出诊断（Lua 风格，不 spill）。
 /// Call/CallN 的接收槽 C 恒为寄存器号（0 = RET 固定落点），无哨兵值。
-/// 本套件锁：溢出编译期诊断 + RET 落点 + 指令编解码往返。
+/// 本套件锁：大帧编译运行 + 缓存/镜像往返 + RET 落点。
 /// </summary>
 [TestFixture]
 public class RegisterFileContractTests
 {
-    static string BuildWideSource(int valueCount)
+    internal static string BuildWideSource(int valueCount)
     {
         var source = new StringBuilder();
         source.AppendLine("_wideGlobal = 100000");
@@ -34,18 +35,33 @@ public class RegisterFileContractTests
         return source.ToString();
     }
 
-    [Test]
-    public void WideScript_ExceedingRegisterBudget_FailsWithDiagnostic()
+    [TestCase(270, true)]
+    [TestCase(270, false)]
+    [TestCase(1024, true)]
+    [TestCase(1024, false)]
+    public void WideScript_CompilesRunsAndSurvivesImageAndModuleRoundTrips(int count, bool optimize)
     {
-        string source = BuildWideSource(270);
-        CompileResult result = Compilation.CompileSource(source, new CompileOptions
+        CompileResult result = Compilation.CompileSource(BuildWideSource(count), ScriptCompileProfiles.Interactive(optimize: optimize));
+        Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty, string.Join("\n", result.Diagnostics));
+        Assert.That(result.Image, Is.Not.Null);
+        Assert.That(result.Image!.MaxSlots, Is.GreaterThan(255));
+        ArgumentWindowTests.AssertResult(result.Image, 100001);
+        foreach (bool stripDebug in new[] { false, true })
         {
-            UseDiskCache = false,
-            UseProcessCache = false,
-        });
-        Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Not.Empty,
-            "帧寄存器预算（EcsRegisters.MaxRegisters=255）超限应编译期拒绝（寄存器溢出诊断）");
-        Assert.That(result.Image, Is.Null);
+            EcxImage restored = EcsContainer.ReadImage(EcsContainer.WriteImage(result.Image, stripDebug));
+            ArgumentWindowTests.AssertResult(restored, 100001);
+            for (int i = 0; i < restored.Functions.Count; i++)
+            {
+                Assert.That(restored.Functions[i].Instructions, Is.EqualTo(result.Image.Functions[i].Instructions));
+                if (!stripDebug)
+                    Assert.That(restored.Functions[i].LineTable, Is.EqualTo(result.Image.Functions[i].LineTable));
+            }
+        }
+        List<ModuleArtifact> modules = result.Artifacts.Select(m => EcsContainer.ReadModule(EcsContainer.WriteModule(m))).ToList();
+        for (int m = 0; m < modules.Count; m++)
+            for (int f = 0; f < modules[m].Functions.Count; f++)
+                Assert.That(modules[m].Functions[f].LineTable, Is.EqualTo(result.Artifacts[m].Functions[f].LineTable));
+        ArgumentWindowTests.AssertResult(EcxPipeline.Link(modules, false, false), 100001);
     }
 
     [Test]

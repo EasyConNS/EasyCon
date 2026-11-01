@@ -318,7 +318,7 @@ internal static class EcxPipeline
     // syscall/native 后返回。链接期在调用点展开，消除 CALL/RET 往返、壳函数体；被展开的壳
     // 由随后的可达性清除删除。守卫（违一即放弃该调用点，保持调用形态）：
     //   壳体：std/vision 模块、单块无跳转/无体内 Call/无中间 Ret、≤24 条、末条 Ret/Ret0；
-    //   调用点：NParams == 实参数、内联后调用者槽位 ≤254（v3 槽位 u8）；
+    //   调用点：NParams == 实参数、内联后调用者帧长 ≤ EcsRegisters.MaxRegisters；
     //   壳体指令的操作数重映射按「槽位性」白名单执行（立即数/坐标/长度不映射）；
     //   体内含函数调用的壳（vision OCR→OCR_INIT 链）不内联，保持包装形态。
     // 不动点迭代 ≤4 轮。行号表（指令下标单位）与跳转（指令下标增量）随拼接平移重算。

@@ -62,7 +62,7 @@ public sealed class EcsGlobal
 
 /// <summary>
 /// 唯一指令表示（解码形态，docs/SingleStreamFormat.md §2）：完整宽度操作数，形态与线格式无关。
-/// 线格式的 iABC/ABx/AsBx/IsJ 打包与 EXT 数据字只是 v3 定长序列化投影（<see cref="InstructionCodec"/>），
+/// 线格式的 iABC/ABx/AsBx/IsJ 打包、操作数扩展与 EXT 数据字只是 v4 序列化投影（<see cref="InstructionCodec"/>），
 /// 内存中不存在第二套字节码。
 /// Jump 仅对 Jmp/Jpt/Jpf 有效，语义 = 相对**指令下标**偏移（前插平移不变；
 /// 线格式投影时由 InstructionCodec 换算为相对字节偏移——内存解释器按下标取指，字节偏移无处落点）。

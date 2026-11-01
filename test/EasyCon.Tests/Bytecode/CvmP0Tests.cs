@@ -379,18 +379,31 @@ public class CvmP0Tests
     }
 
     [Test]
-    public async Task FixedLegacyEcx_ExecutesUnchangedOnBothInterpretersAndBudget()
+    public async Task LegacyContainer_IsRejected_WhileNarrowInstructionBytesRemainStable()
     {
         string path = Path.Combine(CorpusAssert.RepoRoot(), "test", "EasyCon.Tests", "Bytecode", "native", "p0-legacy.ecx");
         byte[] bytes = File.ReadAllBytes(path);
         Assert.That(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)),
             Is.EqualTo("681429131EB83F03762413542F2C5B8BC113AA681365C3D4614AB693E0654089"));
-        EcxImage image = EcsContainer.ReadImage(bytes);
+        Assert.That(() => EcsContainer.ReadImage(bytes), Throws.TypeOf<BytecodeException>());
+        foreach (string probe in new[] { _normal, _budget })
+        {
+            (int exit, _, string stderr) = await RunBytes(probe, "run", bytes);
+            Assert.That(exit, Is.EqualTo(EcxInterpreter.ERR_IMAGE), stderr);
+        }
+
+        // This frozen fixture contains only narrow instructions. Updating its test-only header
+        // proves the instruction payload stayed byte-for-byte stable across the format boundary.
+        byte[] current = (byte[])bytes.Clone();
+        BitConverter.GetBytes(EcsContainer.FlatFormat).CopyTo(current, 4);
+        BitConverter.GetBytes((ushort)EcsSyscall.AbiRevision).CopyTo(current, 6);
+        EcsContainer.ResealCrc32(current);
+        EcxImage image = EcsContainer.ReadImage(current);
         List<string> expected = Reference(image);
         Assert.That(expected, Is.EqualTo(new[] { "6:4010000000000000", "5:ffffffffffffffff" }));
         foreach (string probe in new[] { _normal, _budget })
         {
-            (int exit, string stdout, string stderr) = await RunBytes(probe, "run", bytes);
+            (int exit, string stdout, string stderr) = await RunBytes(probe, "run", current);
             Assert.That(exit, Is.Zero, stderr);
             Assert.That(CvmRunner.SplitLines(stdout), Is.EqualTo(expected));
         }

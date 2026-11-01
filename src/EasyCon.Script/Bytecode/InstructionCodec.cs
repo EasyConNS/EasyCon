@@ -1,25 +1,31 @@
 namespace EasyCon.Script.Bytecode;
 
 /// <summary>
-/// 解码形态 ↔ 定长字节流的单处换算（docs/SingleStreamFormat.md §2/§5，v3 定长编码）。
-///
-/// 线格式 = 定长指令：4B（Iabc / ABx / AsBx / IsJ）或 8B（Ext / IabcJ = iABC + u32 数据字），
-/// 尺寸由 <see cref="EcsFormat.WordCount"/> 唯一决定；操作数位宽由格式锁定——
-/// 槽位/立即字节 = u8（Call/CallN 的接收槽 255 = 无）、ABx = u16、AsBx = s16、IsJ = s24、
-/// 数据字 = u32（AsBx/IsJ/IabcJ 的「数据字/尾字段」承载跳转的**字节**偏移）。
-/// Project(Lift(b)) == b、Lift(Project(x)) ≡ x 无条件下成立（布局不再依赖内容）。
+/// 解码形态 ↔ 字节流的单处换算（docs/VM2.md §3.1，v4 操作数扩展编码）。
+/// 基础指令仍为 4B/8B；需要大寄存器号时，操作码 bit7 置位，在头字后插入
+/// [A高8位, B高8位, C高8位, 0]。ABx/AsBx 只扩展 A，IsJ 不扩展。
+/// EXT/跳转数据字在扩展字之后。拒绝多余扩展和非零保留位，保证编码往返唯一。
 ///
 /// 跳转偏移的双表示：**内存** = 相对指令下标（解释器按下标取指；前插平移不变）；
 /// **线格式** = 相对**字节**偏移（目标 = 指令起始 + 本指令字节数 + delta）。
-/// 换算只发生在本类：<see cref="Project"/> 一遍计算布局（定长 ⇒ 无定点迭代），
+/// 换算只发生在本类：<see cref="Project"/> 一遍计算布局（宽度只依赖操作数，无定点迭代），
 /// <see cref="Lift"/> 借指令起始字节表反查目标下标。
 /// </summary>
 public static class InstructionCodec
 {
-    /// <summary>每条指令的字节数（4B 或 8B，由格式表唯一决定）。</summary>
+    public const byte WideFlag = 0x80;
+
+    /// <summary>不含操作数扩展字的基础字节数（4B 或 8B）。</summary>
     public static int SizeOf(EcsOpcode op) => EcsFormat.WordCount(op) * 4;
 
-    public static int InstructionSize(in EcsInstruction ins) => SizeOf(ins.Op);
+    static bool HasAbc(EcsOpcode op)
+        => EcsFormat.Get(op) is EcsInsFormat.Iabc or EcsInsFormat.Ext or EcsInsFormat.IabcJ;
+
+    static bool IsWide(in EcsInstruction ins)
+        => EcsFormat.Get(ins.Op) != EcsInsFormat.IsJ
+            && (ins.A > byte.MaxValue || (HasAbc(ins.Op) && (ins.B > byte.MaxValue || ins.C > byte.MaxValue)));
+
+    public static int InstructionSize(in EcsInstruction ins) => SizeOf(ins.Op) + (IsWide(ins) ? 4 : 0);
 
     // ---- 布局依赖的跳转（内存 Jump（指令下标）→ 线上字节偏移） ----
 
@@ -43,25 +49,17 @@ public static class InstructionCodec
                 $"{op} 跳转字节偏移越界: {jumpBytes}（格式容许 ±{limit}）", null, at) });
     }
 
-    static byte SlotByte(int v, EcsOpcode op, int at)
+    static byte OperandLow(int v, EcsOpcode op, string name, int at)
     {
-        if (v < 0 || v > 254)
+        if (v < 0 || v >= EcsRegisters.MaxRegisters)
             throw new BytecodeException(new[] { new BytecodeDiagnostic(
-                $"{op} 槽位越界: {v}（v3 定长编码槽位为 u8；寄存器范围 R0–R254）", null, at) });
-        return (byte)v;
-    }
-
-    static byte ByteOperand(int v, EcsOpcode op, string name, int at)
-    {
-        if (v < 0 || v > 255)
-            throw new BytecodeException(new[] { new BytecodeDiagnostic(
-                $"{op} 的 {name} 越界: {v}（v3 定长编码为 u8）", null, at) });
+                $"{op} 的 {name} 越界: {v}（寄存器范围 R0–R{EcsRegisters.MaxRegisters - 1}）", null, at) });
         return (byte)v;
     }
 
     // ---- Project：解码形态 → 字节流 ----
 
-    /// <summary>编码一个函数的指令序列为定长字节流（一遍布局；跳转范围越界响亮失败）。</summary>
+    /// <summary>编码一个函数的指令序列（一遍布局，按需插入操作数扩展字；跳转越界报错）。</summary>
     public static byte[] Project(IReadOnlyList<EcsInstruction> instructions)
     {
         int n = instructions.Count;
@@ -90,24 +88,27 @@ public static class InstructionCodec
                 CheckJumpRange(ins.Op, jumpBytes, i);
             }
 
-            buf.Add((byte)ins.Op);
+            bool wide = IsWide(ins);
+            buf.Add((byte)((byte)ins.Op | (wide ? WideFlag : 0)));
             switch (EcsFormat.Get(ins.Op))
             {
                 case EcsInsFormat.Iabc:
-                    buf.Add(SlotByte(ins.A, ins.Op, i));
-                    buf.Add(ByteOperand(ins.B, ins.Op, "B", i));
-                    buf.Add(ByteOperand(ins.C, ins.Op, "C", i));
+                case EcsInsFormat.Ext:
+                case EcsInsFormat.IabcJ:
+                    buf.Add(OperandLow(ins.A, ins.Op, "A", i));
+                    buf.Add(OperandLow(ins.B, ins.Op, "B", i));
+                    buf.Add(OperandLow(ins.C, ins.Op, "C", i));
                     break;
 
                 case EcsInsFormat.ABx:
-                    buf.Add(SlotByte(ins.A, ins.Op, i));
+                    buf.Add(OperandLow(ins.A, ins.Op, "A", i));
                     W16(buf, ins.B >= 0 && ins.B <= 0xFFFF ? ins.B
                         : throw new BytecodeException(new[] { new BytecodeDiagnostic(
                             $"{ins.Op} 的 Bx 越界: {ins.B}（u16）", null, i) }));
                     break;
 
                 case EcsInsFormat.AsBx:
-                    buf.Add(SlotByte(ins.A, ins.Op, i));
+                    buf.Add(OperandLow(ins.A, ins.Op, "A", i));
                     if (ins.IsJump) { CheckJumpRange(ins.Op, jumpBytes, i); S16(buf, jumpBytes); }
                     else S16(buf, ins.B >= short.MinValue && ins.B <= short.MaxValue ? ins.B
                         : throw new BytecodeException(new[] { new BytecodeDiagnostic(
@@ -119,24 +120,21 @@ public static class InstructionCodec
                     S24(buf, jumpBytes);
                     break;
 
-                case EcsInsFormat.Ext:
-                    buf.Add(SlotByte(ins.A, ins.Op, i));
-                    buf.Add(ByteOperand(ins.B, ins.Op, "B", i));
-                    buf.Add(ByteOperand(ins.C, ins.Op, "C", i));
-                    W32(buf, unchecked((int)ins.Ext));
-                    break;
-
-                case EcsInsFormat.IabcJ:
-                    buf.Add(SlotByte(ins.A, ins.Op, i));
-                    buf.Add(ByteOperand(ins.B, ins.Op, "B", i));
-                    buf.Add(ByteOperand(ins.C, ins.Op, "C", i));
-                    W32(buf, jumpBytes);
-                    break;
-
                 default:
                     throw new BytecodeException(new[] { new BytecodeDiagnostic(
                         $"{ins.Op} 未登记编码格式", null, i) });
             }
+            if (wide)
+            {
+                buf.Add((byte)(ins.A >> 8));
+                buf.Add(HasAbc(ins.Op) ? (byte)(ins.B >> 8) : (byte)0);
+                buf.Add(HasAbc(ins.Op) ? (byte)(ins.C >> 8) : (byte)0);
+                buf.Add(0);
+            }
+            if (EcsFormat.Get(ins.Op) == EcsInsFormat.Ext)
+                W32(buf, unchecked((int)ins.Ext));
+            else if (EcsFormat.Get(ins.Op) == EcsInsFormat.IabcJ)
+                W32(buf, jumpBytes);
         }
         return buf.ToArray();
     }
@@ -152,6 +150,8 @@ public static class InstructionCodec
     public static List<EcsInstruction> LiftWithStarts(ReadOnlySpan<byte> stream, int start, int end,
         out List<int> instructionStarts, string? function = null)
     {
+        if (start < 0 || end < start || end > stream.Length)
+            throw Fail("指令流区间越界", function, start);
         var result = new List<EcsInstruction>();
         var startBytes = new List<int>();
         var rawJumpBytes = new List<int>();   // 与 result 平行：跳转指令的线格式字节偏移（非跳转 = 0）
@@ -159,18 +159,38 @@ public static class InstructionCodec
         while (pos < end)
         {
             int insStart = pos;
-            var op = (EcsOpcode)stream[pos];
+            bool wide = (stream[pos] & WideFlag) != 0;
+            var op = (EcsOpcode)(stream[pos] & ~WideFlag);
             if ((int)op >= System.Enum.GetValues<EcsOpcode>().Length)
                 throw Fail($"未登记操作码 {(int)op}", function, insStart);
-            int size = SizeOf(op);
+            int size = SizeOf(op) + (wide ? 4 : 0);
             if (pos + size > end)
                 throw Fail("指令流截断（定长指令不完整）", function, insStart);
             int a = stream[pos + 1];
             int b = stream[pos + 2];
             int c = stream[pos + 3];
+            if (wide)
+            {
+                if (EcsFormat.Get(op) == EcsInsFormat.IsJ || stream[pos + 7] != 0
+                    || (!HasAbc(op) && (stream[pos + 5] != 0 || stream[pos + 6] != 0)))
+                    throw Fail("无效的操作数扩展字", function, insStart);
+                a |= stream[pos + 4] << 8;
+                if (HasAbc(op))
+                {
+                    b |= stream[pos + 5] << 8;
+                    c |= stream[pos + 6] << 8;
+                }
+                if (a == ushort.MaxValue || (HasAbc(op) && (b == ushort.MaxValue || c == ushort.MaxValue)))
+                    throw Fail("扩展操作数超出寄存器范围", function, insStart);
+                if (a <= byte.MaxValue && (!HasAbc(op) || (b <= byte.MaxValue && c <= byte.MaxValue)))
+                    throw Fail("不需要操作数扩展字", function, insStart);
+            }
             uint word = 0;
-            if (size == 8)
-                word = (uint)(stream[pos + 4] | stream[pos + 5] << 8 | stream[pos + 6] << 16 | stream[pos + 7] << 24);
+            if (EcsFormat.ExtWords(op) != 0)
+            {
+                int wordStart = pos + size - 4;
+                word = (uint)(stream[wordStart] | stream[wordStart + 1] << 8 | stream[wordStart + 2] << 16 | stream[wordStart + 3] << 24);
+            }
             pos += size;
 
             int rawJump = 0;
@@ -227,7 +247,7 @@ public static class InstructionCodec
             if (!layoutJump)
                 continue;
             int raw = rawJumpBytes[i];
-            int targetByte = startBytes[i] + SizeOf(result[i].Op) + raw;
+            int targetByte = startBytes[i] + InstructionSize(result[i]) + raw;
             int targetIdx = startBytes.BinarySearch(targetByte);
             if (targetIdx < 0)
                 throw Fail($"跳转落点 {targetByte} 不是指令起始字节", function, i);

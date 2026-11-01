@@ -284,7 +284,7 @@ public static partial class BytecodeEncoder
             if (EcsFormat.Get(op) != EcsInsFormat.AsBx)
                 throw Fail($"{op} 登记格式为 {EcsFormat.Get(op)}，不能按 AsBx 发射（与 EcsFormat 表不一致）");
             if (sbx < short.MinValue || sbx > short.MaxValue)
-                throw Fail($"{op} 的 sBx 越界: {sbx}（v3 定长 AsBx=s16）");
+                throw Fail($"{op} 的 sBx 越界: {sbx}（AsBx=s16）");
             Emit(new EcsInstruction(op, a, sbx));
         }
 
@@ -297,18 +297,18 @@ public static partial class BytecodeEncoder
             Emit(new EcsInstruction(op, a, b, c, ext));
         }
 
-        /// <summary>Iabc 头部操作数字节域守卫（v3 定长）：槽位 u8 ≤254（255 = 无接收哨兵）；
+        /// <summary>Iabc 操作数守卫：寄存器可扩展到 u16；
         /// StickSet/StickP 的 B/C 是摇杆坐标（满 u8 0..255），不按槽位收紧。</summary>
         static void CheckIabcOperands(EcsOpcode op, int a, int b, int c)
         {
-            if (a is < 0 or > 254) ThrowOp(op, $"A 槽位越界: {a}");
+            if (a < 0 || a >= EcsRegisters.MaxRegisters) ThrowOp(op, $"A 槽位越界: {a}");
             bool coord = op is EcsOpcode.StickSet or EcsOpcode.StickP;
-            if (b < 0 || b > (coord ? 255 : 255)) ThrowOp(op, $"B 越界: {b}");
-            if (c < -1 || c > (coord ? 255 : 254)) ThrowOp(op, $"C 越界: {c}");
+            if (b < 0 || b > (coord ? byte.MaxValue : EcsRegisters.MaxRegisters - 1)) ThrowOp(op, $"B 越界: {b}");
+            if (c < 0 || c > (coord ? byte.MaxValue : EcsRegisters.MaxRegisters - 1)) ThrowOp(op, $"C 越界: {c}");
         }
 
         static void ThrowOp(EcsOpcode op, string what)
-            => throw new BytecodeException(new[] { new BytecodeDiagnostic($"{op} {what}（v3 定长编码）", null, 0) });
+            => throw new BytecodeException(new[] { new BytecodeDiagnostic($"{op} {what}（v4 操作数扩展编码）", null, 0) });
 
         BytecodeException Fail(string message)
             => new(new[] { new BytecodeDiagnostic(message, _symbol.Name, _code.Count) });

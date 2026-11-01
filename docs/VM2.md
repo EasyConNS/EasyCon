@@ -119,9 +119,9 @@ ToStr ToInt`。
 
 ## 3. 指令集
 
-### 3.1 编码格式（小端；定长指令，ECX1 平铺容器）
+### 3.1 编码格式（小端；按需扩展操作数，ECX1 平铺容器）
 
-| 格式 | 布局（v3 定长，即线格式） | 用于 |
+| 格式 | 基础布局（操作码 bit7=0） | 用于 |
 |------|------|------|
 | iABC | `op:8 \| A:8 \| B:8 \| C:8`（4B） | 三地址运算、域操作 |
 | AsBx | `op:8 \| A:8 \| sBx:16`（4B） | LoadI（s16 立即数；超界编译期归一 LoadK）、Jpt/Jpf（s16 **字节**偏移） |
@@ -130,21 +130,23 @@ ToStr ToInt`。
 | Ext | iABC + 后随 `data:32`（8B） | Call/CallN 目标、Slice end 槽、GetFI/PutFI 索引槽、StickP/StickPv、NewArrV 元素类型码、**WaitI/KeyI 时长**（v3 起） |
 | IabcJ | iABC + 后随 `jump:32`（8B） | **ForStep/CmpJ** 第 4 操作数（跳转**字节**偏移；v3 起） |
 
-> **单流化 + v3 定长（已实施）**：内存唯一表示为解码形态 `EcsInstruction`（完整 int32 操作数，
-> Jump = 相对指令下标）；文件的 **v3 定长指令流**（ECX1 `.text`）与内存按上表一一对应，
-> 投影/抬升由 `InstructionCodec` 单处换算（线格式跳转 = 相对**字节**偏移：目标 = 指令起始 +
-> 本指令字节数 + delta）。操作数位宽由格式锁定：槽位 u8 ≤254（寄存器 ≤255 帧长上限，无哨兵值——
-> Call/CallN 的 C 恒为接收寄存器号）；AsBx=s16；ABx=Bx16（≤65535，常量池 16 位索引是 pinned 句柄编码前提）；
-> IsJ=s24。越界一律**编译期响亮失败**。
-> 权威表：C# `EcsFormat.BuildTable`（漏登自检抛出）↔ C `ecs_op_words`（字数 1=4B/2=8B）。
+**v4 操作数扩展**：操作码限低 7 位，bit7 为扩展标记。任一寄存器操作数超过 255 时，
+在基础头字后插入 `[A_hi:u8, B_hi:u8, C_hi:u8, reserved:u8=0]`；低字节仍在基础头字中。
+iABC/Ext/IabcJ 扩展 A/B/C；ABx/AsBx 仅扩展 A，B_hi/C_hi 必须为 0；IsJ 不允许扩展。
+EXT 或跳转数据字位于扩展字之后。指令尺寸为 4/8/12B；小寄存器指令保持原有 4/8B 编码。
+不需要的扩展字、非零保留位、截断和寄存器号 65535 均被拒绝，保持编解码往返唯一。
 
-**数据字**：12 条带字指令（Ext 8 条 + ForStep/CmpJ/WaitI/KeyI）的数据字是「数据」——数值可能
-恰好等于某个操作码，一切线性扫描必须按 `EcsFormat.WordCount` 步进跳过（历史 F4 缺陷铁律，
-v3 随定长布局回归）。
+内存唯一表示仍是 `EcsInstruction`（int32 操作数，Jump 为相对指令下标），桌面与 MCU
+使用同一条可序列化指令流。`InstructionCodec` 一遍布局并换算跳转：目标 = 指令起始 +
+本指令实际字节数 + 字节偏移。宽度只依赖操作数，不依赖跳转距离，无需定点迭代。
+AsBx=s16、ABx=u16、IsJ=s24，立即数和跳转范围不变，越界编译期报错。
 
-容量上限（R-3）：槽位上限 254 已前移到**编译期**（v3 槽位 u8，与宿主档案 `ECS_MAX_SLOTS=255`
-对齐）；加载期校验保留（nslots ≤ 宿主档案）。Jpt/Jpf 偏移越界由编码器跳转反转模板消化，
-超 s16 由 `Project` 响亮失败。
+`EcsFormat.WordCount` ↔ C `ecs_op_words` 只表示基础字数；线格式步进与行号表必须使用
+`InstructionCodec.InstructionSize`，C 侧加上扩展字的 4B。扩展字和后随数据字都不能当作操作码扫描。
+
+容器 ECX1/ECM1 的 format 与 ABI 修订号均升为 2；旧镜像需重新编译，旧缓存自动失效，
+原生宿主或运行 ECS 字节码的固件必须同时更新 VM。函数表 `nslots:u16` 支持最多 65535 槽
+（R0–R65534），实际可运行帧大小由宿主帧段内存限制，容量不足返回 `ECS_ERR_POOL`。
 
 ### 3.2 指令表
 
@@ -171,8 +173,8 @@ Not a, b；NegI NegD a, b；Conv a, b, kind（§2.4）
 Jmp s24；Jpt a, s16；Jpf a, s16        真值 = i32 != 0（S-06）
 
 # 调用（EXT）
-Call   a, n, c, fid:32    调用镜像函数 fid；实参 R[a..a+n) 深拷贝进新帧槽 0..n-1（S-17）；
-                          c=255 表无接收槽；返回值深拷贝到 R[c]
+Call   a, n, c, fid:32    调用镜像函数 fid；实参 R[a..a+n) 深拷贝进新帧槽 1..n（S-17）；
+                          c=0 为 RET 固定落点；返回值深拷贝到 R[c]
 CallN  a, n, c, target:32 target bit31=1 → L2 syscall 编号；否则 L3 名表索引（§8）
 Ret    a / Ret0           返回（深拷贝交接）/ 返回 VOID
 
@@ -206,7 +208,7 @@ LCLICK=11 RCLICK=12 HOME=13 CAPTURE=14`；HAT `TOP=16..TOP_LEFT=23`；摇杆 `LS
 ### 3.3 寄存器与槽位模型（每函数栈窗口）
 
 **帧模型**（Dalvik/Lua 式）：帧 = 函数自身的寄存器窗口，帧长 = 函数寄存器高水位（`EcsFunction.NSlots`
-≤ 255，指令 A/B/C 域 u8 是唯一上限——项目代码量增长不牵动寄存器堆）。调用时在共享值栈上按被调方
+≤ 65535，寄存器操作数按需扩展到 u16）。调用时在共享值栈上按被调方
 帧长开窗、返回时弹出。帧内布局：
 
 ```text
@@ -214,7 +216,7 @@ R0                       RET：返回值固定落点（Call 的 C=0，无显式�
 R1 .. NParams            ARG 参数窗：仅占用函数声明的参数数（S-17 深拷贝）
 NParams+1 起             STAGING：按本函数最大出站调用/数组分块需求保留
 STAGING 之后             分配区：独占槽（φ/ForStep/循环携带值/编码器临时）→ 池区
-frameLen ≤ 255           帧长 = NSlots = 发射结束后池区高水位
+frameLen ≤ 65535         帧长 = NSlots = 发射结束后池区高水位
 ```
 
 - **生命周期分配**（`AssignSlots`，参考线性扫描寄存器分配）：非常量值统一池化——定义发射
@@ -225,8 +227,8 @@ frameLen ≤ 255           帧长 = NSlots = 发射结束后池区高水位
   （`CollectLoopCarriedValues`：定义块不在其读取所在自然循环体内——线性扫描对回边活性的盲区，
   素数筛语料实证）、编码器临时（Neq/scratch/模板守卫组）。φ 臂合并（下 P1b）后臂须退出池化
   结算，否则会把 φ 独占槽错放回空闲池。
-- **参数数没有独立的 7 项上限**：声明上限为 `MaxRegisters - ArgBase = 254`，实际编译还须让
-  参数、出站窗口、存活值和临时值一起满足 255 槽帧预算；预算不足报寄存器溢出。无出站调用或
+- **参数数**：声明上限仍为 `ArgCount = 254`（模块签名中的参数计数为 u8，与帧槽数独立），
+  参数、出站窗口、存活值和临时值共享 65535 槽帧预算；预算不足报寄存器溢出。无出站调用或
   数组构建的函数不保留 STAGING。零参数调用的 A 取 R0，不读取实参。
 - **STAGING 与参数/分配区物理隔离**：出站实参 Move 不会覆写存活值，嵌套调用的结果先放在
   分配区再搬入出站窗口。链接期内联将壳体的整个窗口搬到调用者未使用的区间，先从调用点 A
@@ -251,7 +253,7 @@ frameLen ≤ 255           帧长 = NSlots = 发射结束后池区高水位
 
 实参连续暂存调用者出站窗口 `R[a..a+n)`（A 随调用点编码，位置见 §3.3），`Call` 深拷贝播种进
 被调方参数窗 `R[1..1+n)`（S-17）；接收槽 C 恒为寄存器号（无哨兵值），返回值深拷贝交接
-（C=0 即 RET 落点）。实参无独立固定上限：编码上限 254，实际与出站窗口、存活值共享 255 槽帧
+（C=0 即 RET 落点）。实参个数上限为 254，与出站窗口、存活值共享 65535 槽帧
 预算（§3.3；绑定层声明校验 + 编码器预算校验）。递归天然支持；深度上限 `ECS_MAX_CALL_DEPTH`（64，双端对齐）
 → `ECS_ERR_DEPTH`；尾递归由 SSA 优化器（TRE）变循环回边，VM 无 tail-call 指令。
 
@@ -282,21 +284,29 @@ Link 在深拷贝副本上进行，不污染调用方产物（`.ecm` 可安全 r
 
 ```text
 偏移  字段
-0     magic "ECX2"（4 字节）
+0     magic "ECX1"（4 字节）
 4     format_ver:u16 = 2
-6     flags:u16   bit0 D=调试名区存在；bit1 K=KeyAction；bit2 I=NeedIL；其余 0
-8     max_slots:u8
-9     max_depth:u8
-10    feats:u16   特征需求掩码（EcsImageFeatures：IL/CAPTURE/FFI/FILE/VISION）
-12    const_count:u32 × 常量条目（tag:u8 + payload；STRING = units:u16 + UTF-16LE）
+6     abi_rev:u16 = 2
+8     feats:u16   特征需求掩码
+10    entry:u16
+12    flags:u8    bit0 D=调试块存在；bit1 K=KeyAction；bit2 I=NeedIL
+13    module_name_length:u8
+14    func_count:u16
+16    code_size:u32（字节）
+20    debug_size:u32（字节）
+24    max_literal_string_units:u16
+26    max_literal_array_elems:u16
+28    max_struct_slots:u16
+30    reserved:u16 = 0
+32    crc32:u32（清零本字段后计算全文件 CRC）
+36    主模块名 UTF-8（长度由头部给出）
+?     const_count:u32 × 常量条目（tag:u8 + payload；STRING = units:u16 + UTF-16LE）
 ?     struct_count:u32 × StructDef（name:utf8, nfields:u8, Field{name,kind,base,elem,count:u16}）
 ?     global_count:u32 × Global（module:u8 + type:u8 定长；名字在调试区）
 ?     native_count:u32 × Native（name:utf8）
-?     func_count:u32 × FuncDef（nparams:u8, nslots:u8, hasret:u8, code_off:u32, code_words:u32）
-?     代码区（u32 指令字序列，4 字节对齐）
-?     调试区（D=1 时：函数名表 + 全局名表，debug_count = func_count + global_count；
-      stripDebug 产 MCU 发布版时整区不存在，debug_count=0）
-末    entry:u32
+?     func_count:u32 × FuncDef（nslots:u16, code_off:u32；偏移相对代码区）
+?     代码区（v4 指令流，每条指令占 1–3 个 4B 字；不要求文件绝对偏移对齐）
+?     调试区（D=1 时：[lines_len:u32][lines][names_len:u32][names]；stripDebug 时省略）
 ```
 
 原生名表只承载 L3（采集洞/FFI/std 加速洞 `__ENCODE__/__JQ__/__CTC_FOLD__`）；L2 syscall 编号直传 EXT，不占名表
@@ -464,7 +474,7 @@ void    ecs_vm_ret_str(ecs_vm *vm, ecs_value *ret, const uint16_t *units, int32_
 | 项 | 预算 |
 |----|------|
 | ECX 镜像 | flash/XIP（光速过帧 540 B，含调试区；stripDebug 更小） |
-| 指令流 | **零 RAM**：v3 定长 4B/8B，镜像 XIP 原地取指（无解码缓存、无解码段） |
+| 指令流 | **零 RAM**：v4 按需扩展 4B/8B/12B，镜像 XIP 原地取指（无解码缓存、无解码段） |
 | 帧区 | `max_depth × max_slots × 16B`（光速过帧 608 B） |
 | 堆 | 句柄表 + 对象，池大小可配（4–64 KB） |
 | VM 本体 | ecs_vm.c ~2200 行 C99 单翻译单元，`cc -O2` 一条命令构建 |

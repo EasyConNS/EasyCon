@@ -104,11 +104,11 @@ public class BytecodeSizeAnalysisTests
         Assert.DoesNotThrow(() => EcsContainer.ReadImage(stripped), "剥离后镜像仍可加载");
     }
 
-    /// <summary>v3 定长密度实测：4B/8B 指令分布与每条指令平均字节数（基线记录性指标，baselines/perf.md）。</summary>
+    /// <summary>v4 密度实测：4B/8B/12B 指令分布与每条指令平均字节数。</summary>
     [Test]
     public void Fixed_Density_CorpusAndExamples()
     {
-        int fourByte = 0, eightByte = 0, instructions = 0, totalBytes = 0;
+        int fourByte = 0, eightByte = 0, twelveByte = 0, instructions = 0, totalBytes = 0;
         foreach (var path in CorpusSources())
         {
             var result = Compilation.CompileFile(path, new CompileOptions { UseDiskCache = false });
@@ -121,16 +121,21 @@ public class BytecodeSizeAnalysisTests
                 instructions += f.Instructions.Count;
                 foreach (var ins in f.Instructions)
                 {
-                    if (EcsFormat.WordCount(ins.Op) == 1) fourByte++; else eightByte++;
+                    switch (InstructionCodec.InstructionSize(ins))
+                    {
+                        case 4: fourByte++; break;
+                        case 8: eightByte++; break;
+                        case 12: twelveByte++; break;
+                    }
                 }
             }
         }
         TestContext.Out.WriteLine(
-            $"v3 定长密度: {instructions} 条指令, {totalBytes} B 代码流, 平均 {totalBytes / Math.Max(1, instructions):F2} B/指令；" +
-            $"4B 指令占 {100.0 * fourByte / Math.Max(1, fourByte + eightByte):F1}%（{fourByte}/{fourByte + eightByte}，8B={eightByte}）");
+            $"v4 密度: {instructions} 条指令, {totalBytes} B 代码流, 平均 {totalBytes / (double)Math.Max(1, instructions):F2} B/指令；" +
+            $"4B={fourByte}，8B={eightByte}，12B={twelveByte}");
         Assert.That(instructions, Is.GreaterThan(0));
         Assert.That(totalBytes, Is.GreaterThan(0));
-        // 定长下界：4B/条；含数据字指令 8B/条——密度记录进 baselines/perf.md
+        Assert.That(totalBytes, Is.EqualTo(fourByte * 4 + eightByte * 8 + twelveByte * 12));
     }
 
     internal static string[] CorpusSources()

@@ -14,7 +14,7 @@ public static partial class BytecodeEncoder
     /// </summary>
     public const int TemplateArrayMinElements = 8;
 
-    /// <summary>常量模板构建的分块元素数（NewArrV 的 C:8 ≤ 255、staging 槽预算内取值）。</summary>
+    /// <summary>常量模板构建的分块元素数（控制 staging 占用及 MCU 单对象容量）。</summary>
     public const int TemplateChunkSize = 128;
 
     sealed partial class Encoder
@@ -23,7 +23,7 @@ public static partial class BytecodeEncoder
         //
         // 数组字面量只能以立即数列表初始化，元素编译期完全可见——大数据表（如万级颜色/字库表）
         // 本质是常量数据。内联路径却把每个元素当独立 SSA 常量物化进帧槽（块首全量同时存活）+
-        // staging 槽随元素数线性增长，单函数槽位随字面量爆炸（1 万元素 ≈ 2 万槽 > 255 的 ISA 上限）。
+        // staging 槽随元素数线性增长；分块避免大字面量占用过多帧槽。
         //
         // 降级方案（C 静态初始化模板 + 守卫的同型设计 / Go static composite literal init）：
         //   - 字面量内容以首个初始化点为准构建一次，存入模块级隐藏全局模板（内容键去重）；

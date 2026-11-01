@@ -596,7 +596,7 @@ public sealed class EcxInterpreter
 
     // ---- 主循环 ----
 
-    /// <summary>帧出租（每函数栈窗口）：帧长 = 函数寄存器高水位（NSlots ≤255），
+    /// <summary>帧出租（每函数栈窗口）：帧长 = 函数寄存器高水位（NSlots ≤65535），
     /// 池空新建；复用时槽位 Array.Clear 复位为 Void（StoreFresh「无旧值」直写契约），
     /// 容量不足则扩容（容量只增，峰值深度即池上限——池随弹帧回收）。</summary>
     Frame RentFrame(int nslots)

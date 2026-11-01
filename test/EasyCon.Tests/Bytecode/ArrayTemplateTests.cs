@@ -216,7 +216,7 @@ public class ArrayTemplateTests
     [Test]
     public void OversizedSlots_SerializeAndRoundTrip()
     {
-        // 档位塌缩（SingleStreamFormat §2 R-5）：槽位字段 u16 + varint 操作数无上限，
+        // 槽位字段 u16 + v4 按需扩展操作数，
         // >255 槽函数可编译、可序列化、可 round-trip；容量判定移到烧录前预检（宿主档案）。
         var image = new EcxImage
         {

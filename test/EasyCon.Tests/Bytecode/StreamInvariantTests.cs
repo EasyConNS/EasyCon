@@ -4,10 +4,9 @@ using EasyCon.Script.Bytecode;
 namespace EasyCon.Tests.Bytecode;
 
 /// <summary>
-/// 编解码互逆验证网（docs/SingleStreamFormat.md §4 N2 + N6，v3 定长编码）：
-///   Lift(Project(x)) ≡ x（逐指令等价）；Project(Lift(b)) == b（字节恒等）——定长布局下无条件下成立。
-/// 覆盖：corpus + 合成边界值用例（AsBx s16、ABx u16、IsJ s24、槽位 u8 + 255 无接收哨兵、
-/// 8B 数据字）；截断拒读；跳转落点必须为指令起始字节；格式位宽越界响亮失败。
+/// 编解码互逆验证网（docs/VM2.md §3.1）：
+/// Lift(Project(x)) ≡ x（逐指令等价）；Project(Lift(b)) == b（字节恒等）。
+/// 覆盖 corpus、立即数边界、数据字、截断和跳转落点；宽操作数另见 WideOperandTests。
 /// </summary>
 [TestFixture]
 public class StreamInvariantTests
@@ -40,7 +39,7 @@ public class StreamInvariantTests
     [Test]
     public void Synthetic_BoundaryValues_Jumps_Ext_RoundTrip()
     {
-        // 槽位上界 254 + 无接收哨兵 255、AsBx s16 两端、ABx u16 两端、正反向跳转链、8B 数据字
+        // 窄寄存器、AsBx s16 两端、ABx u16 两端、正反向跳转链、8B 数据字
         var code = new List<EcsInstruction>
         {
             new(EcsOpcode.LoadI, 254, short.MinValue, 0),                 // AsBx s16 下界
@@ -65,8 +64,8 @@ public class StreamInvariantTests
     [Test]
     public void Project_RejectsFormatWidthOverflows()
     {
-        // 槽位 > 254 → 响亮拒绝（v3 定长 u8）
-        var badSlot = new List<EcsInstruction> { new(EcsOpcode.LoadI, 40000, 7, 0) };
+        // 最大帧长为 65535，寄存器号不得达到 65535。
+        var badSlot = new List<EcsInstruction> { new(EcsOpcode.LoadI, EcsRegisters.MaxRegisters, 7, 0) };
         Assert.That(() => InstructionCodec.Project(badSlot), Throws.TypeOf<BytecodeException>(), "槽位越界应拒绝");
 
         // AsBx 立即数超 s16 → 响亮拒绝（发射侧 LoadK 归一，此处验证编解码层守卫）
