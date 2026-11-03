@@ -5,11 +5,11 @@ namespace EasyCon.Script.Bytecode;
 
 /// <summary>
 /// VM2 指令集操作码。与 src/EasyCon.Vm/native/ecs_vm.h 中的枚举一一对应。
-/// 编码格式（见 docs/VM2.md §2.1）：
+/// 基础编码格式（见 docs/VM2.md §3.1；bit7 置位时头字后另有操作数高位字）：
 ///   iABC : op:8 | A:8 | B:8 | C:8
 ///   AsBx : op:8 | A:8 | sBx:16（有符号）
 ///   ABx  : op:8 | A:8 | Bx:16（无符号）
-///   IsJ  : op:8 | s24:24（JMP 专用，单位=指令字）
+///   IsJ  : op:8 | s24:24（JMP 专用，单位=字节）
 ///   EXT  : iABC + 后随 32 位字（CALL/CALLN 的目标 ID、SLICE 的 end 槽）
 /// </summary>
 public enum EcsOpcode : byte
@@ -56,13 +56,13 @@ public enum EcsOpcode : byte
     Jpf,        // 同 Jpt，假值跳转
 
     // ---- 调用（EXT：后随 32 位目标 ID）----
-    Call,       // iABC + ext32：A=首参槽，B=参数个数，C=接收槽（255=无返回值）；实参取 R[A..A+B)，深拷贝进新帧槽 0..B-1；返回值按 RET 语义复制到 R[C]
+    Call,       // iABC + ext32：A=首参槽，B=参数个数，C=接收槽（0=RET）；实参取 R[A..A+B)，深拷贝进新帧槽 1..B；返回值按 RET 语义复制到 R[C]
     CallN,      // 同 Call，目标=原生函数 ID（镜像 native 名表）
     Ret,        // iABC: 返回 R[A]
     Ret0,       // 返回 VOID
 
     // ---- 数组 / 字符串 ----
-    NewArrV,    // iABC + ext32: R[A] = 数组字面量，元素取 R[B..B+C)，ext=元素类型码
+    NewArrV,    // iABC + ext32: R[A] = 数组字面量，元素取 R[C..C+B)，ext=元素类型码
     NewArrE,    // ABx : R[A] = 空数组，元素类型码 Bx（EcsTypeCode）
     GetI,       // iABC: R[A] = R[B][R[C]]（数组元素 / 字符串单字符）
     SetI,       // iABC: R[B][R[C]] = R[A]（原地修改）
@@ -109,8 +109,8 @@ public static class EcsSyscall
 
     /// <summary>镜像格式修订号（缓存键成分；格式语义变化时改值，无兼容梯——
     /// 全新实现不做历史版本分级）。当前 = 每函数寄存器栈窗口 + 帧内固定 RET/ARG/STAGING 布局
-    /// （<see cref="EcsRegisters"/>）+ 定长指令编码 + 无接收哨兵。</summary>
-    public const int AbiRevision = 1;
+    /// （<see cref="EcsRegisters"/>）+ v4 按需扩展操作数 + 无接收哨兵。</summary>
+    public const int AbiRevision = 2;
 
     // ---- 文件族（1..9 连续，IsFileFamily 依赖）----
     public const int FWrite = 1;
@@ -250,7 +250,7 @@ internal static class EcsJump
 /// <summary>
 /// 帧内寄存器布局约定（与 native/ecs_vm.h 的 ECS_REG_* 一一对应，双端手工镜像）。
 /// 帧模型 = Dalvik/Lua 式每函数栈窗口：帧长 = 函数自身寄存器高水位（EcsFunction.NSlots，
-/// ≤ <see cref="MaxRegisters"/>，指令域 u8 是唯一上限——项目增长不再牵动寄存器堆），
+/// ≤ <see cref="MaxRegisters"/>，寄存器操作数按需扩展到 u16），
 /// 调用时在共享值栈上按被调方帧长开窗、返回时弹出。
 /// 帧内布局：[R0 = RET][R1 起 = NParams 个参数][按需 STAGING][分配区
 /// （独占：φ/ForStep/循环携带/编码器临时 → 池区）]。仅 RET/参数入口位置固定；
@@ -259,8 +259,8 @@ internal static class EcsJump
 /// </summary>
 public static class EcsRegisters
 {
-    /// <summary>寄存器号上限（指令 A/B/C 域为 u8；Lua 同款天花板）。帧长 ≤ 此值。</summary>
-    public const int MaxRegisters = 255;
+    /// <summary>帧槽数上限（函数表 NSlots 为 u16，寄存器范围 R0–R65534）。</summary>
+    public const int MaxRegisters = ushort.MaxValue;
 
     /// <summary>R0 = RET：无显式接收寄存器调用的返回值固定落点（Call 的 C=0）。</summary>
     public const int Ret = 0;
@@ -268,8 +268,8 @@ public static class EcsRegisters
     /// <summary>R1 起 = 参数窗：Call 从 A 指定的出站窗口深拷贝 NParams 个实参（S-17）。</summary>
     public const int ArgBase = 1;
 
-    /// <summary>参数数的编码上限；参数、出站窗口与临时值还须共同满足函数帧预算。</summary>
-    public const int ArgCount = MaxRegisters - ArgBase;
+    /// <summary>参数计数保留原 ABI 上限（模块签名字段 u8），独立于寄存器宽度。</summary>
+    public const int ArgCount = 254;
 
     /// <summary>常量数组模板的出站分块预算；无数组构建时不预留这些槽位。</summary>
     public const int ArrayStagingCount = 16;

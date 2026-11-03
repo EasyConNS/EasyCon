@@ -43,10 +43,6 @@
 #ifndef ECS_MAX_FRAMES
 #define ECS_MAX_FRAMES (ECS_FRAME_SEG_BYTES / 64)
 #endif
-/* 宿主容量档案（R-3：容量属宿主不属产物；加载期按档案校验每函数槽位） */
-#ifndef ECS_MAX_SLOTS
-#define ECS_MAX_SLOTS 255
-#endif
 
 #define ECS_DEFAULT_BUDGET 1000000
 /* 接收槽恒为寄存器号（无哨兵值） */
@@ -153,8 +149,7 @@ typedef struct {
     uint32_t ret_pc;              /* 续跑点 = 函数内字节偏移（定长取指；仅调用边界与让出点写回） */
     uint32_t ret_idx;             /* 续跑点 = 指令下标（error_pc 诊断单位，与 ret_pc 同点写回） */
     uint16_t func_index;          /* 诊断 / 函数表下标（镜像 func_count 为 u16，< 64K 函数） */
-    uint8_t  ret_slot;            /* 接收寄存器（恒 ≤ 255 = 指令域上限；0 = RET 固定落点） */
-    uint8_t  _pad;
+    uint16_t ret_slot;            /* 接收寄存器（0 = RET 固定落点） */
     ecs_value slots[];
 } frame;                          /* 帧字节数由 fn->nslots 派生（frame_size），不入帧头 */
 
@@ -1053,7 +1048,7 @@ static int32_t load_image(ecs_vm *vm, const uint8_t *image, size_t len)
 
     /* ---- ECX1 平铺头（36B）---- */
     if (rd_u32(image) != 0x31584345u) return ECS_ERR_IMAGE;      /* "ECX1" */
-    if (rd_u16(image + 4) != 1) return ECS_ERR_IMAGE;            /* format = 1 */
+    if (rd_u16(image + 4) != 2) return ECS_ERR_IMAGE;            /* format = 2: wide operands */
     if (rd_u16(image + 6) != (uint16_t)ECS_ABI_REV) return ECS_ERR_UNSUPPORTED;
     uint16_t feats = rd_u16(image + 8);
     vm->entry = (int16_t)rd_u16(image + 10);
@@ -1214,7 +1209,7 @@ static int32_t load_image(ecs_vm *vm, const uint8_t *image, size_t len)
             fd->nslots = (uint16_t)r_bytes(&r, 2);
             fd->code_off = (uint32_t)r_bytes(&r, 4);
             if (r.overflow) return ECS_ERR_IMAGE;
-            if (fd->nslots > ECS_REG_MAX) return ECS_ERR_IMAGE;   /* 帧长上限 = 指令域 u8 */
+            if (fd->nslots == 0) return ECS_ERR_IMAGE;
         }
         if (code_size > len - r.pos) return ECS_ERR_IMAGE;
         const uint8_t *stream = image + r.pos;
@@ -1616,6 +1611,27 @@ static void pop_frame(ecs_vm *vm, frame *fr)
 #define ECS_DIRECT_THREADED 0
 #endif
 
+/* 非 ABC 格式只有 A 可扩展；IsJ 无寄存器操作数。 */
+static inline int ecs_has_bx(uint32_t op)
+{
+    switch (op) {
+    case OP_LoadI: case OP_LoadK: case OP_LoadG: case OP_StoreG:
+    case OP_NewArrE: case OP_NewSt: case OP_Img: case OP_Jpt: case OP_Jpf:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+static inline int ecs_valid_wide(const uint8_t *code, uint32_t op)
+{
+    uint32_t hi = rd_u32(code + 4);
+    if (op == OP_Jmp || hi == 0 || (hi & 0xff000000u) != 0) return 0;
+    if (code[1] == 255 && code[4] == 255) return 0;
+    if (ecs_has_bx(op)) return (hi & 0xffff00u) == 0;
+    return !(code[2] == 255 && code[5] == 255) && !(code[3] == 255 && code[6] == 255);
+}
+
 #if !ECS_DIRECT_THREADED
 /* ---- 回退模式专用：格式类表 + 统一取指宏 ----
  * 类别：ABC=三槽位；ABX=A+Bx16；SBXI=A+sBx16（LoadI）；AJ=A+跳转 s16（Jpt/Jpf）；
@@ -1644,16 +1660,19 @@ static const uint8_t ecs_op_fmt[] = {
         vm->error_pc = (int32_t)idx; \
         return ECS_ERR_OPCODE; \
     } \
-    opv = codebuf[pc]; \
-    fmt = ecs_op_fmt[opv]; \
-    op_size = (fmt >= FMT_WJ) ? 8 : 4; \
-    if (pc + op_size > cend) \
+    wide_bytes = (codebuf[pc] & ECS_OP_WIDE) ? 4u : 0u; \
+    opv = codebuf[pc] & ~ECS_OP_WIDE; \
+    op_size = ECS_OP_WORDS(opv) * 4u + wide_bytes; \
+    if (opv > OP_CmpJ || op_size > cend - pc \
+        || (wide_bytes && !ecs_valid_wide(codebuf + pc, opv))) \
     { \
         vm->steps = steps; \
         vm->error_func = fr->func_index; \
         vm->error_pc = (int32_t)idx; \
         return ECS_ERR_OPCODE; \
     } \
+    fmt = ecs_op_fmt[opv]; \
+    operand_high = wide_bytes ? rd_u32(codebuf + pc + 4) : 0; \
     ext_ = 0; \
     jmp_ = 0; \
     switch (fmt) \
@@ -1679,8 +1698,14 @@ static const uint8_t ecs_op_fmt[] = {
             break; /* 跳转字延迟读取：仅转移成立时才碰（热环出口多数不成立） */\
         default: /* FMT_WEXT */ \
             a_ = codebuf[pc + 1]; b_ = codebuf[pc + 2]; c_ = codebuf[pc + 3]; \
-            ext_ = rd_u32(codebuf + pc + 4); \
+            ext_ = rd_u32(codebuf + pc + 4 + wide_bytes); \
             break; \
+    } \
+    a_ |= (int32_t)((operand_high & 0xffu) << 8); \
+    if (fmt == FMT_ABC || fmt >= FMT_WJ) \
+    { \
+        b_ |= (int32_t)(operand_high & 0xff00u); \
+        c_ |= (int32_t)((operand_high >> 8) & 0xff00u); \
     } \
     op_start = pc; \
     op_index = idx; \
@@ -1739,7 +1764,7 @@ int ecs_vm_run(ecs_vm *vm)
     int32_t steps = vm->steps;
     uint32_t opv = 0, op_start = 0, op_size = 4, op_index = 0;
     int32_t a_ = 0, b_ = 0, c_ = 0, jmp_ = 0;
-    uint32_t ext_ = 0;
+    uint32_t ext_ = 0, wide_bytes = 0, operand_high = 0;
 #if !ECS_DIRECT_THREADED
     uint8_t fmt = FMT_ABC;
 #endif
@@ -1784,9 +1809,11 @@ int ecs_vm_run(ecs_vm *vm)
     if (vm->cancel_flag) { vm->steps = steps; fr->ret_pc = pc; fr->ret_idx = idx; return ECS_CANCELLED; } \
     if (++steps >= vm->budget) { vm->steps = 0; fr->ret_pc = pc; fr->ret_idx = idx; return ECS_YIELD; } \
     if (pc >= cend) { vm->steps = steps; vm->error_func = fr->func_index; vm->error_pc = (int32_t)idx; return ECS_ERR_OPCODE; } \
-    opv = codebuf[pc]; \
-    op_size = (uint32_t)ECS_OP_WORDS(opv) * 4u; \
-    if (opv > OP_CmpJ || pc + op_size > cend) { vm->steps = steps; vm->error_func = fr->func_index; vm->error_pc = (int32_t)idx; return ECS_ERR_OPCODE; } \
+    wide_bytes = (codebuf[pc] & ECS_OP_WIDE) ? 4u : 0u; \
+    opv = codebuf[pc] & ~ECS_OP_WIDE; \
+    op_size = (uint32_t)ECS_OP_WORDS(opv) * 4u + wide_bytes; \
+    if (opv > OP_CmpJ || op_size > cend - pc || (wide_bytes && !ecs_valid_wide(codebuf + pc, opv))) { vm->steps = steps; vm->error_func = fr->func_index; vm->error_pc = (int32_t)idx; return ECS_ERR_OPCODE; } \
+    operand_high = wide_bytes ? rd_u32(codebuf + pc + 4) : 0; \
     op_start = pc; op_index = idx; idx++; pc += op_size; \
 } while (0)
 #define VM_CASE(op) L_##op:
@@ -1801,13 +1828,14 @@ int ecs_vm_run(ecs_vm *vm)
 
     /* 操作数取指（handler 按自身格式特化；回退模式由 VM_FETCH 统一解码，此处为空） */
 #if ECS_DIRECT_THREADED
-#define FETCH_OPS_ABC() do { a_ = codebuf[op_start + 1]; b_ = codebuf[op_start + 2]; c_ = codebuf[op_start + 3]; } while (0)
-#define FETCH_OPS_ABX() do { a_ = codebuf[op_start + 1]; b_ = codebuf[op_start + 2] | codebuf[op_start + 3] << 8; c_ = 0; } while (0)
-#define FETCH_OPS_SBXI() do { a_ = codebuf[op_start + 1]; b_ = (int16_t)(codebuf[op_start + 2] | codebuf[op_start + 3] << 8); c_ = 0; } while (0)
-#define FETCH_OPS_AJ() do { a_ = codebuf[op_start + 1]; jmp_ = (int16_t)(codebuf[op_start + 2] | codebuf[op_start + 3] << 8); b_ = c_ = 0; } while (0)
+#define FETCH_A() (codebuf[op_start + 1] | (int32_t)((operand_high & 0xffu) << 8))
+#define FETCH_OPS_ABC() do { a_ = FETCH_A(); b_ = codebuf[op_start + 2] | (int32_t)(operand_high & 0xff00u); c_ = codebuf[op_start + 3] | (int32_t)((operand_high >> 8) & 0xff00u); } while (0)
+#define FETCH_OPS_ABX() do { a_ = FETCH_A(); b_ = codebuf[op_start + 2] | codebuf[op_start + 3] << 8; c_ = 0; } while (0)
+#define FETCH_OPS_SBXI() do { a_ = FETCH_A(); b_ = (int16_t)(codebuf[op_start + 2] | codebuf[op_start + 3] << 8); c_ = 0; } while (0)
+#define FETCH_OPS_AJ() do { a_ = FETCH_A(); jmp_ = (int16_t)(codebuf[op_start + 2] | codebuf[op_start + 3] << 8); b_ = c_ = 0; } while (0)
 #define FETCH_OPS_J() do { jmp_ = (int32_t)((codebuf[op_start + 1] | codebuf[op_start + 2] << 8 | codebuf[op_start + 3] << 16) << 8) >> 8; a_ = b_ = c_ = 0; } while (0)
-#define FETCH_OPS_WJ() do { a_ = codebuf[op_start + 1]; b_ = codebuf[op_start + 2]; c_ = codebuf[op_start + 3]; } while (0)
-#define FETCH_OPS_WEXT() do { a_ = codebuf[op_start + 1]; b_ = codebuf[op_start + 2]; c_ = codebuf[op_start + 3]; ext_ = rd_u32(codebuf + op_start + 4); } while (0)
+#define FETCH_OPS_WJ() FETCH_OPS_ABC()
+#define FETCH_OPS_WEXT() do { FETCH_OPS_ABC(); ext_ = rd_u32(codebuf + op_start + 4 + wide_bytes); } while (0)
 #else
 #define FETCH_OPS_ABC() do { } while (0)
 #define FETCH_OPS_ABX() do { } while (0)
@@ -2316,7 +2344,7 @@ VM_CASE(OP_Call)
     frame *nf = frame_at(vm, vm->frame_off[vm->depth - 1]);
     nf->ret_pc = 0;
     nf->ret_idx = 0;
-    nf->ret_slot = (uint8_t)c_;
+    nf->ret_slot = (uint16_t)c_;
     for (int32_t i = 0; i < b_; i++)
     {
         ecs_value copied = deep_copy_cow(vm, R[a_ + i]);
@@ -2825,7 +2853,7 @@ VM_CASE(OP_ForStep)
     int32_t next = (int32_t)((uint32_t)R[a_].i32 + 1u);
     store_fresh(vm, &R[c_], make_int(next));
     if (next > R[b_].i32)
-        pc = op_start + op_size + (uint32_t)rd_u32(codebuf + op_start + 4);   /* 出口字延迟读 */
+        pc = op_start + op_size + (uint32_t)rd_u32(codebuf + op_start + 4 + wide_bytes);   /* 出口字延迟读 */
     VM_NEXT();
 }
 VM_CASE(OP_CmpJ)   /* 比较跳转融合（P2′）：kind=typeBlock*6+op；数据字 = 跳转字节偏移 */
@@ -2840,7 +2868,7 @@ VM_CASE(OP_CmpJ)   /* 比较跳转融合（P2′）：kind=typeBlock*6+op；数�
         default: { int64_t l = box_l(vm, R[a_]), r = box_l(vm, R[b_]); taken = cmp_kind6_i64(l, r, c_); } break;
     }
     if (taken)
-        pc = op_start + op_size + (uint32_t)rd_u32(codebuf + op_start + 4);
+        pc = op_start + op_size + (uint32_t)rd_u32(codebuf + op_start + 4 + wide_bytes);
     VM_NEXT();
 }
 
@@ -2863,5 +2891,6 @@ VM_CASE(OP_CmpJ)   /* 比较跳转融合（P2′）：kind=typeBlock*6+op；数�
 #undef FETCH_OPS_J
 #undef FETCH_OPS_WJ
 #undef FETCH_OPS_WEXT
+#undef FETCH_A
 #endif
 }

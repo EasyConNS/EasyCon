@@ -114,7 +114,7 @@ public class InstructionFormatTests
         foreach (var op in writesA)
             Assert.That(EcsFormat.ResultSlot(op), Is.EqualTo(EcsResultSlot.A), $"{op}");
 
-        // 写 R[C]：调用接收槽（C=255 无接收）
+        // 写 R[C]：调用接收槽（C=0 为 RET）
         Assert.That(EcsFormat.ResultSlot(EcsOpcode.Call), Is.EqualTo(EcsResultSlot.C));
         Assert.That(EcsFormat.ResultSlot(EcsOpcode.CallN), Is.EqualTo(EcsResultSlot.C));
 

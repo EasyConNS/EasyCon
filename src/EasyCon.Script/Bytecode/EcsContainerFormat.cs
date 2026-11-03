@@ -7,16 +7,16 @@ namespace EasyCon.Script.Bytecode;
 /// 产物容器（v2.3 零期平铺化）：
 /// <c>.ecx</c> 镜像 = ECX1 平铺（<see cref="WriteImage"/>），<c>.ecm</c> 模块缓存 = ECM1 平铺
 /// （<see cref="WriteModule"/>）。同一纪律：定长 36B 头 + 自计数表依序排列 + 头内全量 CRC；
-/// 无逐段框架——格式演进 = 版本断代 + 全量重编（旧产物经魔数不符自然失效）。
-/// 指令流经 <see cref="InstructionCodec"/> 投影为 v3 定长字节流。
+/// 无逐段框架——格式演进 = 版本断代 + 全量重编（旧产物经版本/ABI 校验失效）。
+/// 指令流经 <see cref="InstructionCodec"/> 投影为 v4 按需扩展字节流。
 /// 容量上限不是格式字段；产物只携带关于自身静态极值的事实（ZeroAllocVm.md §4.1）。
 /// </summary>
 public static class EcsContainer
 {
     public const uint FlatMagic = 0x31584345;   // "ECX1"（平铺镜像容器）
-    public const ushort FlatFormat = 1;
+    public const ushort FlatFormat = 2;
     public const uint ModuleFlatMagic = 0x314D4345;   // "ECM1"（平铺模块缓存容器）
-    public const ushort ModuleFlatFormat = 1;
+    public const ushort ModuleFlatFormat = 2;
 
     public const byte HeaderFlagDebug = 0x01;   // ECX1 flags：bit0=调试块在（ECM1 flags 见 WriteModule）
 
@@ -32,6 +32,7 @@ public static class EcsContainer
         var codeBuf = new List<byte>();
         for (int i = 0; i < image.Functions.Count; i++)
         {
+            CheckFrameSize(image.Functions[i]);
             codeOffsets[i] = (uint)codeBuf.Count;
             codeBuf.AddRange(InstructionCodec.Project(image.Functions[i].Instructions));
         }
@@ -138,6 +139,7 @@ public static class EcsContainer
         var codeBuf = new List<byte>();
         for (int i = 0; i < module.Functions.Count; i++)
         {
+            CheckFrameSize(module.Functions[i]);
             codeOffsets[i] = (uint)codeBuf.Count;
             codeBuf.AddRange(InstructionCodec.Project(module.Functions[i].Instructions));
         }
@@ -264,7 +266,13 @@ public static class EcsContainer
         return bytes;
     }
 
-    /// <summary>SEC_LINES 投影所需的指令字节布局（v3 定长：尺寸只依赖操作码，一遍即得）。</summary>
+    static void CheckFrameSize(EcsFunction function)
+    {
+        if (function.NSlots < 1 || function.NSlots > EcsRegisters.MaxRegisters)
+            throw Err($"函数 {function.Name} 的帧槽数越界: {function.NSlots}", function.Name);
+    }
+
+    /// <summary>SEC_LINES 投影所需的指令字节布局（包含按需扩展字，一遍即得）。</summary>
     static int[] InstructionLayout(IReadOnlyList<EcsInstruction> instructions)
     {
         int n = instructions.Count;
@@ -273,7 +281,7 @@ public static class EcsContainer
         for (int i = 0; i < n; i++)
         {
             offsets[i] = off;
-            off += InstructionCodec.SizeOf(instructions[i].Op);
+            off += InstructionCodec.InstructionSize(instructions[i]);
         }
         offsets[n] = off;
         return offsets;
@@ -313,6 +321,8 @@ public static class EcsContainer
         if (format != FlatFormat)
             throw Err($"ECX1 format {format} 不受支持", null);
         int abi = BitConverter.ToUInt16(bytes, 6);
+        if (abi != EcsSyscall.AbiRevision)
+            throw Err($"ECX1 ABI {abi} 不受支持，请重新编译", null);
         ushort feats = BitConverter.ToUInt16(bytes, 8);
         int entry = BitConverter.ToUInt16(bytes, 10);
         byte flagsB = bytes[12];
@@ -422,7 +432,7 @@ public static class EcsContainer
                 foreach (var ins in functions[fi].Instructions)
                 {
                     startsList.Add(acc);
-                    acc += InstructionCodec.SizeOf(ins.Op);
+                    acc += InstructionCodec.InstructionSize(ins);
                 }
                 var table = new List<int>(pairs * 2);
                 for (int k = 0; k < pairs; k++)
@@ -473,6 +483,8 @@ public static class EcsContainer
         int format = BitConverter.ToUInt16(bytes, 4);
         if (format != ModuleFlatFormat)
             throw Err($"ECM1 format {format} 不受支持", null);
+        if (BitConverter.ToUInt16(bytes, 6) != EcsSyscall.AbiRevision)
+            throw Err("ECM1 ABI 不受支持，请重新编译", null);
 
         // CRC 校验（字段清零后全量）
         var savedCrc = BitConverter.ToUInt32(bytes, 32);

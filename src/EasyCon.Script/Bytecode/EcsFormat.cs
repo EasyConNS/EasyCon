@@ -1,6 +1,6 @@
 namespace EasyCon.Script.Bytecode;
 
-/// <summary>指令编码格式（docs/VM2.md §4.1；v3 定长编码——线格式与内存布局一一对应）。</summary>
+/// <summary>指令基础编码格式（docs/VM2.md §3.1；可另带 v4 操作数扩展字）。</summary>
 public enum EcsInsFormat : byte
 {
     /// <summary>op:8 | A:8 | B:8 | C:8（4 字节）</summary>
@@ -50,7 +50,7 @@ public enum EcsResultSlot : byte
     None = 0,
     /// <summary>写 R[A]（取值/运算/比较/构造类，含 SetVar 的深拷贝写）。</summary>
     A,
-    /// <summary>写 R[C]（Call/CallN 的接收槽，C=255 表示无接收）。</summary>
+    /// <summary>写 R[C]（Call/CallN 的接收槽，C=0 为 RET 固定落点）。</summary>
     C,
 }
 
@@ -60,8 +60,8 @@ public enum EcsResultSlot : byte
 /// 步进、InstructionScanner）、反汇编（EcxDisassembler）、体积分析（BytecodeSizeAnalysisTests）
 /// 与 C VM 的 ecs_op_words 表（ecs_vm.h，紧邻 OP_ 枚举）均以本表为对齐基准。
 /// 关键不变量：EXT 后随字是「数据」，其数值可能恰好等于某个操作码（如元素类型码 3 == LoadK），
-/// 一切线性扫描必须按 ExtWords 步进跳过，否则把数据误读为指令（轻则静默改坏 Slice 槽位/
-/// StickPv 时长，重则越界崩溃——历史 F4 缺陷即此类）。
+/// 线格式扫描必须按 InstructionCodec.InstructionSize 跳过操作数扩展字和数据字，
+/// 防止将数据误读为指令（历史 F4 缺陷）。解码形态始终每个 EcsInstruction 一条指令。
 /// 新增指令：EcsOpcode 枚举加值 + 本表加一行（漏登会在 BuildTable 完整性自检抛出）+
 /// 双端执行/发射语义 + C 侧表同步；全部扫描/步进/反汇编消费点自动正确。
 /// </summary>
@@ -74,10 +74,10 @@ public static class EcsFormat
     /// <summary>结果槽写集（执行语义的编码侧投影，见 EcsResultSlot）。</summary>
     public static EcsResultSlot ResultSlot(EcsOpcode op) => Table[(int)op].Result;
 
-    /// <summary>指令总字数（4 字节字为单位；Ext/IabcJ=2，其余=1）。</summary>
+    /// <summary>基础字数（Ext/IabcJ=2，其余=1）；实际线格式尺寸见 InstructionCodec.InstructionSize。</summary>
     public static int WordCount(EcsOpcode op) => Get(op) is EcsInsFormat.Ext or EcsInsFormat.IabcJ ? 2 : 1;
 
-    /// <summary>后随 32 位数据字个数（4 字节指令为 0）。定长线性扫描的唯一步进依据；
+    /// <summary>后随 32 位数据字个数（不计操作数扩展字）；
     /// IabcJ 的数据字 = 跳转偏移（ForStep 出口 / CmpJ 跳转），同样是「数据不可误读为指令」。</summary>
     public static int ExtWords(EcsOpcode op) => WordCount(op) - 1;
 
@@ -96,6 +96,8 @@ public static class EcsFormat
         int registered = 0;
         void F(EcsOpcode op, EcsInsFormat format, EcsResultSlot result = EcsResultSlot.A, EcsExtKind ext = EcsExtKind.None)
         {
+            if ((byte)op >= InstructionCodec.WideFlag)
+                throw new InvalidOperationException("操作码 bit7 保留给操作数扩展标记");
             t[(int)op] = new InsInfo { Format = format, Ext = ext, Result = result };
             registered++;
         }

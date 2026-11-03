@@ -189,15 +189,15 @@ public class ArgumentWindowTests
     }
 
     [Test]
-    public void CombinedParameterAndOutgoingWindows_OverFrameBudget_ReportsOverflow()
+    public void CombinedParameterAndOutgoingWindows_Over255_RunCorrectly()
     {
         string forwarded = string.Join(", ", Enumerable.Range(0, 128).Select(i => $"$p{i}"));
-        string source = $"FUNC relay({Parameters(128)}):INT\nRETURN relay({forwarded})\nENDFUNC\n" +
+        string source = WeightedFunction(128) + $"FUNC relay({Parameters(128)}):INT\nRETURN weighted({forwarded})\nENDFUNC\n" +
             $"RETURN relay({Arguments(128)})\n";
         CompileResult result = Compilation.CompileSource(source, ScriptCompileProfiles.Interactive(optimize: false));
-        Assert.That(result.Diagnostics.Any(d => d.Message.Contains("寄存器溢出", StringComparison.Ordinal)), Is.True);
-        Assert.That(result.Diagnostics.Any(d => d.Code == DiagnosticCodes.ParamWindowOverflow), Is.False);
-        Assert.That(result.Image, Is.Null);
+        Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty, string.Join("\n", result.Diagnostics));
+        Assert.That(result.Image!.Functions.Single(f => f.Name == "relay").NSlots, Is.GreaterThan(255));
+        AssertResult(EcsContainer.ReadImage(EcsContainer.WriteImage(result.Image)), Enumerable.Range(1, 128).Sum(i => i * i));
     }
 
     [Test]

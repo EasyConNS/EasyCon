@@ -70,7 +70,7 @@ internal static class CvmRunner
     }
 
     /// <summary>在 workDir 现场编译 ecs-vm（幂等：二进制已存在即复用）；无 cc 返回 null。</summary>
-    public static string? EnsureBuilt(string workDir)
+    public static string? EnsureBuilt(string workDir, bool directThreading = true)
     {
         _ccPath ??= FindCc();
         if (_ccPath == null)
@@ -81,14 +81,16 @@ internal static class CvmRunner
         }
         var nativeDir = FindNativeDir();
         Assert.That(nativeDir, Is.Not.Null, "未找到 ecs_vm.c 源目录");
-        var binary = Path.Combine(workDir, OperatingSystem.IsWindows() ? "ecs-vm.exe" : "ecs-vm");
+        string binaryName = directThreading ? "ecs-vm" : "ecs-vm-switch";
+        var binary = Path.Combine(workDir, binaryName + (OperatingSystem.IsWindows() ? ".exe" : ""));
         if (File.Exists(binary))
             return binary;
         var psi = new ProcessStartInfo
         {
             FileName = _ccPath,
             Arguments = $"-O2 -std=c99 -Wall -Wextra -Werror -o \"{binary}\" " +
-                        $"\"{Path.Combine(nativeDir!, "ecs_vm.c")}\" \"{Path.Combine(nativeDir!, "ecs_main.c")}\" -lm",
+                        $"\"{Path.Combine(nativeDir!, "ecs_vm.c")}\" \"{Path.Combine(nativeDir!, "ecs_main.c")}\" -lm" +
+                        (directThreading ? "" : " -DECS_NO_DIRECT_THREADING"),
             RedirectStandardError = true,
             RedirectStandardOutput = true,
             UseShellExecute = false,

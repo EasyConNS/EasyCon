@@ -93,7 +93,7 @@ Rules to respect when changing code:
 - **Never hand-write `CompileOptions` literals.** Use `ScriptCompileProfiles.Interactive`
   (compile-on-the-fly, process cache only) or `ScriptCompileProfiles.Distributable`
   (obj/ content-addressed cache; the image is MCU-distributable). All products share one
-  format (ECX1 flat + v3 fixed-width encoding); the 255-slot frame budget is shared by
+  format (ECX1 flat + v4 optional 16-bit operands); the 65535-slot frame budget is shared by
   params, outbound windows and live values. Device fit is a burn-time capacity precheck
   concern, not a profile.
 - DI *container* is deliberately absent: composition is explicit constructor passing from

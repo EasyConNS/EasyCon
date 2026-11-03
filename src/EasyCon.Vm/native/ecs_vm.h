@@ -4,8 +4,8 @@
  * C99，仅依赖 libc（malloc/free/realloc/memcpy/memset/snprintf/strtod/getenv——
  * 仅用于加载期表分配与镜像读入；运行期零分配，见 docs/ZeroAllocVm.md P2/P3）。
  * 嵌入式移植：把本文件与 ecs_vm.c 加入工程，或经宏重定向内存函数。
- * 容器格式：ECSC v2（docs/SingleStreamFormat.md §3）；指令流 = v3 定长编码——
- * 4B（Iabc/ABx/AsBx/IsJ）或 8B（Ext/IabcJ = iABC + u32 数据字），尺寸由 ecs_op_words 给出，
+ * 容器格式：ECX1 format=2 / ABI=2（docs/VM2.md §3.1）；指令流 = v4 操作数扩展编码。
+ * 基础 4B/8B 由 ecs_op_words 给出；操作码 bit7 置位时头字后另加 4B 操作数高位字。
  * 跳转偏移单位 = 字节（目标 = 指令起始 + 本指令字节数 + delta）。
  */
 #ifndef ECS_VM_H
@@ -19,16 +19,17 @@ extern "C" {
 #endif
 
 /* ---- 容器 ABI（与 C# EcsSyscall.AbiRevision / ECSC manifest.abi_rev 对齐） ---- */
-#define ECS_ABI_REV 1        /* 镜像格式修订号（与 C# EcsSyscall.AbiRevision 对齐；
+#define ECS_ABI_REV 2        /* 镜像格式修订号（与 C# EcsSyscall.AbiRevision 对齐；
                               * 全新实现无历史分级，格式语义变化时直接改值） */
 
 /* ---- 帧内寄存器布局（与 C# EcsRegisters 一一对应，双端手工镜像） ----
- * 帧模型 = Dalvik/Lua 式每函数栈窗口：帧长 = 函数寄存器高水位（funcdef.nslots ≤ 255，
- * 指令域 u8 是唯一上限），调用时在共享值栈上开窗、返回时弹出。 */
-#define ECS_REG_MAX          255  /* 寄存器号上限（指令 A/B/C 域 u8） */
+ * 帧模型 = Dalvik/Lua 式每函数栈窗口：帧长 = 函数寄存器高水位（funcdef.nslots ≤ 65535），
+ * 调用时在共享值栈上开窗、返回时弹出；实际容量由 ECS_FRAME_SEG_BYTES 限制。 */
+#define ECS_REG_MAX          65535  /* 帧槽数上限（nslots u16；最大寄存器号 65534） */
 #define ECS_REG_RET          0    /* R0 = 返回值固定落点（Call 的 C=0） */
 #define ECS_REG_ARG_BASE     1    /* R1 起 = NParams 个参数（Call 从 A 指定的出站窗深拷贝） */
-#define ECS_REG_ARG_COUNT    (ECS_REG_MAX - ECS_REG_ARG_BASE)
+#define ECS_REG_ARG_COUNT    254  /* 参数计数的独立 ABI 限制 */
+#define ECS_OP_WIDE          0x80u
 /* 参数后按需保留出站/数组分块窗口，再分配临时值；位置由编译器编码进指令。 */
 #define ECSC_MAGIC  0x43534345u   /* "ECSC" */
 #define ECSC_VERSION 2        /* v2 = 定长指令编码（v1 = varint 基流，互不兼容） */
@@ -60,6 +61,8 @@ enum {
                   *（typeBlock：0=i32,1=u32,2=f64,3=i64；op：0=Eq,1=Neq,2=Lt,3=Le,4=Gt,5=Ge）*/
 };
 
+typedef char ecs_opcode_fits_seven_bits[(OP_CmpJ < ECS_OP_WIDE) ? 1 : -1];
+
 /* ---- 文件族 syscall 编号（uvm32 式编号 ABI，与 C# EcsSyscall 一致，docs/VM2.md §9.1） ----
  * CallN 的 EXT 字旗标置位时，低 31 位 = 编号，直接引擎内建分发，不经原生名表。
  * 文件实现仍转发 host->native（传规范名）；caps 缺失行为与名表时代逐字一致。 */
@@ -82,7 +85,7 @@ enum {
 #define ECS_FEAT_FILE     0x8u
 #define ECS_FEAT_AUDIO    0x20u /* AUDIO_LOAD/SCORE/UNLOAD require a background-audio host. */
 
-/* 指令字数（1 = 4B，2 = 8B 带 u32 数据字）——单一事实源，与 C# EcsFormat.WordCount /
+/* 基础指令字数（1 = 4B，2 = 8B 带 u32 数据字；不计操作数扩展字），与 C# EcsFormat.WordCount /
  * docs/VM2.md §4.1 对齐（新增指令双端各改一处表 + 执行/发射语义）。数据字是「数据」：
  * EXT 的目标 ID/槽位/时长/坐标，ForStep/CmpJ 的跳转偏移，WaitI/KeyI 的时长——
  * 数值可能恰好等于某个操作码，一切线性扫描必须按字数步进跳过（历史 F4 缺陷铁律）。 */
