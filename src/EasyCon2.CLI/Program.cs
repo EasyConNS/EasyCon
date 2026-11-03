@@ -29,6 +29,7 @@ bool isLspCommand = args.Length > 0 && args[0] == "lsp";
 bool isMcpCommand = args.Length > 0 && args[0] == "--mcp";
 bool isLabelCommand = args.Length > 0 && args[0] == "labels";
 bool isMaaCommand = args.Length > 0 && args[0] == "maa";
+bool isInitCommand = args.Length > 0 && args[0] == "init";
 
 string defaultCOMPort = "COM22";
 
@@ -43,7 +44,7 @@ EasyCon.Core.Config.ConfigManager.ConfigErrorReported += (path, msg) =>
 // 库层诊断转发（CoreLog 默认仅 Debug.WriteLine，Release 下会丢失）
 EasyCon.Core.Logging.CoreLog.Sink = msg => Console.Error.WriteLine(msg);
 
-if (!isFormatCommand && !isLspCommand && !isMcpCommand && !isLabelCommand && !isMaaCommand)
+if (!isFormatCommand && !isLspCommand && !isMcpCommand && !isLabelCommand && !isMaaCommand && !isInitCommand)
 {
     Console.WriteLine("------------------------------------------");
     Console.WriteLine("----    EasyCon CLI Runner v0.0.1     ----");
@@ -620,6 +621,7 @@ rootCommand.Subcommands.Add(FlowCommand.Create(maaHost));
 rootCommand.Subcommands.Add(MaaHostCommand.Create());
 rootCommand.Subcommands.Add(LabelsCommand.Create());
 rootCommand.Subcommands.Add(ServeCommand.Create());
+rootCommand.Subcommands.Add(InitCommand.Create());
 
 // --mcp：stdio 模式的 MCP Server（任意外部 agent 经标准 MCP 协议驱动工作区工具）
 if (isMcpCommand)

@@ -1,3 +1,4 @@
+using EasyCon.Core.Hosting;
 using EasyCon.Core.Runner;
 using EasyCon.Script;
 using EasyCon.Script.Bytecode;
@@ -350,6 +351,82 @@ public class ModuleProjectTests
         Assert.That(project.Success, Is.False, "缺失导入应失败");
         Assert.That(project.Diagnostics.Any(d => d.Message.Contains("导入文件不存在") || d.Message.Contains("导入库不存在")), Is.True,
             string.Join("; ", project.Diagnostics));
+    }
+
+    [TestCase("pkg/a.ecs", "pkg/b.ecs", true)]
+    [TestCase("pkg/a.ecs", "other/b.ecs", true)]
+    [TestCase("lib/a.ecs", "lib/b.ecs", false)]
+    [TestCase("lib/a.ecs", "other/b.ecs", false)]
+    public void ExplicitImportCycle_IsRejected(string firstPath, string secondPath, bool explicitEntry)
+    {
+        string firstDirectory = Path.GetDirectoryName(Path.Combine(_dir, firstPath))!;
+        string secondDirectory = Path.GetDirectoryName(Path.Combine(_dir, secondPath))!;
+        string importSecond = Path.GetRelativePath(firstDirectory, Path.Combine(_dir, secondPath)).Replace('\\', '/');
+        string importFirst = Path.GetRelativePath(secondDirectory, Path.Combine(_dir, firstPath)).Replace('\\', '/');
+        Write(firstPath, $"IMPORT \"{importSecond}\"\n");
+        Write(secondPath, $"# cycle closes here\nIMPORT \"{importFirst}\"\n");
+        Write("main.ecs", explicitEntry ? $"IMPORT \"{firstPath}\"\n" : "PRINT \"main\"\n");
+
+        ModuleProjectResult project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
+            ScriptCompileProfiles.Interactive());
+
+        Assert.That(project.Success, Is.False, string.Join("\n", project.Diagnostics));
+        Diagnostic cycle = project.Diagnostics.Single(d => d.Code == DiagnosticCodes.CircularImport);
+        Assert.Multiple(() =>
+        {
+            Assert.That(cycle.IsError, Is.True);
+            Assert.That(cycle.FileName, Is.EqualTo(Path.Combine(_dir, secondPath)));
+            Assert.That(cycle.Location.StartLine, Is.EqualTo(1));
+            Assert.That(cycle.Location.Span.Length, Is.GreaterThan(0));
+            Assert.That(project.Artifacts, Is.Empty, "Cycle detection must precede module compilation");
+        });
+    }
+
+    [Test]
+    public void ExplicitImportCycle_ThroughMain_IsRejected()
+    {
+        Write("main.ecs", "IMPORT \"a.ecs\"\n");
+        Write("a.ecs", "IMPORT \"b.ecs\"\n");
+        Write("b.ecs", "IMPORT \"main.ecs\"\n");
+
+        ModuleProjectResult project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
+            ScriptCompileProfiles.Interactive());
+
+        Assert.That(project.Success, Is.False);
+        Assert.That(project.Diagnostics, Has.One.Matches<Diagnostic>(d =>
+            d.Code == DiagnosticCodes.CircularImport && d.FileName == Path.Combine(_dir, "b.ecs")));
+    }
+
+    [Test]
+    public void ExplicitSelfImport_IsRejected()
+    {
+        Write("main.ecs", "IMPORT \"main.ecs\"\n");
+
+        ModuleProjectResult project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
+            ScriptCompileProfiles.Interactive());
+
+        Assert.That(project.Success, Is.False);
+        Assert.That(project.Diagnostics, Has.One.Matches<Diagnostic>(d =>
+            d.Code == DiagnosticCodes.CircularImport && d.FileName == Path.Combine(_dir, "main.ecs")
+                && d.Location.Span.Length > 0));
+    }
+
+    [Test]
+    public void ExplicitImportDiamond_InitializesSharedDependencyOnce()
+    {
+        Write("shared/base.ecs", "PRINT \"base\"\n");
+        Write("left.ecs", "IMPORT \"shared/base.ecs\"\nPRINT \"left\"\n");
+        Write("right.ecs", "IMPORT \"shared/base.ecs\"\nPRINT \"right\"\n");
+        Write("main.ecs", "IMPORT \"left.ecs\"\nIMPORT \"right.ecs\"\nPRINT \"main\"\n");
+
+        ModuleProjectResult project = ProjectCompiler.CompileProject(Path.Combine(_dir, "main.ecs"),
+            ScriptCompileProfiles.Interactive());
+
+        Assert.That(project.Success, Is.True, string.Join("\n", project.Diagnostics));
+        EcxHost host = new();
+        host.EnableRecording();
+        Assert.That(EcxInterpreter.Run(project.Image!, host), Is.EqualTo(0));
+        Assert.That(host.Lines, Is.EqualTo(new[] { "base", "left", "right", "main" }));
     }
 
     [Test]

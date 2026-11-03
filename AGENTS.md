@@ -4,7 +4,7 @@
 
 EasyCon is a Nintendo Switch automation tool with virtual controller, image recognition (OpenCV via OpenCvSharp5), and a custom ECS scripting language. .NET 10.0, C# (LangVersion=preview).
 
-**Entry points**: `src/EasyCon2.Avalonia` (GUI), `src/EasyCon2.CLI` (CLI).
+**Entry points**: `src/EasyCon2.Avalonia` (GUI), `src/EasyCon2.CLI` (CLI, published as `ezcon`; `ezcon init` scaffolds the canonical script project layout).
 
 ## Build & test commands
 
@@ -194,6 +194,7 @@ OpenCV bindings come from the `OpenCvSharp5` NuGet packages (OpenCV 5.0); native
 **Current-state specs (kept in sync with code — trust these):**
 
 - `docs/Pipeline.md` — unified compilation pipeline and single-source-of-truth landing points
+- `docs/ModuleImportRules.md` — module visibility/import rules R1–R5/R7, automatic-edge convergence, compile order
 - `docs/ModuleSystem.md` — interface-based independent compilation + content-addressed cache
 - `docs/VM2.md` — bytecode/instruction-set spec (the live VM): ECX1 flat image encoding (§3.1),
   frame/register model (§3.3), calling convention (§3.4), and the S-01..S-21 dual-end

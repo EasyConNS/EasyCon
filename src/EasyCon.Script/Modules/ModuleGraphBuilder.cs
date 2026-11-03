@@ -92,18 +92,13 @@ internal static class ModuleGraphBuilder
         if (mainPath.Length > 0)
             byPath[mainPath] = ProjectCompiler.MainModule;
 
-        // ---- 显式 IMPORT 闭包（DFS；环检测只作用于显式边）----
-        var visiting = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // ---- 显式 IMPORT 收集：保留边的源码位置，闭包收敛后再做 DFS 环检测 ----
+        Dictionary<(string Importer, string Dependency), TextLocation> importLocations = new();
         var expandQueue = new Queue<ModuleNode>();
         expandQueue.Enqueue(mainNode);
 
         void CollectExplicit(ModuleNode node)
         {
-            if (!visiting.Add(node.Name))
-            {
-                diagnostics.ReportCircularImport(NodeLocation(node), node.Path);
-                return;
-            }
             foreach (var (importPath, importLocation) in ScannedImports(node))
             {
                 if (!File.Exists(importPath))
@@ -111,22 +106,20 @@ internal static class ModuleGraphBuilder
                     diagnostics.ReportImportFileNotFound(importLocation, importPath);
                     continue;
                 }
-                if (byPath.TryGetValue(importPath, out var depName))
+                if (!byPath.TryGetValue(importPath, out string? depName))
                 {
-                    if (visiting.Contains(depName))
-                        diagnostics.ReportCircularImport(importLocation, importPath);
-                    else if (!node.Dependencies.Contains(depName))
-                        node.Dependencies.Add(depName);
-                    continue;
+                    ModuleNode? depNode = RegisterFileNode(importPath, scriptDir, nodes, byPath, importLocation, diagnostics);
+                    if (depNode == null)
+                        continue;
+                    expandQueue.Enqueue(depNode);
+                    depName = depNode.Name;
                 }
-                var depNode = RegisterFileNode(importPath, scriptDir, nodes, byPath, importLocation, diagnostics);
-                if (depNode == null)
-                    continue;
-                expandQueue.Enqueue(depNode);
-                if (!node.Dependencies.Contains(depNode.Name))
-                    node.Dependencies.Add(depNode.Name);
+                if (!node.Dependencies.Contains(depName))
+                {
+                    node.Dependencies.Add(depName);
+                    importLocations.Add((node.Name, depName), importLocation);
+                }
             }
-            visiting.Remove(node.Name);
         }
 
         // ---- 定点收敛：显式闭包 + 目录自动注册（同目录互见 / lib/ 自动导入）相互触发，
@@ -156,6 +149,26 @@ internal static class ModuleGraphBuilder
                         node, node.AutoDependencies, expandQueue, diagnostics);
             }
         }
+
+        // 自动发现的节点也可能含显式环；必须在自动边合入 Dependencies 前检查所有节点。
+        HashSet<string> visited = new(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> visiting = new(StringComparer.OrdinalIgnoreCase);
+        void CheckExplicitCycles(ModuleNode node)
+        {
+            if (!visited.Add(node.Name))
+                return;
+            visiting.Add(node.Name);
+            foreach (string dependency in node.Dependencies)
+            {
+                if (visiting.Contains(dependency))
+                    diagnostics.ReportCircularImport(importLocations[(node.Name, dependency)], nodes[dependency].Path);
+                else
+                    CheckExplicitCycles(nodes[dependency]);
+            }
+            visiting.Remove(node.Name);
+        }
+        foreach (ModuleNode node in nodes.Values)
+            CheckExplicitCycles(node);
 
         // ---- 合并依赖与编译序：std/vision 头插 → 自动（名序，同包遮蔽显式导入）→ 显式（发现序）。
         //      层级只由显式边约束（Kahn；自动边不约束——接口先行已保证就绪）：
@@ -313,10 +326,4 @@ internal static class ModuleGraphBuilder
         }
         return result;
     }
-
-    /// <summary>无树节点的诊断落点（环检测防御分支）：模块文件名 + 零跨度。</summary>
-    static TextLocation NodeLocation(ModuleNode node)
-        => node.Tree is { } tree
-            ? ModuleLocations.FirstImport(tree)
-            : new TextLocation(SourceText.From("", node.Path), new SourceSpan(0, 0));
 }

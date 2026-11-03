@@ -92,7 +92,7 @@ graph TD
 | `EasyCon.Lsp` | ECS 语言服务：补全/悬停/跳转/符号/诊断；只复用 Script 的语法树，不求值不产码 | `EcsLanguageServer`、`DocumentManager`、`Constants` |
 | `EasyCon2.Avalonia.Core` | 纯 VM/逻辑层：脚本服务、日志服务、配置服务、AI Agent 编排、MCP 客户端、标签编辑器、终端、LSP 客户端 | `ScriptService`、`AgentOrchestrator`、`ToolRegistry`、`McpManager`、`LspClientService` |
 | `EasyCon2.Avalonia` | GUI 宿主：View/控件、平台服务实现（设备/采集/手柄/对话框/窗口/主题）、`VPad/` 虚拟手柄 | `MainWindowViewModel`、`CaptureService`、`DeviceService`、`ControllerService` |
-| `EasyCon2.CLI` | `ezcon`：`run` / `port` / `video` / `format` / `ir` / `modules` / `compile` / `lsp` | `Program.cs`、`ConsoleOutAdapter` |
+| `EasyCon2.CLI` | `ezcon`：`init` / `run` / `port` / `video` / `format` / `ir` / `modules` / `compile` / `lsp` / `agent` / `flow` / `maa` / `labels` / `serve` | `Program.cs`、`InitCommand.cs`、`ConsoleOutAdapter` |
 | `EasyCon.Vm`（原生，不在 slnx） | 单片机端字节码解释器 + 参考宿主；由 `ci/build-vm.sh` 与测试侧 `CvmRunner` 构建 | `ecs_vm.c/h`、`ecs_main.c` |
 
 ## 5. 组合与生命周期

@@ -27,8 +27,9 @@
 
 ## 2. 关键语义事实
 
-- **lib/ 自动加载**：main 同目录 `lib/*.ecs` 注册为隐式模块（显式 import 之后、main 之前编译，
-  全局可见无 alias；按文件名序，跳过显式 import）。
+- **lib/ 自动加载**：main 同目录 `lib/*.ecs` 注册为隐式模块（全局可见无 alias；按文件名序，
+  跳过显式 import）。编译序由显式边层级 + 同层名序决定，自动边不约束层级；完整导入规则
+  （R1–R5/R7）见 `docs/ModuleImportRules.md`；`ezcon init` 生成的项目骨架即该规则的参考布局。
 - **同签名跨模块导出**：链接期首匹配遮蔽 + `MD_AMBIGUOUS_EXPORT` 警告（同名同签名函数可共存）。
 - **NeedIL 判定**：链接后在完整镜像上做入口可达性 BFS（采集洞 CallN）∪ 全局 Img 标签，
   据此设置镜像 NeedIL 标志。

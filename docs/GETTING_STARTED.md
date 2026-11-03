@@ -136,11 +136,18 @@ PRINT "完成！"    # 显示完成消息
 3. **选择您刚保存的 `test.ecs` 文件**
 4. **点击"运行"按钮**
 
-**如果您使用命令行版本**（发布包中的 `ezcon.exe`，仓库内构建产物名为 `EasyCon2.CLI.exe`）：
+**如果您使用命令行版本**（默认 `ezcon` 已加入 PATH；发布包中的 Windows 可执行文件为 `ezcon.exe`，仓库内构建产物名为 `EasyCon2.CLI.exe`）：
 ```bash
+# 初始化脚本项目框架（生成 main.ecs / lib/mod1.ecs / models/ / ImgLabel/）
+ezcon init my-project
+cd my-project
+
 # 在命令行中运行
-./ezcon run test.ecs
+ezcon run main.ecs --port mock
 ```
+
+`ezcon init` 的路径可省略（默认当前目录）；已存在模板文件时默认拒绝写入，
+使用 `--force` 只覆盖 `main.ecs` 与 `lib/mod1.ecs`，不会删除任何目录。
 
 ---
 

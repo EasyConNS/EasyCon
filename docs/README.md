@@ -7,7 +7,7 @@
 
 | 文档 | 内容 |
 |---|---|
-| [GETTING_STARTED.md](GETTING_STARTED.md) | 安装、GUI/CLI 运行脚本、采集画面来源（含 OBS 虚拟摄像头） |
+| [GETTING_STARTED.md](GETTING_STARTED.md) | 安装、`ezcon init` 项目初始化、GUI/CLI 运行脚本、采集画面来源（含 OBS 虚拟摄像头） |
 | [DeviceConnections.md](DeviceConnections.md) | 通用串口协议注册、TCP / 蓝牙桥接配置、协议扩展与端点占用规则 |
 | [Pokeldn.md](Pokeldn.md) | pokeldn-pad 固件分析、ESP32 串口 / ESP32-S3 BLE 服务连接、能力范围与验证 |
 | [Script.md](Script.md) | ECS 脚本语言完整语法：变量/常量/类型/流程控制/函数/结构体/数组/按键语句/识图标签/IMPORT |
@@ -22,6 +22,7 @@
 |---|---|
 | [Framework.md](Framework.md) | 分层依赖图、组合根规则（能力装配/编译档位唯一落点）、三条主链路、已知短板 |
 | [Pipeline.md](Pipeline.md) | 源码 → EcxImage 统一编译链路、链接期行为、单一事实源落点表 |
+| [ModuleImportRules.md](ModuleImportRules.md) | 模块导入规则 R1–R5/R7、自动边收敛、编译序与常见误区 |
 | [ModuleSystem.md](ModuleSystem.md) | 接口式独立编译、Merkle 缓存键、接口完备性清单、缓存 GC |
 | [Flow.md](Flow.md) | 节点编排（`*.flow.json`）：图格式、节点目录与语义、执行模型（看门狗/计时/停止/慢感知）、HTTP + MCP 接口、Python 画布（`frontend/`）、已知挂账 |
 
