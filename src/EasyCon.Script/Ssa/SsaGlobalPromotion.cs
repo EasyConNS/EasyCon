@@ -19,7 +19,6 @@ namespace EasyCon.Script.Ssa;
 /// </summary>
 internal static class SsaGlobalPromotion
 {
-    private static int _nextId;
 
     /// <summary>全局提升上下文：一个全局在提升期间的私有状态。</summary>
     sealed class GlobalInfo
@@ -30,14 +29,19 @@ internal static class SsaGlobalPromotion
         public List<SsaValue> LoadInsts = new();
     }
 
+    // M3：模块并行 Optimize → 计数器 = 进程级单调（Interlocked），**不重置**——
+    // 重置会让并行模块互相清零、模块内 ID 撞号
+    private static int _nextId;
+
     internal static void Run(SsaProgram program)
     {
-        _nextId = 0;
+        // 打底：原子加 programMax + 1，保证本程序新值 ID > 既有最大（单调不减，跨模块共享序列）
+        int programMax = 0;
         foreach (var fn in AllFunctions(program))
             foreach (var b in fn.Blocks)
                 foreach (var v in b.Instructions.Concat(b.Phis))
-                    if (v.Id > _nextId) _nextId = v.Id;
-        _nextId++;
+                    if (v.Id > programMax) programMax = v.Id;
+        Interlocked.Add(ref _nextId, programMax + 1 - _nextId);
 
         var fns = AllFunctions(program).ToList();
         var stores = new Dictionary<GlobalVariableSymbol, List<(SsaFunction Fn, SsaValue Inst)>>();
@@ -117,7 +121,8 @@ internal static class SsaGlobalPromotion
             var bc = b.BranchCondition != null ? $" bc=v{b.BranchCondition.Id}:{b.BranchCondition.Op}(u{b.BranchCondition.Uses})" : "";
             var phis = b.Phis.Count > 0
                 ? " phis=[" + string.Join(",", b.Phis.Select(p => $"v{p.Id}<-[{string.Join(",", p.ExtraArgs?.Select(a => $"v{a.Id}:{a.Op}") ?? [])}]")) + "]" : "";
-            Console.Error.WriteLine($"[gp {tag}] fn={fn.Symbol.Name} b{b.Id} preds=[{string.Join(",", b.Predecessors.Select(p => p.Id))}]{bc}{phis} insts=[{string.Join(", ", b.Instructions.Select(i => $"v{i.Id}:{i.Op}(u{i.Uses})"))}]");
+            static string AuxOf(SsaValue i) => i.Aux is Symbols.GlobalVariableSymbol gs ? $":{gs.Name}" : "";
+            Console.Error.WriteLine($"[gp {tag}] fn={fn.Symbol.Name} b{b.Id} preds=[{string.Join(",", b.Predecessors.Select(p => p.Id))}]{bc}{phis} insts=[{string.Join(", ", b.Instructions.Select(i => $"v{i.Id}:{i.Op}{AuxOf(i)}(u{i.Uses})"))}]");
         }
     }
 
@@ -150,7 +155,7 @@ internal static class SsaGlobalPromotion
         {
             if (!perFn.TryGetValue(fn, out var cv))
             {
-                cv = new SsaValue(_nextId++, constVal.Op, constVal.Type)
+                cv = new SsaValue(Interlocked.Increment(ref _nextId), constVal.Op, constVal.Type)
                 {
                     Const = constVal.Const,
                     ConstString = constVal.ConstString,
@@ -209,12 +214,16 @@ internal static class SsaGlobalPromotion
             return;
         }
 
-        var exitDef = new Dictionary<(SsaBlock, GlobalVariableSymbol), SsaValue>();   // 块出口定值
+        // 块出口定值：存 store 指令本身，Arg0 惰性解引用——
+        // 后续 LoadGlobal→提升值替换会就地改写 store.Arg0，预快照值会变悬挂引用
+        //（实证：$i = $N 生成的 StoreGlobal($i, LoadGlobal($N))，$N 的 load 被提升删除后
+        //  合流 φ 臂仍引用已删除的 LoadGlobal → "phi input references missing"）
+        var exitDef = new Dictionary<(SsaBlock, GlobalVariableSymbol), SsaValue>();   // 块出口 store 指令
         var entryDef = new Dictionary<(SsaBlock, GlobalVariableSymbol), SsaValue>();  // 块入口到达值（φ 断环缓存）
         foreach (var (g, inst) in stores)
         {
             var block = FindBlock(fn, inst)!;
-            exitDef[(block, g)] = inst.Arg0!;
+            exitDef[(block, g)] = inst;
         }
 
         // 块入口到达值：多前驱 → 占位 φ 先登记断环（回边自引用臂由此产生），再填臂；
@@ -225,7 +234,7 @@ internal static class SsaGlobalPromotion
                 return def;
             if (block.Predecessors.Count == 0)
             {
-                var zero = NewZero(g.Type, block, _nextId++);
+                var zero = NewZero(g.Type, block, Interlocked.Increment(ref _nextId));
                 block.Instructions.Insert(0, zero);
                 entryDef[(block, g)] = zero;
                 return zero;
@@ -236,7 +245,7 @@ internal static class SsaGlobalPromotion
                 entryDef[(block, g)] = v;
                 return v;
             }
-            var phi = new SsaValue(_nextId++, SsaOp.Phi, g.Type) { Block = block };
+            var phi = new SsaValue(Interlocked.Increment(ref _nextId), SsaOp.Phi, g.Type) { Block = block };
             phi.ExtraArgs = new List<SsaValue>();
             entryDef[(block, g)] = phi;
             foreach (var pred in block.Predecessors)
@@ -252,8 +261,8 @@ internal static class SsaGlobalPromotion
         // 块出口值：块内最后一次 store 的值；块内无 store → 入口值
         SsaValue ExitValue(GlobalVariableSymbol g, SsaBlock block)
         {
-            if (exitDef.TryGetValue((block, g), out var def))
-                return def;
+            if (exitDef.TryGetValue((block, g), out var storeInst))
+                return storeInst.Arg0!;   // 惰性解引用，取替换后的最新值
             return EntryValue(g, block);
         }
 

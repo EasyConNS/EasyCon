@@ -2,8 +2,8 @@
 
 > C# 侧单一编译链路：**源码 → Parser → ProjectCompiler（模块图 + lib/ 自动加载）→ 每模块独立编译 →
 > EcxImage**；桌面由 **EcxInterpreter** 执行 ECX 镜像，单片机由 **C VM** 执行同一二进制。
-> 关联：`docs/ModuleSystem.md`（模块/缓存）、`docs/VmSemanticContract.md`（双端语义契约）、
-> `docs/EcmEcxFormat.md`（二进制格式）、`docs/VM2.md`（指令集规格）。
+> 关联：`docs/ModuleSystem.md`（模块/缓存）、`docs/VM2.md`（双端语义，对拍测试锁定）、
+> 产物容器规格见 `EcsContainer`/链接器测试（`test/EasyCon.Tests/Bytecode/`）。
 
 ## 1. 架构
 
@@ -27,16 +27,17 @@
 
 ## 2. 关键语义事实
 
-- **lib/ 自动加载**：main 同目录 `lib/*.ecs` 注册为隐式模块（显式 import 之后、main 之前编译，
-  全局可见无 alias；按文件名序，跳过显式 import）。
+- **lib/ 自动加载**：main 同目录 `lib/*.ecs` 注册为隐式模块（全局可见无 alias；按文件名序，
+  跳过显式 import）。编译序由显式边层级 + 同层名序决定，自动边不约束层级；完整导入规则
+  （R1–R5/R7）见 `docs/ModuleImportRules.md`；`ezcon init` 生成的项目骨架即该规则的参考布局。
 - **同签名跨模块导出**：链接期首匹配遮蔽 + `MD_AMBIGUOUS_EXPORT` 警告（同名同签名函数可共存）。
 - **NeedIL 判定**：链接后在完整镜像上做入口可达性 BFS（采集洞 CallN）∪ 全局 Img 标签，
   据此设置镜像 NeedIL 标志。
 - **Link 纯函数化**：在深拷贝副本上重写——不污染调用方产物，`CompileResult.Artifacts` 可安全
   .ecm roundtrip。
-- **FWRITE 句柄 0**：写入 no-op 返回写入长度（S-14，见 VmSemanticContract）。
+- **FWRITE 句柄 0**：写入 no-op 返回写入长度。
 - **EXT 扫描铁律**：EXT 后随字是「数据」，数值可能恰好等于某个操作码——一切线性扫描必须按
-  `EcsFormat.ExtWords` 步进跳过（C 侧 `ecs_op_has_ext`），否则把数据误读为指令。
+  `EcsFormat.WordCount` 步进跳过（C 侧 `ecs_op_words`），否则把数据误读为指令。
 
 ## 3. 链接期行为
 
@@ -56,22 +57,25 @@
 
 | 知识 | 落点 |
 |------|------|
-| 指令格式/EXT 语义/结果槽 | `Bytecode/EcsFormat.cs`（漏登自检）+ C 侧 `ecs_op_has_ext` |
+| 指令格式/EXT 语义/结果槽 | `Bytecode/EcsFormat.cs`（漏登自检）+ C 侧 `ecs_op_words` |
 | 内置函数能力清单（路由 + 特征位 + MCU 桩可用标记） | `Binding/BuiltinFunctions.Manifest`（单一登记；`Routes`/`IsIntrinsic` 派生；链接器特征扫描消费 FeatureBit；总表见 VM2.md §7.0） |
 | syscall 编号/镜像特征位 | `Bytecode/EcsOpcode.cs`（`EcsSyscall`/`EcsImageFeatures`）+ C 侧 `ECS_SYSCALL_*`/`ECS_FEAT_*` |
 | 代码线性扫描 | `Bytecode/InstructionScanner.cs`（回调式，链接器各 pass 共享） |
-| RC 槽写 | C# `MoveToSlot/StoreFresh/OverwriteItem`；C `move_to/store_fresh`（规则见 VmSemanticContract §二） |
+| RC 槽写 | C# `MoveToSlot/StoreFresh/OverwriteItem`（EcxInterpreter.cs）；C `move_to/store_fresh`（ecs_vm.c） |
 | 缓存键选项 | `CompileOptions.ProductFingerprint()`；产物自检 `ModuleArtifact.IntegrityCheck()` |
 | 模块诊断构造 | `DiagnosticBag.FromMessage` |
 | 测试基建 | `test/EasyCon.Tests/Support/`（CvmRunner/EcsTestHost/CorpusAssert） |
 
 ## 5. 后续项（未实施）
 
-- GUI 一键产 `.ecx`：经 `IScriptSession.Info.Image` → `EcxWriter`（CLI compile 已可用）。
-- 桌面路径缓存化（当前桌面现编）。
-- 运行错误位置映射：产物无行号表，需 pc→源行映射才能恢复源级定位。
-- EcxInterpreter 性能：常量串驻留（对齐 VM2.md §2 字符串驻留规格）/ 帧池复用 / 取消检查三分点
+- **GUI 一键产 `.ecx` 并烧录**：方案见 `docs/McuBytecodeDelivery.md`（唯一入口
+  `McuImageBuilder` + 预检 + 复用 `NintendoSwitch.Flash`；单流化后产物同形态，
+  GUI 会话镜像可直接序列化，CLI `compile` 已可用）。
+- ~~桌面路径缓存化~~（✅ 单流化档位塌缩后桌面路径已可用进程/磁盘缓存；GUI 默认仍现编）。
+- ~~运行错误位置映射~~（✅ ECM v4 起产物带行号表，桌面路径 `EcxVm` 已实现 pc→源行；
+  行号调试块保留，MCU 发布镜像省略）。
+- EcxInterpreter 性能：常量串 pinned（✅ S-20 已落地）/ 帧池复用（C VM ✅ ZeroAlloc P2）/ 取消检查三分点
   （入口 + 预算边界 + 宿主调用后）已落地；剩余方向：C VM 同型收益（加载期驻留 + 帧池）、
   运行错误位置映射（需 pc→源行表）。
 - 格式 v2 窗口四项（调用约定寄存器化/镜像 CRC/Link 三遍合一/模块并行编译）——设计备注见
-  `docs/EcmEcxFormat.md` §5.1，实施须双端协商升版本。
+  需双端协商升版本（容器写入/校验落点 `EcsContainer`）。

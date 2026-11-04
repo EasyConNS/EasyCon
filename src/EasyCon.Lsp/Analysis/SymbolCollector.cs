@@ -7,7 +7,7 @@ internal sealed record SymbolInfo(string Name, string Kind, int Line, int Charac
 
 internal static class SymbolCollector
 {
-    public static List<SymbolInfo> CollectSymbols(CompicationUnit root)
+    public static List<SymbolInfo> CollectSymbols(CompilationUnit root)
     {
         var symbols = new List<SymbolInfo>();
         foreach (var stmt in root.Members)

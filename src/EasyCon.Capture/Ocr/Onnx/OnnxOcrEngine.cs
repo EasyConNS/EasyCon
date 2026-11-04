@@ -1,11 +1,11 @@
-﻿using EasyCon.Capture.Ocr;
+using EasyCon.Capture.Ocr;
 using OpenCvSharp;
 using OpenCvSharp.Dnn;
 
 namespace EasyCon.Capture.Ocr.Onnx;
 
 /// <summary>
-/// OpenCV DNN 文本检测器 — 基于 PaddleOCR 检测模型（如 PP-OCRv5_mobile_det.onnx）。
+/// OpenCV DNN 文本检测器 — 基于 PaddleOCR 检测模型（部署约定文件名 det.onnx）。
 /// 实现 IOcrDetector，从图片中定位文字区域。
 /// </summary>
 public sealed class OnnxDetector : IOcrDetector
@@ -14,14 +14,16 @@ public sealed class OnnxDetector : IOcrDetector
     private readonly DetOptions _options;
     private bool _disposed;
 
-    // PaddleOCR 检测模型预处理参数
-    private static readonly float[] DetMean = [0.485f, 0.456f, 0.406f];
-    private static readonly float[] DetStd = [0.229f, 0.224f, 0.225f];
+    // PP-OCRv5 / v6 官方 ONNX 导出实测同参的检测预处理：等价于 (px/127.5 - 0.5)，即 (px/255 - 0.25) / 0.5。
+    // 实测 ImageNet mean/std 会让 v5 概率图大面积饱和（>50% 像素超阈值），此参数组下文本区稀疏（~8%）；
+    // v6 对预处理不敏感（四种常见参数组检出框一致），沿用同参保持一代配方可互换。
+    private static readonly float[] DetMean = [0.25f, 0.25f, 0.25f];
+    private static readonly float[] DetStd = [0.5f, 0.5f, 0.5f];
 
     /// <summary>
     /// 从文件路径加载检测模型。
     /// </summary>
-    /// <param name="modelPath">ONNX 模型文件路径（如 PP-OCRv5_mobile_det.onnx）。</param>
+    /// <param name="modelPath">ONNX 模型文件路径（如 det.onnx）。</param>
     /// <param name="options">检测配置（可选）。</param>
     /// <param name="backend">DNN 计算后端（默认 DEFAULT）。</param>
     /// <param name="target">DNN 目标设备（默认 CPU）。</param>
@@ -155,6 +157,16 @@ public sealed class OnnxDetector : IOcrDetector
             int bw = (int)(rect.Width * scaleX);
             int bh = (int)(rect.Height * scaleY);
 
+            // unclip-lite：DB 无完整 Vatti 外扩，按比例外扩边界。
+            // 实测（1080p 游戏截图像素字）垂直外扩需 ~h*30%、水平 ~w*1.5% 才不切字，
+            // 否则 rec 对紧框输出空/乱码。
+            int ex = Math.Max(6, (int)(bw * 0.015f));
+            int ey = Math.Max(6, (int)(bh * 0.30f));
+            x -= ex;
+            y -= ey;
+            bw += ex * 2;
+            bh += ey * 2;
+
             // 裁剪到原图范围
             x = Math.Clamp(x, 0, origW);
             y = Math.Clamp(y, 0, origH);
@@ -214,7 +226,7 @@ public sealed class OnnxDetector : IOcrDetector
 }
 
 /// <summary>
-/// OpenCV DNN 文本识别器 — 基于 PaddleOCR 识别模型（如 PP-OCRv5_mobile_rec.onnx）。
+/// OpenCV DNN 文本识别器 — 基于 PaddleOCR 识别模型（部署约定文件名 &lt;lang&gt;_rec.onnx）。
 /// 实现 IOcrRecognizer，从已裁剪的文字行图片中识别文本。
 /// </summary>
 public sealed class OnnxRecognizer : IOcrRecognizer
@@ -229,7 +241,7 @@ public sealed class OnnxRecognizer : IOcrRecognizer
     /// <summary>
     /// 从文件路径加载识别模型和字符集。
     /// </summary>
-    /// <param name="modelPath">ONNX 模型文件路径（如 PP-OCRv5_mobile_rec.onnx）。</param>
+    /// <param name="modelPath">ONNX 模型文件路径（如 &lt;lang&gt;_rec.onnx）。</param>
     /// <param name="charsetPath">字符集文件路径（每行一个字符，首行为空白符）。</param>
     /// <param name="options">识别配置（可选）。</param>
     /// <param name="backend">DNN 计算后端（默认 DEFAULT）。</param>
@@ -270,36 +282,34 @@ public sealed class OnnxRecognizer : IOcrRecognizer
     }
 
     /// <summary>
-    /// 识别预处理：BGR→RGB、高度缩放到 32（保持宽高比）、宽度填充到 8 的倍数。
+    /// 识别预处理：高度缩放到 32（保持宽高比）、宽度填充到 8 的倍数。
+    /// 注意：PaddleOCR rec 官方预处理不转 RGB（保持 BGR），与 det 不同。
     /// </summary>
     private static Mat PreprocessRec(Mat src)
     {
-        using var rgb = new Mat();
-        Cv2.CvtColor(src, rgb, ColorConversionCodes.BGR2RGB);
-
-        float ratio = (float)RecImageHeight / rgb.Height;
-        int newW = (int)(rgb.Width * ratio);
-        Cv2.Resize(rgb, rgb, new Size(newW, RecImageHeight), 0, 0, InterpolationFlags.Linear);
+        float ratio = (float)RecImageHeight / src.Height;
+        int newW = (int)(src.Width * ratio);
+        Cv2.Resize(src, src, new Size(newW, RecImageHeight), 0, 0, InterpolationFlags.Linear);
 
         // 宽度填充到 8 的倍数（最小 8）
         int padW = ((newW + 7) / 8) * 8 - newW;
         if (padW > 0)
-            Cv2.CopyMakeBorder(rgb, rgb, 0, 0, 0, padW, BorderTypes.Constant, Scalar.Black);
+            Cv2.CopyMakeBorder(src, src, 0, 0, 0, padW, BorderTypes.Constant, Scalar.Black);
 
-        return rgb.Clone();
+        return src.Clone();
     }
 
     /// <summary>
-    /// 创建识别模型输入 blob：归一化到 [-1, 1] 范围。
-    /// 公式：(pixel/255 - 0.5) / 0.5 = pixel/127.5 - 1.0
-    /// BlobFromImage: scale = 1/127.5, mean = (1, 1, 1), swapRB = false（已是 RGB）
+    /// 创建识别模型输入 blob：与 det 同族的归一化（px/255 - 0.25，不除 std）。
+    /// 实测 PaddleOCR 经典的 (px/127.5 - 1) 会让 v5 导出输出乱码，此参数组出正确文本。
+    /// BlobFromImage: scale = 1/255, mean = (0.25, 0.25, 0.25), swapRB = false（保持 BGR）
     /// </summary>
     private static Mat CreateRecBlob(Mat rgb)
     {
         return Cv2.Dnn.BlobFromImage(rgb,
-            1.0 / 127.5,
+            1.0 / 255.0,
             new Size(rgb.Width, rgb.Height),
-            new Scalar(1.0, 1.0, 1.0),
+            new Scalar(0.25, 0.25, 0.25),
             swapRB: false, crop: false);
     }
 
@@ -313,8 +323,18 @@ public sealed class OnnxRecognizer : IOcrRecognizer
 
         if (output.Dims == 3)
         {
-            T = output.Size(1);
-            numClasses = output.Size(2);
+            if (output.Size(0) == 1)
+            {
+                // [1, T, C]
+                T = output.Size(1);
+                numClasses = output.Size(2);
+            }
+            else
+            {
+                // [T, 1, C]（部分导出的形状）
+                T = output.Size(0);
+                numClasses = output.Size(2);
+            }
         }
         else if (output.Dims >= 4)
         {
@@ -360,12 +380,12 @@ public sealed class OnnxRecognizer : IOcrRecognizer
         if (indices.Count == 0)
             return new OcrRecognizeResult(string.Empty, 0f);
 
-        // 查字符集
+        // 查字符集（PaddleOCR 惯例：末位类别是显式空格，越界按空格回退）
         var chars = new char[indices.Count];
         for (int i = 0; i < indices.Count; i++)
         {
             int idx = indices[i];
-            chars[i] = idx < _charset.Length ? _charset[idx][0] : '?';
+            chars[i] = idx < _charset.Length ? _charset[idx][0] : ' ';
         }
 
         float confidence = validCount > 0 ? totalConf / validCount : 0f;
@@ -482,14 +502,15 @@ public sealed class OnnxEngineFactory : IOcrEngineFactory
     private readonly Target _target;
 
     /// <summary>
-    /// 创建 ONNX 引擎工厂。
+    /// 创建 ONNX 引擎工厂。代码不绑定任何模型代际，按部署约定解析（模型与字典同代配对由部署保证）：
+    /// 检测 <paramref name="detModelName"/>（约定 "det.onnx"）；识别 &lt;lang&gt;_rec.onnx；字符集 &lt;lang&gt;_dict.txt。
     /// </summary>
     /// <param name="modelDirectory">模型文件目录。</param>
-    /// <param name="detModelName">检测模型文件名（默认 "PP-OCRv5_mobile_det.onnx"）。</param>
+    /// <param name="detModelName">检测模型文件名（部署约定 "det.onnx"）。</param>
     /// <param name="backend">GPU 后端类型（默认 CPU）。</param>
     public OnnxEngineFactory(
         string modelDirectory,
-        string detModelName = "PP-OCRv5_mobile_det.onnx",
+        string detModelName = "det.onnx",
         GpuBackend backend = GpuBackend.Cpu)
     {
         _modelDirectory = modelDirectory ?? throw new ArgumentNullException(nameof(modelDirectory));
@@ -504,13 +525,6 @@ public sealed class OnnxEngineFactory : IOcrEngineFactory
         var recModel = Path.Combine(modelDir, $"{lang}_rec.onnx");
         var charset = Path.Combine(modelDir, $"{lang}_dict.txt");
 
-        if (!File.Exists(recModel))
-        {
-            // 回退：尝试不带语言前缀的通用模型名
-            recModel = Path.Combine(modelDir, "PP-OCRv5_mobile_rec.onnx");
-            charset = Path.Combine(modelDir, "ppocr_keys_v5.txt");
-        }
-
         return new OnnxRecognizer(recModel, charset, backend: _backend, target: _target);
     }
 
@@ -521,12 +535,6 @@ public sealed class OnnxEngineFactory : IOcrEngineFactory
         var detPath = Path.Combine(modelDir, _detModelName);
         var recPath = Path.Combine(modelDir, $"{lang}_rec.onnx");
         var charsetPath = Path.Combine(modelDir, $"{lang}_dict.txt");
-
-        if (!File.Exists(recPath))
-        {
-            recPath = Path.Combine(modelDir, "PP-OCRv5_mobile_rec.onnx");
-            charsetPath = Path.Combine(modelDir, "ppocr_keys_v5.txt");
-        }
 
         return new OnnxOcrEngine(
             new OnnxDetector(detPath, backend: _backend, target: _target),

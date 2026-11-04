@@ -16,8 +16,44 @@ internal static class CvmRunner
 
     public static string? FindCc()
     {
-        foreach (var candidate in new[] { "/usr/bin/cc", "/usr/bin/clang", "/usr/bin/gcc" })
-            if (File.Exists(candidate)) return candidate;
+        // 环境变量显式指定优先（CI 可注入工具链路径）
+        var env = Environment.GetEnvironmentVariable("ECSVM_CC");
+        if (!string.IsNullOrWhiteSpace(env))
+        {
+            if (!File.Exists(env)) throw new InvalidOperationException($"ECSVM_CC 指定的编译器不存在：{env}");
+            return env;
+        }
+
+        if (!OperatingSystem.IsWindows())
+        {
+            foreach (var candidate in new[] { "/usr/bin/cc", "/usr/bin/clang", "/usr/bin/gcc" })
+                if (File.Exists(candidate)) return candidate;
+        }
+
+        // PATH 逐目录扫描（覆盖 Windows 的 MinGW/LLVM/WinLibs 等安装）
+        var names = OperatingSystem.IsWindows()
+            ? new[] { "clang.exe", "gcc.exe", "cc.exe" }
+            : new[] { "cc", "clang", "gcc" };
+        var path = Environment.GetEnvironmentVariable("PATH") ?? "";
+        foreach (var dir in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            foreach (var name in names)
+            {
+                var full = Path.Combine(dir, name);
+                if (File.Exists(full)) return full;
+            }
+
+        // Windows 常见固定安装位置兜底
+        if (OperatingSystem.IsWindows())
+            foreach (var candidate in new[]
+                     {
+                         @"C:\Program Files\LLVM\bin\clang.exe",
+                         @"C:\msys64\ucrt64\bin\gcc.exe",
+                         @"C:\msys64\mingw64\bin\gcc.exe",
+                         @"C:\Strawberry\c\bin\gcc.exe",
+                         @"C:\ProgramData\chocolatey\bin\gcc.exe",
+                     })
+                if (File.Exists(candidate)) return candidate;
+
         return null;
     }
 
@@ -38,48 +74,61 @@ internal static class CvmRunner
     {
         _ccPath ??= FindCc();
         if (_ccPath == null)
+        {
+            if (Environment.GetEnvironmentVariable("ECSVM_REQUIRE_CC") == "1")
+                Assert.Fail("ECSVM_REQUIRE_CC=1，但未找到 C99 编译器；不得跳过原生差分验证");
             return null;
+        }
         var nativeDir = FindNativeDir();
         Assert.That(nativeDir, Is.Not.Null, "未找到 ecs_vm.c 源目录");
-        var binary = Path.Combine(workDir, "ecs-vm");
+        var binary = Path.Combine(workDir, OperatingSystem.IsWindows() ? "ecs-vm.exe" : "ecs-vm");
         if (File.Exists(binary))
             return binary;
         var psi = new ProcessStartInfo
         {
             FileName = _ccPath,
-            Arguments = $"-O2 -std=c99 -Wall -Wextra -o \"{binary}\" " +
+            Arguments = $"-O2 -std=c99 -Wall -Wextra -Werror -o \"{binary}\" " +
                         $"\"{Path.Combine(nativeDir!, "ecs_vm.c")}\" \"{Path.Combine(nativeDir!, "ecs_main.c")}\" -lm",
             RedirectStandardError = true,
             RedirectStandardOutput = true,
             UseShellExecute = false,
         };
         using var build = Process.Start(psi)!;
-        var buildErr = build.StandardError.ReadToEnd();
-        build.WaitForExit(60000);
+        var buildErrTask = build.StandardError.ReadToEndAsync();   // 异步排空，避免管道写满互锁
+        if (!build.WaitForExit(60000))
+        {
+            try { build.Kill(true); } catch { /* 已退出 */ }
+            throw new TimeoutException("C VM 构建超时（60s）");
+        }
+        var buildErr = buildErrTask.Result;
         Assert.That(build.ExitCode, Is.EqualTo(0), "C VM 构建失败：" + buildErr);
         return binary;
     }
 
-    /// <summary>执行镜像并采集 stdout（--print）/stderr（--trace 事件 TSV）。</summary>
+    /// <summary>执行镜像并采集 stdout（--print）/stderr（--trace 事件 TSV）；extraArgs 追加宿主旗标（如 --strict-caps）。</summary>
     public static (int ExitCode, string Stdout, string Stderr) Run(string vmBinary, byte[] ecx, string tag,
-        string workDir, int timeoutMs = 120000)
+        string workDir, int timeoutMs = 120000, string? extraArgs = null)
     {
         var ecxPath = Path.Combine(workDir, $"{tag}.ecx");
         File.WriteAllBytes(ecxPath, ecx);
         var psi = new ProcessStartInfo
         {
             FileName = vmBinary,
-            Arguments = $"run \"{ecxPath}\" --print --trace",
+            Arguments = $"run \"{ecxPath}\" --print --trace{(string.IsNullOrEmpty(extraArgs) ? "" : $" {extraArgs}")}",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             StandardOutputEncoding = Encoding.UTF8,
         };
         using var p = Process.Start(psi)!;
-        var stdout = p.StandardOutput.ReadToEnd();
-        var stderr = p.StandardError.ReadToEnd();
-        p.WaitForExit(timeoutMs);
-        return (p.ExitCode, stdout, stderr);
+        var stdoutTask = p.StandardOutput.ReadToEndAsync();   // 双流并发排空，避免 stderr TSV 写满管道互锁
+        var stderrTask = p.StandardError.ReadToEndAsync();
+        if (!p.WaitForExit(timeoutMs))
+        {
+            try { p.Kill(true); } catch { /* 已退出 */ }
+            p.WaitForExit(5000);
+        }
+        return (p.ExitCode, stdoutTask.Result, stderrTask.Result);
     }
 
     /// <summary>stdout 行切分（约定以换行收尾，末空行不计为一行）。</summary>

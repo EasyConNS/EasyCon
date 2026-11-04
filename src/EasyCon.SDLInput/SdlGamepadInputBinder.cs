@@ -1,5 +1,6 @@
 using EasyCon.Core.Config;
 using EasyCon.Core.Input;
+using EasyCon.Core.Maa;
 using EasyDevice;
 using SDL;
 
@@ -9,12 +10,12 @@ public sealed unsafe class SdlGamepadInputBinder : IInputBinder, IDisposable
 {
     private readonly SdlEventLoop _eventLoop;
     private readonly SdlGamepadDetector _detector;
-    private readonly NintendoSwitch _switch;
+    private readonly IControllerSession _switch;
     private readonly int _gamepadInstanceId;
     private bool _enabled;
     private bool _started;
 
-    public SdlGamepadInputBinder(SdlEventLoop eventLoop, SdlGamepadDetector detector, NintendoSwitch @switch, int gamepadInstanceId)
+    public SdlGamepadInputBinder(SdlEventLoop eventLoop, SdlGamepadDetector detector, IControllerSession @switch, int gamepadInstanceId)
     {
         _eventLoop = eventLoop;
         _detector = detector;
@@ -33,6 +34,9 @@ public sealed unsafe class SdlGamepadInputBinder : IInputBinder, IDisposable
     {
         _started = false;
         _enabled = false;
+        // 复位设备：断开/切换控制源时清掉最后一份报告（如按住的摇杆方向），
+        // 否则该状态会一直残留在 Switch 上，直到下一个 binder 写入
+        if (_switch.CanAcceptManualInput) _switch.Reset();
     }
 
     public void SetEnabled(bool enabled)
@@ -46,13 +50,14 @@ public sealed unsafe class SdlGamepadInputBinder : IInputBinder, IDisposable
 
     public void Poll()
     {
-        if (!_started || !_enabled) return;
+        if (!_started || !_enabled || !_switch.CanAcceptManualInput) return;
 
         var gp = _detector.GetGamepad(_gamepadInstanceId);
         if (gp == null) return;
 
         var report = SdlGamepadMapper.Map(gp);
-        _switch.ApplyReport(report);
+        try { _switch.ApplyReport(report); }
+        catch (ControllerOperationException ex) when (ex.ErrorCode is "Busy" or "InputDisconnected") { }
     }
 
     public void Dispose()

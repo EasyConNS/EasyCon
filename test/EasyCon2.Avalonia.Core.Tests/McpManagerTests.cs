@@ -1,7 +1,7 @@
+using EasyCon.Core.LLM.Agent.Tools;
 using EasyCon.Core.LLM.Mcp;
 using EasyCon.Core.Services;
-using EasyCon2.Avalonia.Core.AiAgent.Tools;
-using EasyCon2.Avalonia.Core.Mcp;
+using EasyCon2.Avalonia.Mcp;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
@@ -103,12 +103,11 @@ public class McpManagerTests
     }
 
     [Test]
-    public void McpManager_Dispose_ClearsConnections()
+    public async Task McpManager_Dispose_ClearsConnectionsAsync()
     {
         var log = new FakeLogService();
         var manager = new McpManager(log);
-
-        manager.Dispose();
+        await manager.DisposeAsync();
 
         Assert.That(manager.Connections, Is.Empty);
     }

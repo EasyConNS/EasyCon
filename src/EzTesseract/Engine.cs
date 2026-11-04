@@ -42,7 +42,7 @@ public sealed class Engine : IDisposable
 
         if (result == -1)
         {
-            // 失败时 Init 内部已释放 handle，但仍调用 Delete 清理并防止双重释放
+            // TessBaseAPIInit4 失败返回 -1 时并不析构句柄——这里是必需且唯一的一次释放
             TesseractDll.BaseApiDelete(handle);
             throw new TesseractException($"Failed to initialize Tesseract engine (datapath='{dataPath}', language='{language}')");
         }
@@ -50,10 +50,13 @@ public sealed class Engine : IDisposable
         Handle = handle;
     }
 
+    /// <summary>图像代号：每次 <see cref="Process"/> 递增。Page 据此检测引擎已被用于新图像（旧 Page 失效）。</summary>
+    internal int ImageGeneration { get; private set; }
+
     /// <summary>
     /// 设置图像与页面分割模式，返回 <see cref="Page"/>（不立即识别）。
     /// 首次访问 <see cref="Page.Text"/>/<see cref="Page.MeanConfidence"/> 时才触发识别。
-    /// 调用方负责 Dispose 返回的 Page（using）。
+    /// 调用方负责 Dispose 返回的 Page（using）。同一 Engine 的上一个 Page 在本调用后失效。
     /// </summary>
     public Page Process(Pix.Image image, PageSegMode pageSegMode)
     {
@@ -65,7 +68,8 @@ public sealed class Engine : IDisposable
 
         TesseractDll.SetPageSegMode(Handle, (int)pageSegMode);
         TesseractDll.SetImage2(Handle, image.Handle);
-        return new Page(this);
+        ImageGeneration++;
+        return new Page(this, image);
     }
 
     public void Dispose()

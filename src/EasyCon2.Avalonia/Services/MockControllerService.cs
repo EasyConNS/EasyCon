@@ -8,9 +8,10 @@ public sealed class MockControllerService : IControllerService
     public event Action? AvailableSourcesChanged;
     public event Action? Disconnected;
 
-    public string[] GetAvailableSources() => ["键盘"];
+    public IReadOnlyList<ControlSourceInfo> GetAvailableSources()
+        => [new ControlSourceInfo("键盘", ControllerService.KeyboardSourceId)];
 
-    public bool TryConnect(string sourceName) => false;
+    public bool TryConnect(string sourceId) => false;
 
     public void Disconnect() { }
 

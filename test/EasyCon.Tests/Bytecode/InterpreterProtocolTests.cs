@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 namespace EasyCon.Tests.Bytecode;
 
 /// <summary>
-/// 执行协议单测（docs/VmSemanticContract.md S-18）—— EcxInterpreter 执行协议（C# 语义参考实现）：
+/// 执行协议单测—— EcxInterpreter 执行协议（C# 语义参考实现）：
 /// YIELD 预算切片续跑、取消（CANCELLED）、错误现场（错误码 + ErrorFunc/ErrorPc，对齐 C VM ecs_vm_error_location）。
 /// 调用深度上限仅 C VM 承担（ECS_MAX_CALL_DEPTH → ECS_ERR_DEPTH，见 CvmCrossValidationTests.Cvm_CallDepthLimit）；
 /// C# 解释器帧为堆分配，与金标准 SsaEvaluator（.NET 调用栈）一致不设限。
@@ -77,8 +77,8 @@ public class InterpreterProtocolTests
         Assert.That(errorFunc, Is.InRange(0, image.Functions.Count - 1), "错误现场应指向有效函数");
         Assert.That(image.Functions[errorFunc].Name, Is.EqualTo("<main>"),
             "除零应发生在入口函数 <main>（链接后 $eval 本体前插 init 序列并更名，错误现场指向实际失败函数）");
-        Assert.That(errorPc, Is.InRange(0, image.Functions[errorFunc].Code.Count - 1));
-        var failingOp = (EcsOpcode)(image.Functions[errorFunc].Code[errorPc] & 0xFF);
+        Assert.That(errorPc, Is.InRange(0, image.Functions[errorFunc].Instructions.Count - 1));
+        var failingOp = image.Functions[errorFunc].Instructions[errorPc].Op;
         Assert.That(failingOp, Is.EqualTo(EcsOpcode.DivI), "错误现场应指向除法指令本身（与 C VM 语义一致）");
     }
 

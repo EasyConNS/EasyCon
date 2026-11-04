@@ -2,6 +2,11 @@ namespace EasyCon.Core.Config;
 
 public record KeyMappingConfig
 {
+    public const int CurrentSchemaVersion = 2;
+
+    /// <summary>持久化格式版本；0 = WinForms 虚拟键（VK）时代的旧文件。</summary>
+    public int SchemaVersion { get; set; }
+
     public int A { get; set; } = 76;       // Keys.L
     public int B { get; set; } = 75;       // Keys.K
     public int X { get; set; } = 73;       // Keys.I

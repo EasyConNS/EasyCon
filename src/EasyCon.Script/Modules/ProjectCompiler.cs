@@ -40,16 +40,16 @@ public sealed class ModuleProjectResult
 /// <summary>
 /// 项目级独立编译编排（docs/ModuleSystem.md §3.3/§5 + 统一链路 docs/Pipeline.md）：
 ///
-///   main.ecs ─► ModuleGraphBuilder（IMPORT 递归展开 + 环检测 + lib/ 自动加载）──► 拓扑序
+///   main.ecs ─► ModuleGraphBuilder（显式 IMPORT 闭包 + 同目录互见/lib/ 自动导入）──► 确定性序
 ///                          │
-///              ModuleCompilePipeline：obj/ 缓存命中 → 读 .ecm（接口区 + 代码区）（M4）
+///              ModuleCompilePipeline：接口先行预提取（.eci 缓存）→ obj/ 缓存命中 → 读 .ecm
 ///                      未命中 → Synthesize(依赖接口) → 急切绑定 → SSA → 优化 →
-///                               编码（外部调用 = 导入标记 / CallN 原生）→ 原子写回 obj/（M5）
+///                               编码（外部调用 = 导入标记 / CallN 原生）→ 原子写回 obj/
 ///                          │
 ///              Link：类型表合并 + 导入解析 + &lt;main&gt;/&lt;init&gt; 合成（M6）──► EcxImage
 ///
 /// std/vision 为隐式依赖（内嵌源码、模块名固定），先于一切用户模块编译；
-/// lib/ 自动加载对齐 v1 ImportResolver 顺序语义（显式 import 之后、main 之前，全局可见无 alias）。
+/// main 隐式导入 lib/*.ecs（R3），同目录互见见 R1（docs/ModuleImportRules.md）。
 /// 桌面执行（EcxInterpreter）与 MCU 分发（.ecx）共用同一 EcxImage 产物。
 /// </summary>
 public static class ProjectCompiler
@@ -58,7 +58,7 @@ public static class ProjectCompiler
     public const string VisionModule = "vision";
     public const string MainModule = "main";
 
-    /// <summary>从脚本文件编译（统一链路主入口；lib/ 自动加载 + obj/ 缓存按 options）。</summary>
+    /// <summary>从脚本文件编译（统一链路主入口；docs/ModuleImportRules.md）。</summary>
     public static ModuleProjectResult CompileProject(string mainPath, CompileOptions? options = null)
     {
         options ??= new CompileOptions();
@@ -71,22 +71,33 @@ public static class ProjectCompiler
         result.Timing.FileLoad += sw.Elapsed;
 
         return CompileCore(mainTree, scriptDir,
-            options.ObjDir ?? Path.Combine(scriptDir, "obj"), options, result,
-            allowLibAutoLoad: true);
+            options.ObjDir ?? Path.Combine(scriptDir, "obj"), options, result);
     }
 
-    /// <summary>从内存源码编译（单文件场景：无 lib/ 自动加载；磁盘缓存仅显式提供 objDir 时启用）。</summary>
+    /// <summary>从内存源码编译（单文件场景：磁盘缓存仅显式提供 objDir 时启用）。</summary>
     public static ModuleProjectResult CompileProject(SyntaxTree mainTree, CompileOptions? options = null)
     {
         options ??= new CompileOptions();
         var result = new ModuleProjectResult();
         return CompileCore(mainTree, scriptDir: null,
-            objDir: options.ObjDir ?? "", options, result,
-            allowLibAutoLoad: false);
+            objDir: options.ObjDir ?? "", options, result);
+    }
+
+    /// <summary>从带源文件路径的内存源码编译（保留编辑器未保存内容，IMPORT 解析含同目录 lib/）。</summary>
+    public static ModuleProjectResult CompileProject(SyntaxTree mainTree, string scriptDir,
+        CompileOptions? options = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(scriptDir);
+        options ??= new CompileOptions();
+        var result = new ModuleProjectResult();
+        scriptDir = Path.GetFullPath(scriptDir);
+        return CompileCore(mainTree, scriptDir,
+            options.ObjDir ?? (options.UseDiskCache ? Path.Combine(scriptDir, "obj") : ""),
+            options, result);
     }
 
     static ModuleProjectResult CompileCore(SyntaxTree mainTree, string? scriptDir, string objDir,
-        CompileOptions options, ModuleProjectResult result, bool allowLibAutoLoad)
+        CompileOptions options, ModuleProjectResult result)
     {
         ModuleCache? cache = null;
         if (options.UseDiskCache && objDir.Length > 0)
@@ -96,16 +107,15 @@ public static class ProjectCompiler
         if (mainTree.Diagnostics.Where(d => d.IsError).ToList() is { Count: > 0 } mainTreeErrors)
         {
             result.Diagnostics.AddRange(mainTreeErrors);
-            return result;
+            return FinalizeResult(result);
         }
 
         var diagnostics = new DiagnosticBag();
-        var graph = ModuleGraphBuilder.Build(mainTree, scriptDir, allowLibAutoLoad, result.Timing, diagnostics,
-            options.LegacySyntax);
+        var graph = ModuleGraphBuilder.Build(mainTree, scriptDir, result.Timing, diagnostics);
         if (diagnostics.HasErrors())
         {
             result.Diagnostics.AddRange(diagnostics);
-            return result;
+            return FinalizeResult(result);
         }
         result.Diagnostics.AddRange(diagnostics.Where(d => !d.IsError));   // 非致命提示透传
 
@@ -113,7 +123,7 @@ public static class ProjectCompiler
         if (!pipeline.CompileAll(graph.CompileOrder))
         {
             result.MainTree = mainTree;
-            return result;
+            return FinalizeResult(result);
         }
 
         foreach (var node in graph.CompileOrder)
@@ -145,11 +155,45 @@ public static class ProjectCompiler
         }
 
         result.NativeSymbols = pipeline.NativeSymbols.ToImmutableArray();
-        result.Image = EcxPipeline.Link(result.Artifacts,
-            result.Artifacts.Any(a => a.KeyAction),
-            result.Artifacts.Any(a => a.NeedIL));
-        result.Success = true;
         result.MainTree = mainTree;
+        if (result.Diagnostics.HasErrors())
+            return FinalizeResult(result);
+
+        try
+        {
+            result.Image = EcxPipeline.Link(result.Artifacts,
+                result.Artifacts.Any(a => a.KeyAction),
+                result.Artifacts.Any(a => a.NeedIL));
+            result.Success = true;
+        }
+        catch (BytecodeException ex)
+        {
+            string message = string.Join("；", ex.Diagnostics
+                .Select(d => d.ToString())
+                .Distinct(StringComparer.Ordinal));
+            result.Diagnostics.Add(Diagnostic.Error(
+                ModuleLocations.Default(mainTree), message, DiagnosticCodes.Link));
+            result.Image = null;
+            result.Success = false;
+        }
+        catch (Exception ex)
+        {
+            result.Diagnostics.Add(Diagnostic.Error(
+                ModuleLocations.Default(mainTree), ex.Message, DiagnosticCodes.Link));
+            result.Image = null;
+            result.Success = false;
+        }
+        return FinalizeResult(result);
+    }
+
+    static ModuleProjectResult FinalizeResult(ModuleProjectResult result)
+    {
+        result.Diagnostics = result.Diagnostics.DistinctStable().ToList();
+        if (result.Diagnostics.Any(d => d.IsError))
+        {
+            result.Image = null;
+            result.Success = false;
+        }
         return result;
     }
 }

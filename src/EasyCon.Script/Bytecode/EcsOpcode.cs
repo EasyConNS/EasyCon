@@ -90,6 +90,9 @@ public enum EcsOpcode : byte
     StickPv,    // iABC + ext32: A=side，B=0，C=持续毫秒槽位，ext=高16位x|低16位y（packed）
     Img,        // ABx : R[A] = 图像标签匹配置信度，标签名 = 常量池[Bx]
     Rand,       // iABC: R[A] = rand() % R[B]（B=0→0；B<0→错误，对齐 Random.Next）
+    ForStep,    // iABC: FOR 快速路径——R[A]==R[B] → 落入下一块（出循环）；否则 R[A]+=1 跳 C 目标（回 body）
+    CmpJ,       // iABC+J: 比较跳转融合（P2′，Lua LE/EQI 模式）——R[A] kind R[B] 成立 → 跳 Jump；
+                //        C=kind：typeBlock*6+op（0-5 i32 / 6-11 u32 / 12-17 f64 / 18-23 i64；op = Eq,Neq,Lt,Le,Gt,Ge）
 }
 
 /// <summary>
@@ -97,16 +100,17 @@ public enum EcsOpcode : byte
 /// CallN 的 EXT 字带上 0x80000000 旗标时，低 31 位 = 编号，直接双端分发，不经原生名表。
 /// 语义在宿主参考实现（C# EcxHost.Syscall / C harness 桩），引擎只做取号分发；
 /// 文件实现转发宿主时使用 <see cref="Names"/> 中的规范名（宿主委托签名不变）。
-/// ABI 分配规则：新增追加号段、废弃不回收（VmSemanticContract §四）。
+/// ABI 分配规则：新增追加号段、废弃不回收（AbiContractTests 锁定）。
 /// </summary>
 public static class EcsSyscall
 {
     /// <summary>CallN EXT 旗标：置位 = syscall 编号调用（与 Call 的导入标记共用位，操作码不同不冲突）。</summary>
     public const uint CallFlag = 0x80000000u;
 
-    /// <summary>编码 ABI 修订号（进缓存键 ProductFingerprint；编号分配/编码语义变化时递增）。
-    /// 1 = 名表原生时代；2 = L2 全集 syscall 编号化。</summary>
-    public const int AbiRevision = 2;
+    /// <summary>镜像格式修订号（缓存键成分；格式语义变化时改值，无兼容梯——
+    /// 全新实现不做历史版本分级）。当前 = 每函数寄存器栈窗口 + 帧内固定 RET/ARG/STAGING 布局
+    /// （<see cref="EcsRegisters"/>）+ 定长指令编码 + 无接收哨兵。</summary>
+    public const int AbiRevision = 1;
 
     // ---- 文件族（1..9 连续，IsFileFamily 依赖）----
     public const int FWrite = 1;
@@ -126,7 +130,7 @@ public static class EcsSyscall
     public const int App = 13;
     public const int Time = 14;
     public const int Beep = 15;
-    public const int Amiibo = 16;
+    public const int Amiibo = 16;        // v2.3：Amiibo 槽位选择（0–19，宿主判越界静默；S-13）
     public const int OcrConf = 17;
 
     /// <summary>文件族上界（含）。</summary>
@@ -168,10 +172,10 @@ public static class EcsSyscall
 }
 
 /// <summary>
-/// 镜像特征需求掩码（镜像头保留位 u16 @0x0A，docs/VM2.md §9.1）：表达「本镜像需要宿主提供
-/// 的高级能力」，加载规则 `host_feats & image_feats != image_feats` → 拒跑。IL 位由 flags.I
-/// 投影（旧镜像掩码缺省 = 仅 IL 位，兼容）；加载期 IL 越界 → ECS_ERR_IL（既有码），其余越界
-/// → ECS_ERR_FEAT。
+/// 镜像特征需求掩码（镜像头 feats u16 @0x08，docs/VM2.md §9.1）：表达「本镜像使用到
+/// 的高级能力」。S-21 起 feats 为<b>元信息</b>——加载器缺省不据此拒跑，能力缺失按
+/// EcsCapabilityDefaults 缺省值表降级；宿主 strict_caps 置位时恢复响亮校验
+/// （IL → ECS_ERR_IL，其余缺位 → ECS_ERR_FEAT）。烧录前预检（McuBytecodeDelivery）仍消费本掩码。
 /// </summary>
 public static class EcsImageFeatures
 {
@@ -179,7 +183,8 @@ public static class EcsImageFeatures
     public const uint Capture = 0x2;   // 可达采集洞（__CAPTURE__ 系）
     public const uint Ffi = 0x4;       // EXTERN FFI（"库!导出名" 动态原生）
     public const uint File = 0x8;      // 文件族 syscall
-    public const uint Vision = 0x10;   // ONNX 推理实验函数（NET_LOAD/NET_RUN）；MCU 参考桩不支持 → 拒跑
+    public const uint Vision = 0x10;   // ONNX 推理函数（NET_LOAD/NET_RUNH/NET_OUT 句柄族）；缺能力宿主按缺省值表降级
+    public const uint Audio = 0x20;    // AUDIO_LOAD/AUDIO_SCORE/AUDIO_UNLOAD；缺能力必须拒跑，不能降级为 0 分
 }
 
 /// <summary>
@@ -240,4 +245,32 @@ public enum EcsFieldKind : byte
 internal static class EcsJump
 {
     public const int NoTarget = -1;
+}
+
+/// <summary>
+/// 帧内寄存器布局约定（与 native/ecs_vm.h 的 ECS_REG_* 一一对应，双端手工镜像）。
+/// 帧模型 = Dalvik/Lua 式每函数栈窗口：帧长 = 函数自身寄存器高水位（EcsFunction.NSlots，
+/// ≤ <see cref="MaxRegisters"/>，指令域 u8 是唯一上限——项目增长不再牵动寄存器堆），
+/// 调用时在共享值栈上按被调方帧长开窗、返回时弹出。
+/// 帧内布局：[R0 = RET][R1 起 = NParams 个参数][按需 STAGING][分配区
+/// （独占：φ/ForStep/循环携带/编码器临时 → 池区）]。仅 RET/参数入口位置固定；
+/// STAGING 容量由本函数的最大出站调用/数组分块需求决定，不另设 7 参数上限。
+/// 生命周期分配（SlotAllocator）负责池化与循环活性独占。
+/// </summary>
+public static class EcsRegisters
+{
+    /// <summary>寄存器号上限（指令 A/B/C 域为 u8；Lua 同款天花板）。帧长 ≤ 此值。</summary>
+    public const int MaxRegisters = 255;
+
+    /// <summary>R0 = RET：无显式接收寄存器调用的返回值固定落点（Call 的 C=0）。</summary>
+    public const int Ret = 0;
+
+    /// <summary>R1 起 = 参数窗：Call 从 A 指定的出站窗口深拷贝 NParams 个实参（S-17）。</summary>
+    public const int ArgBase = 1;
+
+    /// <summary>参数数的编码上限；参数、出站窗口与临时值还须共同满足函数帧预算。</summary>
+    public const int ArgCount = MaxRegisters - ArgBase;
+
+    /// <summary>常量数组模板的出站分块预算；无数组构建时不预留这些槽位。</summary>
+    public const int ArrayStagingCount = 16;
 }

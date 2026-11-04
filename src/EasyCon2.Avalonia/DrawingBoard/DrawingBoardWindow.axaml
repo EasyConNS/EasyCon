@@ -1,0 +1,307 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:EasyCon2.Avalonia.DrawingBoard"
+        xmlns:conv="using:EasyCon2.Avalonia.Converters"
+        xmlns:loc="using:EasyCon2.Avalonia.Markup"
+        xmlns:behaviors="using:EasyCon2.Avalonia.Behaviors"
+        x:Class="EasyCon2.Avalonia.DrawingBoard.DrawingBoardWindow"
+        x:DataType="vm:DrawingBoardViewModel"
+        Title="{loc:Translate Text.DrawingBoard.Title}"
+        Width="900"
+        Height="600"
+        MinWidth="480"
+        MinHeight="480"
+        WindowStartupLocation="CenterScreen"
+        behaviors:FileDropBehavior.Command="{Binding DropPictureCommand}">
+
+    <!-- 布局：顶部工具栏（图片进出 / 绘制控制）→ 预览（绘制中显示进度与光标）→ 状态行与进度 → 参数标签页 → 准备提示。
+         参数按处理顺序分为 图片 / 明暗 / 黑白 / 绘制 四页，同一时间只展开一页，界面不再堆满控件。
+         窗口可缩放：预览占据剩余空间并随窗口等比放大缩小；其余各行保持自身高度，窄时行内自动换行 -->
+    <Grid x:Name="Root" Margin="12" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto" RowSpacing="8">
+        <Grid.Styles>
+            <Style Selector="TextBlock.muted">
+                <Setter Property="Foreground" Value="{DynamicResource WorkbenchMutedTextBrush}"/>
+            </Style>
+            <Style Selector="WrapPanel.fields > :is(Control)">
+                <Setter Property="VerticalAlignment" Value="Center"/>
+            </Style>
+            <Style Selector="StackPanel.field > :is(Control)">
+                <Setter Property="VerticalAlignment" Value="Center"/>
+            </Style>
+            <Style Selector="StackPanel.field">
+                <Setter Property="Orientation" Value="Horizontal"/>
+                <Setter Property="Spacing" Value="6"/>
+            </Style>
+            <Style Selector="StackPanel.field > Slider">
+                <Setter Property="Width" Value="96"/>
+            </Style>
+        </Grid.Styles>
+
+        <!-- 工具栏：左侧图片进出与预览切换，右侧绘制控制；窄时右侧整体换到下一行 -->
+        <WrapPanel x:Name="Toolbar" Classes="fields" ItemSpacing="8" LineSpacing="8">
+            <Button Content="{loc:Translate Text.DrawingBoard.LoadPicture}"
+                    Command="{Binding LoadPictureCommand}"
+                    ToolTip.Tip="{loc:Translate Text.DrawingBoard.LoadPictureTip}"/>
+            <!-- 保存预览中的图片：默认二值化结果，勾选"显示原图"时为适配后的原图 -->
+            <Button Content="{loc:Translate Text.DrawingBoard.SavePicture}"
+                    Command="{Binding SavePictureCommand}"
+                    ToolTip.Tip="{loc:Translate Text.DrawingBoard.SavePictureTip}"/>
+            <CheckBox Content="{loc:Translate Text.DrawingBoard.ShowOriginal}"
+                      IsChecked="{Binding ShowOriginal}"
+                      Margin="8,0,0,0"/>
+            <Button Content="{loc:Translate Text.DrawingBoard.ResetAll}"
+                    Command="{Binding ResetAllCommand}"
+                    ToolTip.Tip="{loc:Translate Text.DrawingBoard.ResetAllTip}"
+                    Margin="0,0,16,0"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="accent"
+                        Content="{loc:Translate Text.DrawingBoard.Start}"
+                        Command="{Binding StartCommand}"
+                        IsEnabled="{Binding IsStartEnabled}"
+                        ToolTip.Tip="{loc:Translate Text.DrawingBoard.Tip}"
+                        MinWidth="96"
+                        HorizontalContentAlignment="Center"/>
+                <Button Content="{Binding PauseButtonText}"
+                        Command="{Binding TogglePauseCommand}"
+                        MinWidth="64"
+                        HorizontalContentAlignment="Center"/>
+                <Button Content="{loc:Translate Text.DrawingBoard.Stop}"
+                        Command="{Binding StopCommand}"
+                        MinWidth="64"
+                        HorizontalContentAlignment="Center"/>
+            </StackPanel>
+        </WrapPanel>
+
+        <!-- 预览的逻辑尺寸固定为 822×282，由 Viewbox 等比缩放：点击、拖动坐标按 Image 自身坐标系换算，不受缩放影响 -->
+        <Viewbox Grid.Row="1" Stretch="Uniform">
+            <Border x:Name="PictureFrame"
+                    Background="Transparent"
+                    BorderBrush="{DynamicResource WorkbenchControlBorderBrush}"
+                    BorderThickness="1">
+                <Panel Width="822" Height="282">
+                    <Image x:Name="PictureBox"
+                           Width="822"
+                           Height="282"
+                           Stretch="Fill"
+                           Source="{Binding DisplayImage, Converter={x:Static conv:PixelImageToBitmapConverter.Instance}}"/>
+                    <!-- 未载入图片时的提示；字号按 822 宽的逻辑尺寸取，随预览一起缩放 -->
+                    <TextBlock x:Name="DropHint"
+                               Classes="muted"
+                               IsVisible="{Binding DisplayImage, Converter={x:Static ObjectConverters.IsNull}}"
+                               IsHitTestVisible="False"
+                               Text="{loc:Translate Text.DrawingBoard.DropHint}"
+                               FontSize="28"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Panel>
+            </Border>
+        </Viewbox>
+
+        <!-- 状态行：绘制区域 / 估算耗时（随图片与参数自动更新）。固定单行，窄时区域截断，耗时始终完整显示 -->
+        <Grid x:Name="StatusRow" Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+            <TextBlock Classes="muted"
+                       Text="{Binding RegionText}"
+                       ToolTip.Tip="{Binding RegionText}"
+                       TextTrimming="CharacterEllipsis"
+                       VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1" Text="{Binding EstimateText}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+        </Grid>
+
+        <Grid x:Name="ProgressRow" Grid.Row="3" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <ProgressBar Minimum="0"
+                         Maximum="100"
+                         Value="{Binding ProgressValue}"
+                         VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1"
+                       MaxWidth="420"
+                       Text="{Binding ProgressText}"
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- 参数标签页：顺序即处理顺序（适配 → 明暗 → 黑白化 → 绘制）。
+             最小高度取最高一页（默认窗口宽度下），切换标签时预览大小不跟着跳 -->
+        <Border x:Name="SettingsPanel"
+                Grid.Row="4"
+                MinHeight="160"
+                BorderBrush="{DynamicResource WorkbenchControlBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource WorkbenchControlRadius}"
+                Padding="8,4,8,10">
+            <TabControl>
+                <TabItem Header="{loc:Translate Text.DrawingBoard.TabPicture}">
+                    <StackPanel Spacing="8" Margin="0,8,0,0">
+                        <!-- 适配方式把任意尺寸的图放进 320×120；原图方向先顺时针旋转，再按旋转后的方向翻转 -->
+                        <WrapPanel Classes="fields" ItemSpacing="20" LineSpacing="8">
+                            <StackPanel Classes="field">
+                                <TextBlock Text="{loc:Translate Text.DrawingBoard.Fit}"/>
+                                <ComboBox SelectedIndex="{Binding FitModeIndex}">
+                                    <ComboBoxItem Content="{loc:Translate Text.DrawingBoard.FitContain}"/>
+                                    <ComboBoxItem Content="{loc:Translate Text.DrawingBoard.FitCover}"/>
+                                    <ComboBoxItem Content="{loc:Translate Text.DrawingBoard.FitStretch}"/>
+                                </ComboBox>
+                                <TextBlock Classes="muted" Text="{Binding SourceSizeText}"/>
+                            </StackPanel>
+                            <StackPanel Classes="field">
+                                <TextBlock Text="{loc:Translate Text.DrawingBoard.Rotate}"/>
+                                <ComboBox SelectedIndex="{Binding RotationIndex}"
+                                          ToolTip.Tip="{loc:Translate Text.DrawingBoard.RotateTip}">
+                                    <ComboBoxItem Content="0°"/>
+                                    <ComboBoxItem Content="90°"/>
+                                    <ComboBoxItem Content="180°"/>
+                                    <ComboBoxItem Content="270°"/>
+                                </ComboBox>
+                                <CheckBox Content="{loc:Translate Text.DrawingBoard.FlipHorizontal}"
+                                          IsChecked="{Binding FlipHorizontal}"/>
+                                <CheckBox Content="{loc:Translate Text.DrawingBoard.FlipVertical}"
+                                          IsChecked="{Binding FlipVertical}"/>
+                            </StackPanel>
+                            <CheckBox Content="{loc:Translate Text.DrawingBoard.PixelArt}"
+                                      ToolTip.Tip="{loc:Translate Text.DrawingBoard.PixelArtTip}"
+                                      IsChecked="{Binding PixelArt}"/>
+                        </WrapPanel>
+
+                        <!-- 等比裁切的取景调整：任意角度旋转、缩放、取景位置；只在等比裁切时显示 -->
+                        <WrapPanel Classes="fields" ItemSpacing="20" LineSpacing="8" IsVisible="{Binding IsCoverMode}">
+                            <StackPanel Classes="field">
+                                <TextBlock Text="{loc:Translate Text.DrawingBoard.CoverAngle}"/>
+                                <Slider Minimum="-180" Maximum="180" TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding CoverAngle}"/>
+                                <TextBlock MinWidth="40" Text="{Binding CoverAngle, StringFormat={}{0:0}°}"/>
+                            </StackPanel>
+                            <StackPanel Classes="field">
+                                <TextBlock Text="{loc:Translate Text.DrawingBoard.CoverZoom}"/>
+                                <Slider Minimum="100" Maximum="400" TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding CoverZoomPercent}"/>
+                                <TextBlock MinWidth="40" Text="{Binding CoverZoomPercent, StringFormat={}{0:0}%}"/>
+                            </StackPanel>
+                            <StackPanel Classes="field">
+                                <TextBlock Text="{loc:Translate Text.DrawingBoard.CoverPanX}"/>
+                                <Slider Minimum="-100" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding CoverPanX}"/>
+                            </StackPanel>
+                            <StackPanel Classes="field">
+                                <TextBlock Text="{loc:Translate Text.DrawingBoard.CoverPanY}"/>
+                                <Slider Minimum="-100" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding CoverPanY}"/>
+                            </StackPanel>
+                            <Button Content="{loc:Translate Text.DrawingBoard.CoverReset}"
+                                    Command="{Binding ResetCoverCommand}"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </TabItem>
+
+                <TabItem Header="{loc:Translate Text.DrawingBoard.TabTone}">
+                    <WrapPanel Classes="fields" ItemSpacing="20" LineSpacing="8" Margin="0,8,0,0">
+                        <StackPanel Classes="field">
+                            <TextBlock Text="{loc:Translate Text.DrawingBoard.ToneBrightness}"/>
+                            <Slider Minimum="-100" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True"
+                                    Value="{Binding ToneBrightness}"/>
+                            <TextBlock MinWidth="32" Text="{Binding ToneBrightness}"/>
+                        </StackPanel>
+                        <StackPanel Classes="field">
+                            <TextBlock Text="{loc:Translate Text.DrawingBoard.ToneContrast}"/>
+                            <Slider Minimum="-100" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True"
+                                    Value="{Binding ToneContrast}"/>
+                            <TextBlock MinWidth="32" Text="{Binding ToneContrast}"/>
+                        </StackPanel>
+                        <StackPanel Classes="field">
+                            <TextBlock Text="{loc:Translate Text.DrawingBoard.ToneGamma}"/>
+                            <Slider Minimum="0.2" Maximum="3" TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                    Value="{Binding ToneGamma}"/>
+                            <TextBlock MinWidth="32" Text="{Binding ToneGamma, StringFormat={}{0:0.00}}"/>
+                        </StackPanel>
+                        <Button Content="{loc:Translate Text.DrawingBoard.ResetTone}"
+                                Command="{Binding ResetToneCommand}"/>
+                    </WrapPanel>
+                </TabItem>
+
+                <!-- 黑白化：阈值 / 抖动 → 去杂点 → 轮廓 → 反转（最后一步），与 BuildMask 的顺序一致 -->
+                <TabItem Header="{loc:Translate Text.DrawingBoard.TabInk}">
+                    <StackPanel Spacing="8" Margin="0,8,0,0">
+                        <WrapPanel Classes="fields" ItemSpacing="20" LineSpacing="8">
+                            <StackPanel Classes="field">
+                                <TextBlock Text="{loc:Translate Text.DrawingBoard.Threshold}"/>
+                                <Slider Minimum="0" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding ThresholdPercent}"/>
+                                <TextBlock MinWidth="36" Text="{Binding ThresholdPercent, StringFormat={}{0}%}"/>
+                            </StackPanel>
+                            <!-- 抖动：顺序与 DitherMode 一致 -->
+                            <StackPanel Classes="field" ToolTip.Tip="{loc:Translate Text.DrawingBoard.DitherTip}">
+                                <TextBlock Text="{loc:Translate Text.DrawingBoard.Dither}"/>
+                                <ComboBox SelectedIndex="{Binding DitherModeIndex}">
+                                    <ComboBoxItem Content="{loc:Translate Text.DrawingBoard.DitherNone}"/>
+                                    <ComboBoxItem Content="{loc:Translate Text.DrawingBoard.DitherFloydSteinberg}"/>
+                                    <ComboBoxItem Content="{loc:Translate Text.DrawingBoard.DitherFloydSteinbergSerpentine}"/>
+                                    <ComboBoxItem Content="{loc:Translate Text.DrawingBoard.DitherAtkinson}"/>
+                                    <ComboBoxItem Content="{loc:Translate Text.DrawingBoard.DitherJarvisJudiceNinke}"/>
+                                    <ComboBoxItem Content="{loc:Translate Text.DrawingBoard.DitherStucki}"/>
+                                    <ComboBoxItem Content="{loc:Translate Text.DrawingBoard.DitherBayer}"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </WrapPanel>
+                        <WrapPanel Classes="fields" ItemSpacing="20" LineSpacing="8">
+                            <StackPanel Classes="field" ToolTip.Tip="{loc:Translate Text.DrawingBoard.SpeckTip}">
+                                <TextBlock Text="{loc:Translate Text.DrawingBoard.Speck}"/>
+                                <Slider Minimum="0" Maximum="20" TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding SpeckSize}"/>
+                                <TextBlock MinWidth="48" Text="{Binding SpeckText}"/>
+                            </StackPanel>
+                            <CheckBox Content="{loc:Translate Text.DrawingBoard.Outline}"
+                                      ToolTip.Tip="{loc:Translate Text.DrawingBoard.OutlineTip}"
+                                      IsChecked="{Binding OutlineMode}"/>
+                            <CheckBox Content="{loc:Translate Text.DrawingBoard.Reverse}"
+                                      ToolTip.Tip="{loc:Translate Text.DrawingBoard.ReverseTip}"
+                                      IsChecked="{Binding Reverse}"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </TabItem>
+
+                <!-- 绘制：按键时序、画笔 / 橡皮擦、绘制区域（默认整张画布，勾选后在预览上拖动框选） -->
+                <TabItem Header="{loc:Translate Text.DrawingBoard.TabDraw}">
+                    <StackPanel Spacing="8" Margin="0,8,0,0">
+                        <WrapPanel Classes="fields" ItemSpacing="20" LineSpacing="8">
+                            <StackPanel Classes="field">
+                                <TextBlock Text="{loc:Translate Text.DrawingBoard.Duration}"/>
+                                <TextBox Width="64" Text="{Binding DurationText}"/>
+                                <TextBlock Classes="muted" Text="{loc:Translate Text.DrawingBoard.Milliseconds}"/>
+                            </StackPanel>
+                            <StackPanel Classes="field">
+                                <TextBlock Text="{loc:Translate Text.DrawingBoard.Delay}"/>
+                                <TextBox Width="64" Text="{Binding DelayText}"/>
+                                <TextBlock Classes="muted" Text="{loc:Translate Text.DrawingBoard.Milliseconds}"/>
+                            </StackPanel>
+                        </WrapPanel>
+                        <WrapPanel Classes="fields" ItemSpacing="20" LineSpacing="8">
+                            <!-- 橡皮擦模式的准备步骤较长，放在悬停提示里 -->
+                            <CheckBox Content="{loc:Translate Text.DrawingBoard.EraserMode}"
+                                      ToolTip.Tip="{loc:Translate Text.DrawingBoard.EraserHelp}"
+                                      IsChecked="{Binding EraserMode}"/>
+                            <CheckBox Content="{loc:Translate Text.DrawingBoard.AutoHome}"
+                                      ToolTip.Tip="{loc:Translate Text.DrawingBoard.AutoHomeTip}"
+                                      IsChecked="{Binding AutoHome}"/>
+                            <CheckBox Content="{loc:Translate Text.DrawingBoard.StayAwake}"
+                                      ToolTip.Tip="{loc:Translate Text.DrawingBoard.StayAwakeTip}"
+                                      IsChecked="{Binding StayAwake}"/>
+                            <StackPanel Classes="field">
+                                <CheckBox Content="{loc:Translate Text.DrawingBoard.SelectRegion}"
+                                          ToolTip.Tip="{loc:Translate Text.DrawingBoard.SelectRegionTip}"
+                                          IsChecked="{Binding SelectRegion}"/>
+                                <Button Content="{loc:Translate Text.DrawingBoard.ResetRegion}"
+                                        Command="{Binding ResetRegionCommand}"
+                                        IsVisible="{Binding SelectRegion}"/>
+                            </StackPanel>
+                        </WrapPanel>
+                    </StackPanel>
+                </TabItem>
+            </TabControl>
+        </Border>
+
+        <!-- 开始前的准备步骤（橡皮擦模式的步骤见其复选框的悬停提示） -->
+        <TextBlock x:Name="TipRow"
+                   Grid.Row="5"
+                   Classes="muted"
+                   Text="{loc:Translate Text.DrawingBoard.Tip}"
+                   TextWrapping="Wrap"/>
+    </Grid>
+</Window>

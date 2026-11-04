@@ -9,8 +9,9 @@ namespace EasyCon.Script.Modules;
 /// <summary>
 /// 模块缓存键与 obj/ 磁盘缓存（docs/ModuleSystem.md §7）。
 ///
-/// cacheKey = SHA256(源码内容 ⊕ Σ直接依赖接口哈希 ⊕ 编译器版本 ⊕ 影响产物的编译选项)（§7.2）。
-/// 进键的选项集中在 CompileOptions.ProductFingerprint()（当前：Optimize/LegacySyntax/ExtVars）；
+/// cacheKey = SHA256(源码内容 ⊕ 源文件路径上下文 ⊕ Σ直接依赖接口哈希 ⊕ 编译器版本 ⊕ 影响产物的编译选项)（§7.2）。
+/// 进键的选项集中在 CompileOptions.ProductFingerprint()（当前：Optimize/ExtVars
+/// + syscall ABI 修订 + 产物代数 M）；
 /// KeepSsa 不影响序列化产物、UseDiskCache/ObjDir/GcMaxAge 与产物内容无关，均不进键。
 /// 文件名 = &lt;模块名&gt;-&lt;cacheKey 前 8 位&gt;.ecm；实现体改动 → 源码变 → 新键新文件，
 /// 接口未变时下游 cacheKey 不变 → 下游缓存全命中（Merkle 失效模型，§2.3）。
@@ -18,6 +19,17 @@ namespace EasyCon.Script.Modules;
 /// </summary>
 internal static class ModuleCacheKeys
 {
+    /// <summary>
+    /// 文件模块的规范化路径上下文。EXTERN 相对库路径以声明文件目录为基准，
+    /// 所以路径参与缓存键；内嵌模块与内存伪文件名保持空上下文以继续共享缓存。
+    /// </summary>
+    public static string SourceContext(string sourceFileName)
+    {
+        if (string.IsNullOrWhiteSpace(sourceFileName) || sourceFileName.StartsWith('<'))
+            return "";
+        return Path.GetFullPath(sourceFileName);
+    }
+
     /// <summary>规范化排序后的外部变量集（ExtVars 集合序不定，进键前排序保证键稳定）。</summary>
     public static string ExtVarsKey(ImmutableHashSet<string>? extVars)
     {
@@ -27,10 +39,11 @@ internal static class ModuleCacheKeys
     }
 
     public static string Compute(string source, IReadOnlyList<string> depInterfaceHashes, string compilerVersion,
-        string productFingerprint = "")
+        string productFingerprint = "", string sourceContext = "")
     {
         var sb = new StringBuilder();
         AppendItem(sb, source);
+        AppendItem(sb, sourceContext);
         foreach (var h in depInterfaceHashes)
             AppendItem(sb, h);
         AppendItem(sb, compilerVersion);
@@ -43,11 +56,24 @@ internal static class ModuleCacheKeys
     }
 
     public static string FileName(string moduleName, string cacheKey)
-        => $"{moduleName}-{cacheKey[..8]}.ecm";
+        // 层级模块名（"net/http"）的 '/' 落盘转义（N2）；不同模块转义后撞名的概率
+        // 与目录分隔符语义冲突在实际项目中可忽略（键含完整 cacheKey 哈希）
+        => $"{Sanitize(moduleName)}-{cacheKey[..8]}.ecm";
+
+    internal static string Sanitize(string moduleName) => moduleName.Replace('/', '_');
 
     /// <summary>错误缓存 sidecar 文件名（§7.3 错误重放）：同 cacheKey 的编译失败记录。</summary>
     public static string ErrorFileName(string moduleName, string cacheKey)
-        => $"{moduleName}-{cacheKey[..8]}.err";
+        => $"{Sanitize(moduleName)}-{cacheKey[..8]}.err";
+
+    /// <summary>根级库的预声明接口缓存键；源码变更或编译语义变更都会失效。</summary>
+    public static string InterfaceKey(string moduleName, string source, string productFingerprint,
+        string sourceContext = "")
+        => Compute(source, [], ModuleInterface.CurrentCompilerVersion,
+            $"interface|{moduleName}|{productFingerprint}", sourceContext);
+
+    public static string InterfaceFileName(string moduleName, string cacheKey)
+        => $"{Sanitize(moduleName)}-{cacheKey[..8]}.eci";
 
     /// <summary>长度前缀规范项（防拼接歧义）。</summary>
     static void AppendItem(StringBuilder sb, string s)
@@ -57,37 +83,40 @@ internal static class ModuleCacheKeys
 /// <summary>
 /// 进程级产物缓存（统一链路阶段 B）：仅作用于 UseDiskCache=false 的桌面现编路径——
 /// 同源码 ⊕ 同依赖接口 ⊕ 同选项的模块免重编（std/vision 等大模块二次编译近零开销）。
-/// 存 EcmFormat 序列化字节，命中即反序列化出新实例——杜绝调用方对产物的就地修改串味
+/// 存 ECM1 平铺序列化字节，命中即反序列化出新实例——杜绝调用方对产物的就地修改串味
 /// （ModuleInterfaceTests 曾就地改产物字段，实例绝不共享）。与磁盘缓存正交（不读写 obj/）。
 /// </summary>
 internal static class ProcessModuleCache
 {
     static readonly ConcurrentDictionary<string, byte[]> Entries = new();
 
-    public static int Hits { get; private set; }
-    public static int Misses { get; private set; }
+    static int _hits, _misses;   // M3：并行编译 → Interlocked 计数
+    public static int Hits => _hits;
+    public static int Misses => _misses;
+    public static void CountHit() => Interlocked.Increment(ref _hits);
+    public static void CountMiss() => Interlocked.Increment(ref _misses);
 
     public static ModuleArtifact? TryLoad(string moduleName, string cacheKey)
     {
         if (!Entries.TryGetValue(ModuleCacheKeys.FileName(moduleName, cacheKey), out var bytes))
         {
-            Misses++;
+            CountMiss();
             return null;
         }
         try
         {
-            var artifact = EcmFormat.Read(bytes);
+            var artifact = EcsContainer.ReadModule(bytes);
             if (!artifact.IntegrityCheck())
             {
-                Misses++;   // 损坏：按未命中重编
+                CountMiss();   // 损坏：按未命中重编
                 return null;
             }
-            Hits++;
+            CountHit();
             return artifact;
         }
         catch (BytecodeException)
         {
-            Misses++;
+            CountMiss();
             return null;
         }
     }
@@ -96,7 +125,7 @@ internal static class ProcessModuleCache
     {
         try
         {
-            Entries[ModuleCacheKeys.FileName(artifact.Name, cacheKey)] = EcmFormat.Write(artifact);
+            Entries[ModuleCacheKeys.FileName(artifact.Name, cacheKey)] = EcsContainer.WriteModule(artifact);
         }
         catch (BytecodeException)
         {
@@ -108,8 +137,8 @@ internal static class ProcessModuleCache
     public static void Clear()
     {
         Entries.Clear();
-        Hits = 0;
-        Misses = 0;
+        _hits = 0;
+        _misses = 0;
     }
 }
 
@@ -127,10 +156,13 @@ internal sealed class ModuleCache
         Directory.CreateDirectory(objDir);
     }
 
-    public int Hits { get; private set; }
-    public int Misses { get; private set; }
-    /// <summary>错误缓存命中次数（编译失败记录重放）。</summary>
-    public int ErrorHits { get; private set; }
+    int _hits, _misses, _errorHits;   // M3：波内并行编译 → Interlocked 计数
+    public int Hits => _hits;
+    public int Misses => _misses;
+    public int ErrorHits => _errorHits;
+    void CountHit() => Interlocked.Increment(ref _hits);
+    void CountMiss() => Interlocked.Increment(ref _misses);
+    void CountErrorHit() => Interlocked.Increment(ref _errorHits);
 
     /// <summary>按 cacheKey 定位并加载模块产物；命中后做完整性校验（接口哈希自洽）。</summary>
     public ModuleArtifact? TryLoad(string moduleName, string cacheKey)
@@ -138,25 +170,65 @@ internal sealed class ModuleCache
         var path = Path.Combine(_objDir, ModuleCacheKeys.FileName(moduleName, cacheKey));
         if (!File.Exists(path))
         {
-            Misses++;
+            CountMiss();
             return null;
         }
         try
         {
-            var artifact = EcmFormat.Read(File.ReadAllBytes(path));
+            var artifact = EcsContainer.ReadModule(File.ReadAllBytes(path));
             if (!artifact.IntegrityCheck())
             {
-                Misses++;   // 损坏/被篡改：按未命中重编
+                CountMiss();   // 损坏/被篡改：按未命中重编
                 return null;
             }
-            Hits++;
+            CountHit();
             return artifact;
         }
         catch (BytecodeException)
         {
-            Misses++;
+            CountMiss();
             return null;
         }
+    }
+
+    /// <summary>加载可用作根级库预声明的接口缓存；无效/损坏条目按未命中处理。</summary>
+    public ModuleInterface? TryLoadInterface(string moduleName, string source, string productFingerprint,
+        string sourceContext = "")
+    {
+        var cacheKey = ModuleCacheKeys.InterfaceKey(moduleName, source, productFingerprint, sourceContext);
+        var path = Path.Combine(_objDir, ModuleCacheKeys.InterfaceFileName(moduleName, cacheKey));
+        if (!File.Exists(path))
+            return null;
+
+        try
+        {
+            using var stream = File.OpenRead(path);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: false);
+            var iface = ModuleInterfaceFormat.Read(reader);
+            if (stream.Position != stream.Length
+                || iface.Name != moduleName
+                || iface.CompilerVersion != ModuleInterface.CurrentCompilerVersion
+                || iface.InterfaceHash != InterfaceHasher.Compute(iface))
+                return null;
+            return iface;
+        }
+        catch (Exception ex) when (ex is IOException or BytecodeException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>原子写入根级库预声明接口。</summary>
+    public void StoreInterface(ModuleInterface iface, string source, string productFingerprint,
+        string sourceContext = "")
+    {
+        var cacheKey = ModuleCacheKeys.InterfaceKey(iface.Name, source, productFingerprint, sourceContext);
+        var finalPath = Path.Combine(_objDir, ModuleCacheKeys.InterfaceFileName(iface.Name, cacheKey));
+        var tempPath = Path.Combine(_objDir, $".{ModuleCacheKeys.Sanitize(iface.Name)}-{Guid.NewGuid():N}.tmp");
+        using (var stream = File.Create(tempPath))
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: false))
+            ModuleInterfaceFormat.Write(writer, iface);
+        MoveWithRetry(tempPath, finalPath);
     }
 
     /// <summary>错误缓存重放（§7.3）：同 cacheKey 的历史编译失败诊断，命中即快速失败。</summary>
@@ -168,7 +240,7 @@ internal sealed class ModuleCache
         var lines = File.ReadAllLines(path).Where(l => l.Length > 0).ToList();
         if (lines.Count == 0)
             return null;
-        ErrorHits++;
+        CountErrorHit();
         return lines;
     }
 
@@ -182,15 +254,34 @@ internal sealed class ModuleCache
     /// <summary>原子写入产物；同键的历史错误 sidecar 一并清除。</summary>
     public void Store(ModuleArtifact artifact, string cacheKey)
     {
-        var bytes = EcmFormat.Write(artifact);
+        var bytes = EcsContainer.WriteModule(artifact);
         var finalPath = Path.Combine(_objDir, ModuleCacheKeys.FileName(artifact.Name, cacheKey));
-        var tempPath = Path.Combine(_objDir, $".{artifact.Name}-{Guid.NewGuid():N}.tmp");
+        var tempPath = Path.Combine(_objDir, $".{ModuleCacheKeys.Sanitize(artifact.Name)}-{Guid.NewGuid():N}.tmp");
         File.WriteAllBytes(tempPath, bytes);
-        File.Move(tempPath, finalPath, overwrite: true);
+        MoveWithRetry(tempPath, finalPath);
 
         var errPath = Path.Combine(_objDir, ModuleCacheKeys.ErrorFileName(artifact.Name, cacheKey));
         if (File.Exists(errPath))
             File.Delete(errPath);
+    }
+
+    static void MoveWithRetry(string tempPath, string finalPath)
+    {
+        // 多进程/多任务共享同一 obj/ 目录时，另一端可能正打开同一 .ecm 读取；
+        // Windows 上覆盖被占用目标会抛 IOException，短暂重试即可让渡读方
+        const int MaxAttempts = 3;
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                File.Move(tempPath, finalPath, overwrite: true);
+                return;
+            }
+            catch (IOException) when (attempt < MaxAttempts)
+            {
+                System.Threading.Thread.Sleep(20 * attempt);
+            }
+        }
     }
 
     /// <summary>
@@ -204,7 +295,7 @@ internal sealed class ModuleCache
         foreach (var file in Directory.EnumerateFiles(_objDir))
         {
             var ext = Path.GetExtension(file);
-            if (ext is not (".ecm" or ".err"))
+            if (ext is not (".ecm" or ".err" or ".eci"))
                 continue;
             if (keepFileNames.Contains(Path.GetFileName(file)))
                 continue;

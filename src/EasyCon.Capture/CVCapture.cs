@@ -1,9 +1,10 @@
-﻿using OpenCvSharp;
+using EasyCon.Capture.mac;
+using OpenCvSharp;
 using System.Diagnostics;
 
 namespace EasyCon.Capture;
 
-public class OpenCVCapture(int idx = 0, VideoCaptureAPIs apiRefs = VideoCaptureAPIs.ANY) : IDisposable
+public class OpenCVCapture(int idx = 0, VideoCaptureAPIs apiRefs = VideoCaptureAPIs.ANY) : IFrameSource
 {
     private readonly VideoCapture videoCapture = new();
 
@@ -11,12 +12,16 @@ public class OpenCVCapture(int idx = 0, VideoCaptureAPIs apiRefs = VideoCaptureA
     private VideoCaptureAPIs refs = apiRefs;
 
     public bool IsOpened => videoCapture.IsOpened();
+    public VideoCaptureAPIs Backend => (VideoCaptureAPIs)(int)videoCapture.Get(VideoCaptureProperties.Backend);
 
     public bool Open(int idx, int apiRefs = 0)
     {
         deviceId = idx;
         refs = (VideoCaptureAPIs)apiRefs;
-        return videoCapture.Open(deviceId, refs);
+        bool opened = videoCapture.Open(deviceId, refs);
+        if (!opened && OperatingSystem.IsMacOS() && CaptureSourceCatalog.ResolveBackend(refs) == VideoCaptureAPIs.AVFOUNDATION)
+            AvFoundationDevices.ThrowIfAccessUnavailable();
+        return opened;
     }
 
     public void SetProperties(int x, int y)

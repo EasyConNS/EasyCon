@@ -15,12 +15,12 @@ namespace EasyCon.Script.Ssa;
 /// </summary>
 static class SsaTailRecursionElimination
 {
-    /// <summary>全局下一个可用 SSA ID（跨函数唯一）。由 SsaOptimizer 设置。</summary>
-    internal static int GlobalNextId;
+    /// <summary>注释：SSA ID 分配计数器由调用方（SsaOptimizer）按 program 持有并经
+    /// <c>ref</c> 传入——M3 模块并行下静态计数器会被并行 Optimize 互相覆盖，导致模块内 ID 撞号。</summary>
     /// <summary>
     /// 对函数执行尾递归消除。返回 true 表示做了变换。
     /// </summary>
-    internal static bool Eliminate(SsaFunction func)
+    internal static bool Eliminate(SsaFunction func, ref int nextId)
     {
         var sym = func.Symbol;
         var parameters = sym.Parameters;
@@ -75,7 +75,7 @@ static class SsaTailRecursionElimination
                 var newVal = argValues[i];
 
                 var store = new SsaValue(
-                    System.Threading.Interlocked.Increment(ref GlobalNextId) - 1,
+                    System.Threading.Interlocked.Increment(ref nextId) - 1,
                     SsaOp.StoreLocal, ScriptType.Void)
                 {
                     Arg0 = newVal,

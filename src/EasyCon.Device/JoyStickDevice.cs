@@ -23,6 +23,17 @@ public partial class NintendoSwitch : IReporter
 
     bool _reset = false;
     CancellationTokenSource source = new();
+    private Task _writeLoop;
+
+    /// <summary>重连前取消上一条设备写循环，避免新旧两个 Loop 并行向设备写报告。</summary>
+    private void CancelStaleLoop()
+    {
+        try { source.Cancel(); }
+        catch (ObjectDisposedException) { }
+        if (_writeLoop != null && !_writeLoop.Wait(TimeSpan.FromSeconds(5)))
+            throw new InvalidOperationException("busy: 上一设备写循环仍在停止中");
+        source.Dispose();
+    }
 
     DirectionKey _leftStick = 0;
     DirectionKey _rightStick = 0;
@@ -34,36 +45,52 @@ public partial class NintendoSwitch : IReporter
     public event StatusChangedHandler StatusChanged;
 
     private readonly OperationRecords operationRecords = new();
-    public RecordState recordState = RecordState.RECORD_STOP;
+    internal RecordState recordState = RecordState.RECORD_STOP;
 
     public ConnectResult TryConnect(string constr)
     {
-        var result = _TryConnect(constr);
-
-        if (result == ConnectResult.Success)
+        ConnectionEndpoint endpoint;
+        try
         {
-            source = new();
-            Task.Run(() =>
-            {
-                Loop(source.Token);
-            },
-            source.Token);
+            endpoint = ConnectionEndpoint.Parse(constr);
         }
-        else
+        catch (ArgumentException ex)
         {
-            Thread.Sleep(100);
-            result = _TryConnect(constr, 9600);
+            LastConnectionError = ex.Message;
+            return ConnectResult.InvalidArgument;
+        }
+        ConnectResult result = ConnectResult.None;
+        foreach (Func<IConnection> candidate in GetConnectionProviders().SelectMany(provider => provider.GetCandidates(endpoint)))
+        {
+            result = _TryConnect(candidate);
             if (result == ConnectResult.Success)
             {
                 source = new();
-                Task.Run(() =>
+                CancellationToken token = source.Token;
+                lock (this)
                 {
-                    Loop(source.Token);
-                },
-                source.Token);
+                    _keystrokes.Clear();
+                    _report.Reset();
+                    _leftStick = _rightStick = _hat = DirectionKey.None;
+                    _reset = false;
+                    _ewh.Reset();
+                }
+                // 保留上游专用线程：Loop 会长期等待设备事件。
+                _writeLoop = Task.Factory.StartNew(() => Loop(token), CancellationToken.None,
+                    TaskCreationOptions.LongRunning, TaskScheduler.Default);
+                Log?.Invoke($"已连接 {FirmwareName} {FirmwareVersion}");
+                if (ConsoleConnected == false)
+                    Log?.Invoke("手柄固件已连接，NS 尚未接管手柄；请检查 USB 连接或在 NS 上更改握法/顺序完成配对。");
+                break;
             }
+            if (result == ConnectResult.InvalidArgument)
+                break;
         }
-
+        if (result == ConnectResult.None)
+        {
+            LastConnectionError = $"没有适用于 {endpoint.Transport} 的连接协议。";
+            return ConnectResult.InvalidArgument;
+        }
         return result;
     }
 
@@ -74,6 +101,7 @@ public partial class NintendoSwitch : IReporter
             DebugKey("Reset");
             Signal();
             _keystrokes.Clear();
+            _leftStick = _rightStick = _hat = 0;
             _reset = true;
             clientCon?.ClearQueue();
         }
@@ -156,7 +184,7 @@ public partial class NintendoSwitch : IReporter
 
     SwitchReport IReporter.GetReport()
     {
-        return _report.Clone() as SwitchReport;
+        lock (this) return _report.Clone() as SwitchReport;
     }
 
     public void StartRecord()

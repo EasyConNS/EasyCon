@@ -1,7 +1,14 @@
-﻿using Avalonia.Threading;
+using Avalonia.Threading;
 using EasyCon.Capture;
-using EasyCon2.Avalonia.Core.Services;
-using OpenCvSharp;
+using EasyCon.Core;
+using EasyCon.Core.Capabilities;
+using EasyCon.Core.Hosting;
+using EasyCon.Core.LLM.Agent.Tools;
+using EasyCon.Core.Maa;
+using EasyCon2.Avalonia.Services;
+using EasyDevice;
+using EasyScript;
+using System.Collections.Concurrent;
 using System.Text;
 
 namespace EasyCon2.Avalonia.Services;
@@ -14,27 +21,35 @@ public class ToolCallService : IToolCallService
 {
     private readonly IScriptService _scriptService;
     private readonly ICaptureService _captureService;
-    private readonly Queue<string> _logBuffer;
+    private readonly IDeviceService _deviceService;
+    private readonly ConcurrentQueue<string> _logBuffer;
     private readonly Func<string?> _getProjectDirectoryPath;
     private readonly Func<string> _getEditorText;
     private readonly Action<string> _setEditorText;
     private readonly Func<string?> _getScriptPath;
     private readonly Func<bool> _hasScriptPath;
     private readonly Func<DeviceStatusInfo> _getDeviceStatus;
+    private readonly Func<IControllerSession?>? _getDevice;
+    private CapabilityLease? _ocrLease;
 
     public ToolCallService(
         IScriptService scriptService,
         ICaptureService captureService,
-        Queue<string> logBuffer,
+        IDeviceService deviceService,
+        ConcurrentQueue<string> logBuffer,
         Func<string?> getProjectDirectoryPath,
         Func<string> getEditorText,
         Action<string> setEditorText,
         Func<string?> getScriptPath,
         Func<bool> hasScriptPath,
-        Func<DeviceStatusInfo> getDeviceStatus)
+        Func<DeviceStatusInfo> getDeviceStatus,
+        Func<IControllerSession?>? getDevice = null)
     {
+        _getDevice = getDevice;
+
         _scriptService = scriptService;
         _captureService = captureService;
+        _deviceService = deviceService;
         _logBuffer = logBuffer;
         _getProjectDirectoryPath = getProjectDirectoryPath;
         _getEditorText = getEditorText;
@@ -50,6 +65,8 @@ public class ToolCallService : IToolCallService
 
     public void WriteScriptContent(string content, bool append)
     {
+        // 读-改-写整体在 UI 线程内完成，避免与用户编辑交错导致丢更新；
+        // 调用方（编排器线程池线程）阻塞等待 UI 线程执行，UI 本身不阻塞。
         Dispatcher.UIThread.Invoke(() =>
         {
             if (append && !string.IsNullOrEmpty(_getEditorText()))
@@ -61,23 +78,26 @@ public class ToolCallService : IToolCallService
 
     public int EditScriptContent(string oldString, string newString, int count)
     {
-        var current = _getEditorText() ?? string.Empty;
         if (string.IsNullOrEmpty(oldString))
             return -1;
 
-        if (!current.Contains(oldString, StringComparison.Ordinal))
-            return -1;
+        return Dispatcher.UIThread.Invoke(() =>
+        {
+            var current = _getEditorText() ?? string.Empty;
+            if (!current.Contains(oldString, StringComparison.Ordinal))
+                return -1;
 
-        var replaced = 0;
-        var result = count <= 0
-            ? current.Replace(oldString, newString, StringComparison.Ordinal)
-            : ReplaceLimited(current, oldString, newString, count, out replaced);
+            var replaced = 0;
+            var result = count <= 0
+                ? current.Replace(oldString, newString, StringComparison.Ordinal)
+                : ReplaceLimited(current, oldString, newString, count, out replaced);
 
-        if (count <= 0)
-            replaced = current.Split([oldString], StringSplitOptions.None).Length - 1;
+            if (count <= 0)
+                replaced = current.Split([oldString], StringSplitOptions.None).Length - 1;
 
-        Dispatcher.UIThread.Invoke(() => _setEditorText(result));
-        return replaced;
+            _setEditorText(result);
+            return replaced;
+        });
     }
 
     private static string ReplaceLimited(string source, string oldStr, string newStr, int maxCount, out int replaced)
@@ -139,8 +159,75 @@ public class ToolCallService : IToolCallService
             return null;
 
         var sb = new StringBuilder();
-        BuildTreeMd(sb, projectDir, 0, false);
+        var state = new TreeBuildState();
+        BuildTreeMd(sb, projectDir, 0, false, state);
         return sb.ToString();
+    }
+
+    /// <summary>目录树构建限制：超限即截断并注明，防止大目录输出挤占上下文。</summary>
+    private const int MaxTreeDepth = 6;
+    private const int MaxTreeEntries = 500;
+    private static readonly HashSet<string> SkippedDirectories = new(StringComparer.OrdinalIgnoreCase)
+        { "bin", "obj", "node_modules" };
+
+    private sealed class TreeBuildState
+    {
+        public int Entries;
+        public bool Truncated;
+    }
+
+    private static void BuildTreeMd(StringBuilder sb, string path, int depth, bool isInLib, TreeBuildState state)
+    {
+        if (state.Truncated)
+            return;
+
+        if (depth > MaxTreeDepth)
+        {
+            sb.Append("[更深目录已省略]\n");
+            return;
+        }
+
+        var indent = new string(' ', depth * 2);
+        IEnumerable<string> entries;
+        try
+        {
+            entries = Directory.GetFileSystemEntries(path)
+                .Where(e => !Path.GetFileName(e).StartsWith('.'))
+                .OrderBy(e => !Directory.Exists(e))
+                .ThenBy(e => Path.GetFileName(e), StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception)
+        {
+            return;  // 无权限/已删除的子目录直接跳过
+        }
+
+        var name = Path.GetFileName(path);
+        var currentIsLib = isInLib || string.Equals(name, "lib", StringComparison.OrdinalIgnoreCase);
+
+        foreach (var entry in entries)
+        {
+            if (++state.Entries > MaxTreeEntries)
+            {
+                sb.Append("[项目树已截断：条目超过 ").Append(MaxTreeEntries).Append("]\n");
+                state.Truncated = true;
+                return;
+            }
+
+            var entryName = Path.GetFileName(entry);
+            var isDir = Directory.Exists(entry);
+            if (isDir && SkippedDirectories.Contains(entryName))
+                continue;
+
+            var tag = "";
+            var ext = Path.GetExtension(entry).ToUpperInvariant();
+            if (ext is ".IL" or ".ILX") tag = " `标签`";
+            else if (currentIsLib && ext is ".ECS" or ".TXT") tag = " `库`";
+
+            sb.Append(indent).Append("- ").Append(entryName).Append(tag).Append(isDir ? "/" : "").Append('\n');
+
+            if (isDir)
+                BuildTreeMd(sb, entry, depth + 1, currentIsLib, state);
+        }
     }
 
     /// <inheritdoc/>
@@ -150,40 +237,6 @@ public class ToolCallService : IToolCallService
         return !string.IsNullOrEmpty(projectDir) && Directory.Exists(projectDir)
             ? projectDir
             : null;
-    }
-
-    private static void BuildTreeMd(StringBuilder sb, string path, int depth, bool isInLib)
-    {
-        var indent = new string(' ', depth * 2);
-        var entries = Directory.GetFileSystemEntries(path)
-            .Where(e => !Path.GetFileName(e).StartsWith('.'))
-            .OrderBy(e => !Directory.Exists(e))
-            .ThenBy(e => Path.GetFileName(e), StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-        var name = Path.GetFileName(path);
-        var currentIsLib = isInLib || string.Equals(name, "lib", StringComparison.OrdinalIgnoreCase);
-
-        foreach (var entry in entries)
-        {
-            var entryName = Path.GetFileName(entry);
-            var isDir = Directory.Exists(entry);
-
-            if (isDir)
-            {
-                sb.Append(indent).Append("- ").Append(entryName).Append("/\n");
-                BuildTreeMd(sb, entry, depth + 1, currentIsLib);
-            }
-            else
-            {
-                var tag = "";
-                var ext = Path.GetExtension(entry).ToUpperInvariant();
-                if (ext is ".IL" or ".ILX") tag = " `标签`";
-                else if (currentIsLib && ext is ".ECS" or ".TXT") tag = " `库`";
-
-                sb.Append(indent).Append("- ").Append(entryName).Append(tag).Append('\n');
-            }
-        }
     }
 
     // ── 脚本执行 ──────────────────────────────
@@ -197,10 +250,7 @@ public class ToolCallService : IToolCallService
         if (!await _scriptService.CompileAsync(text, path))
             return false;
 
-        if (path is not null)
-            _scriptService.Run(path);
-        else
-            _scriptService.RunFromContent(text);
+        _scriptService.RunFromContent(text, fileName: path);
         return true;
     }
 
@@ -208,17 +258,44 @@ public class ToolCallService : IToolCallService
 
     public bool IsScriptRunning => _scriptService.IsRunning;
 
-    // ── 视觉 ────────────────────────────────
+    // ── 视觉 / 原子输入 ─────────────────────
+    // 能力供给制：本类只负责"按连接状态惰性提供 Core 能力实例"，
+    // 动作语义（按键/摇杆/取帧/OCR）由工具直接在能力端口上实现。
 
-    public string? GetCurrentFrameBase64()
+    /// <summary>手柄输入能力。设备未连接返回 null；每次现建（设备重连后旧适配器失效，不缓存）。</summary>
+    public IPadInput? GetPadInput() =>
+        _deviceService.IsConnected ? new PadInputAdapter(CreatePad()) : null;
+
+    private ICGamePad CreatePad() => new GamePadAdapter(_deviceService.GetDevice(), highResolution: false);
+
+    public ICaptureSource? GetCaptureSource()
     {
-        using var lease = _captureService.AcquireLatestFrame();
-        if (lease == null || lease.Mat.Empty()) return null;
-        var mat = lease.Mat;
+        if (!_captureService.IsConnected)
+            return null;
+        _captureSource ??= new DelegateCaptureSource(
+            FrameDelegateFactory.CreateFrame(() => _captureService.AcquireLatestFrame()));
+        return _captureSource;
+    }
 
-        using var resized = mat.Resize(0.5);
-        var bytes = resized.ToBytes(".png");
-        return Convert.ToBase64String(bytes);
+    private ICaptureSource? _captureSource;
+
+    public IOcrService? GetOcrService() => AcquireOcr();
+
+    /// <summary>
+    /// 惰性装配仅感知用途的能力租约（OCR 走 ScriptHostAssembler 默认值，Pad 为空）。
+    /// 装配一次复用，避免每次工具调用重复初始化 OCR 引擎。
+    /// </summary>
+    private IOcrService? AcquireOcr()
+    {
+        if (_ocrLease is null)
+        {
+            _ocrLease = ScriptHostAssembler.Assemble(new ScriptHostContext
+            {
+                Frame = FrameDelegateFactory.CreateFrame(() => _captureService.AcquireLatestFrame()),
+                AppDir = AppDomain.CurrentDomain.BaseDirectory,
+            });
+        }
+        return _ocrLease.Capabilities.Ocr;
     }
 
     // ── 日志 ────────────────────────────────
@@ -228,9 +305,11 @@ public class ToolCallService : IToolCallService
         if (_logBuffer.Count == 0)
             return "(暂无日志)";
 
-        var lines = _logBuffer.Count <= maxLines
-            ? _logBuffer.ToArray()
-            : _logBuffer.Skip(_logBuffer.Count - maxLines).ToArray();
+        const int maxLineChars = 500;
+        var lines = (_logBuffer.Count <= maxLines
+                ? _logBuffer.ToArray()
+                : _logBuffer.Skip(_logBuffer.Count - maxLines).ToArray())
+            .Select(l => l.Length <= maxLineChars ? l : l[..maxLineChars] + "…");
 
         return string.Join(Environment.NewLine, lines);
     }

@@ -1,14 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <!-- 与解决方案一致的 net10.0（原 net6.0 为 WinForms 时代遗留） -->
+    <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Avalonia资源（排除Amiibo图片） -->
-    <AvaloniaResource Include="Resources\**\*" Exclude="Resources\Amiibo\*.jpg" />
+    <!-- 说明：本项目零 Avalonia 包引用，AvaloniaResource 项类型是 no-op，勿在此登记资源；
+         真正被消费的只有下方 resx 强类型资源（经 EasyCon2.UI.Common.Properties.Resources）。 -->
 
     <!-- 强类型资源 -->
     <EmbeddedResource Update="Properties\Resources.resx">

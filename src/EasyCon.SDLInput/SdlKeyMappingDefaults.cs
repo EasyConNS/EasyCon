@@ -9,6 +9,7 @@ public static class SdlKeyMappingDefaults
     {
         return new KeyMappingConfig
         {
+            SchemaVersion = KeyMappingConfig.CurrentSchemaVersion,
             A = (int)SDL_Scancode.SDL_SCANCODE_L,
             B = (int)SDL_Scancode.SDL_SCANCODE_K,
             X = (int)SDL_Scancode.SDL_SCANCODE_I,
@@ -41,4 +42,17 @@ public static class SdlKeyMappingDefaults
             RSRight = (int)SDL_Scancode.SDL_SCANCODE_RIGHT,
         };
     }
+
+    /// <summary>把盘上读到的配置解析为有效配置：缺档 / 旧 VK 档（SchemaVersion 落后）→ 默认值。</summary>
+    public static KeyMappingConfig ResolveEffective(KeyMappingConfig? fromDisk)
+    {
+        if (fromDisk != null && fromDisk.SchemaVersion >= KeyMappingConfig.CurrentSchemaVersion)
+            return fromDisk;
+
+        return Create();
+    }
+
+    /// <summary>真实磁盘读取 + 解析（仅由 KeyMappingStore 的默认 loader 调用）。</summary>
+    public static KeyMappingConfig LoadFromDiskOrDefaults()
+        => ResolveEffective(ConfigManager.LoadKeyMapping());
 }

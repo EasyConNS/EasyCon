@@ -61,6 +61,8 @@ public static partial class BytecodeEncoder
 
                 case SsaOp.AddDouble: EmitIabc(EcsOpcode.AddD, Slot(v), Slot(v.Arg0!), Slot(v.Arg1!)); break;
                 case SsaOp.SubDouble: EmitIabc(EcsOpcode.SubD, Slot(v), Slot(v.Arg0!), Slot(v.Arg1!)); break;
+                case SsaOp.NegInt: EmitIabc(EcsOpcode.NegI, Slot(v), Slot(v.Arg0!), 0); break;
+                case SsaOp.NegDouble: EmitIabc(EcsOpcode.NegD, Slot(v), Slot(v.Arg0!), 0); break;
                 case SsaOp.MulDouble: EmitIabc(EcsOpcode.MulD, Slot(v), Slot(v.Arg0!), Slot(v.Arg1!)); break;
                 case SsaOp.DivDouble: EmitIabc(EcsOpcode.DivD, Slot(v), Slot(v.Arg0!), Slot(v.Arg1!)); break;
 
@@ -95,6 +97,10 @@ public static partial class BytecodeEncoder
                 case SsaOp.GeqUInt64: EmitCmp(EcsOpcode.GeL, v); break;
                 case SsaOp.EqString: EmitCmp(EcsOpcode.EqS, v); break;
                 case SsaOp.EqPtr: EmitCmp(EcsOpcode.EqP, v); break;
+                case SsaOp.LtPtr: EmitCmp(EcsOpcode.LtL, v); break;
+                case SsaOp.LeqPtr: EmitCmp(EcsOpcode.LeL, v); break;
+                case SsaOp.GtPtr: EmitCmp(EcsOpcode.GtL, v); break;
+                case SsaOp.GeqPtr: EmitCmp(EcsOpcode.GeL, v); break;
                 case SsaOp.EqBool: EmitCmp(EcsOpcode.EqI, v); break;
                 case SsaOp.EqByte: EmitCmp(EcsOpcode.EqI, v); break;
                 case SsaOp.LtByte: EmitCmp(EcsOpcode.LtI, v); break;
@@ -173,8 +179,8 @@ public static partial class BytecodeEncoder
                     {
                         var key = KeyByte(v);
                         var dur = v.Arg0!;
-                        if (dur.IsConstant && dur.Const.GetInt() is >= 0 and <= 0xFFFF)
-                            EmitAbx(EcsOpcode.KeyI, key, dur.Const.GetInt());
+                        if (dur.IsConstant && dur.Const.GetInt() is >= 0)
+                            EmitExt(EcsOpcode.KeyI, key, 0, 0, unchecked((uint)dur.Const.GetInt()));
                         else
                             EmitIabc(EcsOpcode.KeyV, key, Slot(dur), 0);
                         break;
@@ -205,8 +211,8 @@ public static partial class BytecodeEncoder
                 case SsaOp.Wait:
                     {
                         var dur = v.Arg0!;
-                        if (dur.IsConstant && dur.Const.GetInt() is >= 0 and <= 0xFFFF)
-                            EmitAbx(EcsOpcode.WaitI, 0, dur.Const.GetInt());
+                        if (dur.IsConstant && dur.Const.GetInt() is >= 0)
+                            EmitExt(EcsOpcode.WaitI, 0, 0, 0, unchecked((uint)dur.Const.GetInt()));
                         else
                             EmitIabc(EcsOpcode.WaitV, Slot(dur), 0, 0);
                         break;
@@ -231,11 +237,6 @@ public static partial class BytecodeEncoder
                             throw Fail($"不支持的运行时值 {name}");
                         break;
                     }
-                case SsaOp.Capture: EmitHoleCall(v, "__CAPTURE__"); break;
-                case SsaOp.Ocr: EmitHoleCall(v, "__OCR__"); break;
-                case SsaOp.Roi: EmitHoleCall(v, "__ROI__"); break;
-                case SsaOp.OcrInit: EmitHoleCall(v, "__OCR_INIT__"); break;
-
                 // ---- 调用 ----
                 case SsaOp.Call:
                 case SsaOp.StaticCall:
@@ -260,7 +261,8 @@ public static partial class BytecodeEncoder
         void EmitConv(EcsConvKind kind, SsaValue v)
             => EmitIabc(EcsOpcode.Conv, Slot(v), Slot(v.Arg0!), (int)kind);
 
-        /// <summary>内联数组字面量（小字面量/含非常量元素）：staging + NewArrV（docs/VM2.md §5.2）。</summary>
+        /// <summary>内联数组字面量（小字面量）：STAGING + NewArrV（docs/VM2.md §5.2）。
+        /// 元素全常量（语法阶段白名单）且 ≥8 走常量模板降级，内联路径元素数恒 ≤ STAGING 容量。</summary>
         void EmitInlineArrayInit(SsaValue v)
         {
             var elemCode = TypeCode(((ArrayType)v.Type).ElementType);
@@ -272,6 +274,8 @@ public static partial class BytecodeEncoder
 
             var args = new List<SsaValue> { v.Arg0 };
             if (v.ExtraArgs != null) args.AddRange(v.ExtraArgs);
+            if (args.Count > _stagingCount)
+                throw Fail($"数组字面量元素数 {args.Count} 超过 STAGING 容量 {_stagingCount}（内部错误）");
             for (int i = 0; i < args.Count; i++)
                 EmitIabc(EcsOpcode.Move, _stagingBase + i, Slot(args[i]), 0);
             EmitExt(EcsOpcode.NewArrV, Slot(v), args.Count, _stagingBase, elemCode);
@@ -284,7 +288,7 @@ public static partial class BytecodeEncoder
             bool hasResult = !sym.ReturnType.Equals(ScriptType.Void) && v.Uses > 0;
 
             // 用户函数（含 stdlib）：值相等语义与 SsaEvaluator 一致（A-07）。
-            // 本模块函数 → 模块局部 fid；跨模块 → 导入表标记 0x80000000|importIdx（docs/EcmEcxFormat.md §4.1）。
+            // 本模块函数 → 模块局部 fid；跨模块 → 导入表标记 0x80000000|importIdx。
             // extern 声明恒走 CallN 按名分发（镜像里没有 extern 的函数体，导入标记将无法解析）；
             // 其余（内建原生等）→ CallN 按名分发。
             bool isLocal = _ctx.LocalFuncIds.TryGetValue(sym, out var localFid);
@@ -294,17 +298,12 @@ public static partial class BytecodeEncoder
                 || (_ctx.ExternalFunctions != null && _ctx.ExternalFunctions.Contains(sym)));
             if (isLocal || isExternal)
             {
-                for (int i = 0; i < args.Count; i++)
-                    EmitIabc(EcsOpcode.Move, _stagingBase + i, Slot(args[i]), 0);
-
                 uint target = isLocal
                     ? unchecked((uint)localFid)
-                    : 0x80000000u | unchecked((uint)_ctx.ImportId(sym.Name, sym.Parameters.Length));
-                EmitExt(EcsOpcode.Call, _stagingBase, args.Count,
-                    hasResult ? _receiveSlot : 255, target);
-
-                if (hasResult)
-                    EmitIabc(EcsOpcode.Move, Slot(v), _receiveSlot, 0);
+                    : 0x80000000u | unchecked((uint)_ctx.ImportId(sym.OriginModule, sym.Name, sym.Parameters.Length));
+                // 接收槽直取结果寄存器：有结果 → Slot(v)；无结果 → RET（R0 固定落点）
+                EmitStagedCall(EcsOpcode.Call, unchecked((int)target), args,
+                    hasResult ? Slot(v) : EcsRegisters.Ret);
             }
             else
             {
@@ -314,28 +313,23 @@ public static partial class BytecodeEncoder
                     ? unchecked((int)scTarget)
                     : _ctx.NativeId(NativeName(sym));
                 EmitStagedCall(EcsOpcode.CallN, targetId, args,
-                    hasResult ? Slot(v) : -1);
+                    hasResult ? Slot(v) : EcsRegisters.Ret);
             }
         }
 
         void EmitStagedCall(EcsOpcode op, int targetId, IReadOnlyList<SsaValue> args, int resultSlot)
         {
+            if (args.Count > _stagingCount)
+                throw Fail($"调用实参数 {args.Count} 超过 STAGING 容量 {_stagingCount}（内部错误）");
             for (int i = 0; i < args.Count; i++)
                 EmitIabc(EcsOpcode.Move, _stagingBase + i, Slot(args[i]), 0);
-            EmitExt(op, _stagingBase, args.Count,
-                resultSlot >= 0 ? resultSlot : 255, unchecked((uint)targetId));
-        }
-
-        void EmitHoleCall(SsaValue v, string native)
-        {
-            var args = CallArgs(v);
-            EmitStagedCall(EcsOpcode.CallN, _ctx.NativeId(native), args, Slot(v));
+            EmitExt(op, args.Count == 0 ? EcsRegisters.Ret : _stagingBase, args.Count,
+                resultSlot, unchecked((uint)targetId));
         }
 
         static IReadOnlyList<SsaValue> CallArgs(SsaValue v)
         {
-            // 洞调用（Capture/Ocr/Roi/OcrInit）的 SSA 形态是 Arg0+Arg1+ExtraArgs，
-            // 普通调用是 Arg0+ExtraArgs（Arg1 恒空）——两者都必须完整打包
+            // Arg0+Arg1+ExtraArgs 全量打包（StaticCall 多参形态 Arg1 可非空）
             var args = new List<SsaValue>();
             if (v.Arg0 != null) args.Add(v.Arg0);
             if (v.Arg1 != null) args.Add(v.Arg1);

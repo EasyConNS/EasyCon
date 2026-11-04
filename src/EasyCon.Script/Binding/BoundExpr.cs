@@ -12,11 +12,12 @@ internal abstract class BoundExpr(AstNode expr) : BoundNode
     public object? ConstantValue = null;
 }
 
+/// <summary>绑定失败的占位表达式：类型查询收敛为 Int（阻断 NIE 级联误报；M1 诊断结构化）。</summary>
 internal sealed class BoundErrorExpression(AstNode expr) : BoundExpr(expr)
 {
-    public override ScriptType Type => throw new NotImplementedException();
+    public override ScriptType Type => ScriptType.Int;
 
-    public override BoundNodeKind Kind => throw new NotImplementedException();
+    public override BoundNodeKind Kind => BoundNodeKind.ErrorExpression;
 }
 
 

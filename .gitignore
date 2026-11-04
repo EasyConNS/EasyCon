@@ -371,3 +371,26 @@ PP-OCRv5_mobile_rec.onnx
 *_rec.onnx
 *_dict.txt
 ppocr_keys_v5.txt
+
+# Local design references / mockups (working material, not shipped)
+.design/
+
+# macOS 目录元数据
+.DS_Store
+
+# Python 前端（frontend/，uv 管理）：虚拟环境与缓存不入库
+# 注意：pyproject.toml / uv.lock / .python-version 是**要入库**的（环境可复现）
+frontend/.venv/
+frontend/**/__pycache__/
+frontend/**/*.pyc
+frontend/**/*.egg-info/
+
+# 真机测试资产（约定见 test/assets/README.md）：模型/截图体积大不入库，本机自备
+test/assets/*
+!test/assets/README.md
+
+# ecs-vm 构建产物（native/）
+src/EasyCon.Vm/native/ecs-vm*
+
+# Fixed Maa OCR assets downloaded explicitly for native regression tests
+.ci-maa-ocr/

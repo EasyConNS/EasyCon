@@ -1,0 +1,42 @@
+using EasyCon.Core.LLM.Tools;
+using System.Text.Json;
+
+namespace EasyCon.Core.LLM.Agent.Tools;
+
+/// <summary>
+/// get_logs 工具：返回最近的运行日志（按行）。
+/// </summary>
+public class GetLogsTool : IAiTool
+{
+    private readonly IObservabilityPort _service;
+
+    public GetLogsTool(IObservabilityPort observability) => _service = observability;
+
+    public string Name => "get_logs";
+
+    public ToolConcurrency Concurrency => ToolConcurrency.Parallel;
+
+    public string Description => "获取最近的运行日志，用于排查编译错误或运行时问题。";
+
+    public JsonSchema Parameters => new()
+    {
+        Type = "object",
+        Properties = new()
+        {
+            ["lines"] = new JsonSchemaProperty
+            {
+                Type = "integer",
+                Description = "返回的日志行数（默认 20，最大 200）。"
+            }
+        }
+    };
+
+    public Task<ToolResult> ExecuteAsync(Dictionary<string, JsonElement> args, CancellationToken ct = default)
+    {
+        var lines = 20;
+        if (args.TryGetValue("lines", out var el) && el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out var n))
+            lines = Math.Clamp(n, 1, 200);
+
+        return Task.FromResult(ToolResult.Ok(_service.GetRecentLogs(lines)));
+    }
+}

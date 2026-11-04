@@ -38,6 +38,7 @@ env:
   DOTNET_VERSION: '10.0.x'
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
   DOTNET_NOLOGO: 1
+  ECSVM_REQUIRE_CC: 1
 
 jobs:
   # ========================================
@@ -47,6 +48,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
 
       - name: 安装 .NET SDK
         uses: actions/setup-dotnet@v5
@@ -54,7 +57,7 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: 检查代码格式
-        run: dotnet format --verbosity diagnostic
+        run: dotnet format --verify-no-changes --verbosity diagnostic
 
   # ========================================
   # 2. 构建 + 测试 (Debug)
@@ -62,14 +65,18 @@ jobs:
   build-and-test:
     runs-on: windows-latest
     needs: format
+    env:
+      EASYCON_CONNECTION_RENDER_DIR: ${{ github.workspace }}/acceptance-connection
+      EASYCON_CONNECTION_RESULTS_DIR: ${{ github.workspace }}/TestResultsConnection
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
 
       - name: 安装 .NET SDK
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-          ref: ${{ github.event.workflow_run.head_branch }}
 
       - name: 缓存 NuGet 包
         uses: actions/cache@v4
@@ -81,13 +88,184 @@ jobs:
       - name: 还原 NuGet 包
         run: dotnet restore
 
-      - name: 构建 ecs-vm（无 C 工具链则跳过）
+      - name: 构建 ecs-vm 普通与 budget 档（必须有 C99 工具链）
         shell: bash
-        run: sh ci/build-vm.sh
+        run: sh ci/build-vm.sh budget
 
       - name: Build (Debug)
         run: dotnet build --no-restore --configuration Debug
 
+      - name: 安装并强制执行真实 Maa OCR 试点测试
+        shell: pwsh
+        run: ./ci/prepare-maa-ocr.ps1 -Configuration Debug
+
       - name: 运行 EasyCon 测试
-        shell: cmd
-        run: ci\test.bat Debug
+        run: dotnet test EasyCon2.slnx --no-build -c Debug --logger trx --results-directory TestResults
+
+      - name: Maa 原生宿主无硬件自检
+        run: dotnet run --no-build -c Debug --project src/EasyCon2.CLI -- maa doctor | Tee-Object maa-runtime.json
+
+      - name: 上传宿主与测试验收记录
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: host-p1-tests
+          path: |
+            TestResults/*.trx
+            maa-runtime.json
+
+      - name: 串行运行真实窗口保存快捷键回归
+        run: >-
+          dotnet test test/EasyCon2.Avalonia.UiTests/EasyCon2.Avalonia.UiTests.csproj
+          --configuration Debug --no-build
+          --filter "FullyQualifiedName~MainWindowSaveTests.CtrlS_SavesLatestEditorTextFromTheFocusedEditor"
+
+      - name: 验证连接区证据完整性门禁的回归用例
+        shell: pwsh
+        run: ./ci/test-connection-evidence.ps1
+
+      - name: 串行运行连接区 M18 渲染与交互回归
+        run: >-
+          dotnet test test/EasyCon2.Avalonia.UiTests/EasyCon2.Avalonia.UiTests.csproj
+          --configuration Debug --no-build
+          --filter "FullyQualifiedName~MainWindowSaveTests.ConnectionPanels_Render"
+          --logger "trx;LogFileName=connection-m18.trx"
+          --results-directory "${{ env.EASYCON_CONNECTION_RESULTS_DIR }}"
+
+      - name: 上传前校验完整 M18 证据
+        id: connection-evidence
+        if: always()
+        shell: pwsh
+        run: >-
+          ./ci/verify-connection-evidence.ps1
+          -RenderDirectory $env:EASYCON_CONNECTION_RENDER_DIR
+          -TrxPath (Join-Path $env:EASYCON_CONNECTION_RESULTS_DIR 'connection-m18.trx')
+
+      - name: 上传完整 M18 截图、结构化记录与测试结果
+        uses: actions/upload-artifact@v6
+        if: ${{ always() && steps.connection-evidence.outcome == 'success' }}
+        with:
+          name: connection-m18
+          if-no-files-found: error
+          path: |
+            ${{ env.EASYCON_CONNECTION_RENDER_DIR }}/*.png
+            ${{ env.EASYCON_CONNECTION_RENDER_DIR }}/*.json
+            ${{ env.EASYCON_CONNECTION_RESULTS_DIR }}/connection-m18.trx
+
+      - name: 发布 Windows 验收包
+        shell: pwsh
+        run: |
+          dotnet publish src/EasyCon2.CLI -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o dist/p2-win-x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet publish src/EasyCon2.Avalonia -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o dist/p2-win-x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item .ci-maa-ocr dist/p2-win-x64/maa-ocr-pilot -Recurse
+          if (Test-Path assets/fw) { Copy-Item assets/fw dist/p2-win-x64/Firmware -Recurse }
+          & dist/p2-win-x64/EasyCon2.CLI.exe maa doctor --ocr-profile dist/p2-win-x64/maa-ocr-pilot/ocr-profile.json | Tee-Object dist/p2-win-x64/maa-runtime.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git rev-parse HEAD | Set-Content dist/p2-win-x64/COMMIT.txt
+          Compress-Archive dist/p2-win-x64/* dist/EasyCon2-p2-win-x64.zip
+      - uses: actions/upload-artifact@v6
+        with:
+          name: easycon2-p2-win-x64
+          path: dist/EasyCon2-p2-win-x64.zip
+          retention-days: 30
+
+  native-abi:
+    runs-on: ubuntu-latest
+    needs: format
+    strategy:
+      fail-fast: false
+      matrix:
+        bits: [64, 32]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: 安装 32 位 C 运行库与工具链
+        if: matrix.bits == 32
+        run: sudo apt-get update && sudo apt-get install -y gcc-multilib
+      - name: 指定实际 C 编译器
+        shell: bash
+        run: |
+          if [ "${{ matrix.bits }}" = "32" ]; then
+            chmod +x ci/cc32.sh
+            echo "ECSVM_CC=$PWD/ci/cc32.sh" >> "$GITHUB_ENV"
+          else
+            echo "ECSVM_CC=/usr/bin/gcc" >> "$GITHUB_ENV"
+          fi
+      - name: 普通与 budget 构建及容量门禁
+        run: sh ci/build-vm.sh budget | tee vm-budget-${{ matrix.bits }}.txt
+      - name: 执行 C# 与 C VM 差分及 P0 ABI 回归
+        run: >-
+          dotnet test test/EasyCon.Tests/EasyCon.Tests.csproj -c Release
+          --filter "FullyQualifiedName~Bytecode"
+          --logger "trx;LogFileName=native-${{ matrix.bits }}.trx"
+          --results-directory TestResults
+      - name: 上传原生验收记录
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cvm-p0-${{ matrix.bits }}
+          path: |
+            vm-budget-*.txt
+            TestResults/*.trx
+
+  build-macos:
+    if: github.event_name != 'workflow_run'
+    runs-on: macos-14
+    needs: format
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
+      - name: 检查 AVFoundation 真实枚举入口（无设备可返回空列表，不请求权限）
+        shell: bash
+        run: |
+          set -o pipefail
+          dotnet run --project src/EasyCon2.CLI -c Release -- video --list | tee macos-video-sources.txt
+      - name: 安装并强制执行真实 Maa OCR 试点测试
+        shell: pwsh
+        run: ./ci/prepare-maa-ocr.ps1
+      - name: 运行 P1 选源和 P2 原生识别回归
+        shell: bash
+        run: |
+          dotnet test test/EasyCon.Tests -c Release --filter "FullyQualifiedName~MaaVisionTests|FullyQualifiedName~MaaOcrTests|FullyQualifiedName~HostProfileRegressionTests" --logger trx --results-directory TestResults
+      - name: 打包 macOS .app
+        shell: bash
+        env:
+          CI: "true"
+        run: bash ci/macos-app.sh
+      - name: 检查发布包的枚举入口并打包
+        shell: bash
+        run: |
+          set -o pipefail
+          dist/publish/EasyCon.app/Contents/MacOS/ezcon video --list | tee macos-published-video-sources.txt
+          cp -R .ci-maa-ocr dist/publish/EasyCon.app/Contents/MacOS/maa-ocr-pilot
+          dist/publish/EasyCon.app/Contents/MacOS/ezcon maa doctor --ocr-profile dist/publish/EasyCon.app/Contents/MacOS/maa-ocr-pilot/ocr-profile.json | tee macos-published-maa-runtime.json
+          git rev-parse HEAD > dist/publish/EasyCon.app/Contents/MacOS/COMMIT.txt
+          version="$(git rev-parse --short HEAD)"
+          ditto -c -k --sequesterRsrc --keepParent dist/publish/EasyCon.app "dist/EasyCon2-${version}-macos-arm64.zip"
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: easycon2-macos-arm64
+          path: |
+            dist/*.zip
+            macos-video-sources.txt
+            macos-published-video-sources.txt
+            macos-published-maa-runtime.json
+            TestResults/*.trx
+          if-no-files-found: error
+          retention-days: 30

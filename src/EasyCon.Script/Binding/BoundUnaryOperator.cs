@@ -21,6 +21,7 @@ internal sealed class BoundUnaryOperator
     private static BoundUnaryOperator[] _operators =
     {
         new(TokenType.SUB, BoundUnaryOperatorKind.Subtraction, ScriptType.Int, a => -a.AsInt()),
+        new(TokenType.SUB, BoundUnaryOperatorKind.Subtraction, ScriptType.Double, a => Value.FromDouble(-a.AsDouble())),
         new(TokenType.SUB, BoundUnaryOperatorKind.Subtraction, ScriptType.Byte, a => Value.FromByte((byte)(-a.AsByte()))),
         new(TokenType.SUB, BoundUnaryOperatorKind.Subtraction, ScriptType.UInt, a => Value.FromUInt(unchecked((uint)(-(int)a.AsUInt())))),
         new(TokenType.BitNot, BoundUnaryOperatorKind.BitwiseNot, ScriptType.Int, a => ~a.AsInt()),

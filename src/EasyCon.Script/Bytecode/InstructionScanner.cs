@@ -1,11 +1,10 @@
 namespace EasyCon.Script.Bytecode;
 
 /// <summary>
-/// ECX 代码线性扫描器（回调式，链接器各分析/重写 pass 共享）。步进由
-/// <see cref="EcsFormat.ExtWords"/> 驱动——EXT 后随字是「数据」，数值可能恰好等于某个
-/// 操作码，扫描器保证它永不被误读为指令（历史 F4 缺陷形态）。
-/// 新增分析/重写 pass 只写回调，不再复制指令遍历骨架；重写型 pass 经
-/// <c>code[w] = …</c> 原地修改（IList 视图）。
+/// 指令流线性扫描器（回调式，链接器各分析/重写 pass 共享）。
+/// 扫描对象是解码形态 <see cref="EcsInstruction"/>——单流化（docs/SingleStreamFormat.md §2）后
+/// 不再有「按 ExtWords 步进猜字长」的字流扫描：EXT 数据字是指令内字段，天然不被误读为指令
+///（历史 F4 缺陷形态随双流一起消失）。重写型 pass 经返回的新指令原地替换。
 /// </summary>
 internal static class InstructionScanner
 {
@@ -14,43 +13,46 @@ internal static class InstructionScanner
         /// <summary>置 true 后扫描在当前指令处理完即停止（早退：可达性命中等）。</summary>
         public bool Stop;
 
-        /// <summary>每条指令（含 EXT 首字）——ABx 类原地重写（LoadG/StoreG/NewSt/LoadK/Img）用。</summary>
-        public Action<IList<uint>, int, EcsOpcode>? OnInstruction;
+        /// <summary>每条指令（含返回的替换指令；null = 保持原指令）。ABx 类重写（LoadG/StoreG/NewSt/LoadK/Img）用。</summary>
+        public Func<EcsInstruction, EcsOpcode, EcsInstruction?>? OnInstruction;
         /// <summary>Call：ext = 目标 fid（链接前模块局部/导入标记，链接后镜像全局）。</summary>
-        public Action<IList<uint>, int, uint>? OnCall;
-        /// <summary>CallN：ext = 原生名表 nid。</summary>
-        public Action<IList<uint>, int, uint>? OnCallN;
-        /// <summary>LoadK/Img：Bx = 模块/镜像常量池索引（ABx，无 EXT 后随字）。</summary>
-        public Action<IList<uint>, int, int>? OnConstRef;
+        public Func<uint, uint?>? OnCall;
+        /// <summary>CallN：ext = 原生名表 nid / syscall 编号。</summary>
+        public Func<uint, uint?>? OnCallN;
+        /// <summary>LoadK/Img：Bx = 模块/镜像常量池索引。</summary>
+        public Action<int>? OnConstRef;
         /// <summary>其余 EXT 指令：ext 为数据字（语义见 EcsFormat.ExtKind）。</summary>
-        public Action<IList<uint>, int, EcsOpcode, uint>? OnExt;
+        public Action<EcsOpcode, uint>? OnExt;
     }
 
-    public static void Scan(IList<uint> code, Callbacks cb)
+    public static void Scan(List<EcsInstruction> code, Callbacks cb)
     {
-        for (int w = 0; w < code.Count; w++)
+        for (int i = 0; i < code.Count; i++)
         {
-            var op = (EcsOpcode)(code[w] & 0xFF);
-            cb.OnInstruction?.Invoke(code, w, op);
-            switch (op)
+            var ins = code[i];
+            var replaced = cb.OnInstruction?.Invoke(ins, ins.Op);
+            if (replaced != null)
+                code[i] = ins = replaced.Value;
+            switch (ins.Op)
             {
                 case EcsOpcode.Call:
-                    cb.OnCall?.Invoke(code, w, code[w + 1]);
+                    if (cb.OnCall?.Invoke(ins.Ext) is { } callExt)
+                        code[i] = ins = ins with { Ext = callExt };
                     break;
                 case EcsOpcode.CallN:
-                    cb.OnCallN?.Invoke(code, w, code[w + 1]);
+                    if (cb.OnCallN?.Invoke(ins.Ext) is { } callNExt)
+                        code[i] = ins = ins with { Ext = callNExt };
                     break;
                 case EcsOpcode.LoadK or EcsOpcode.Img:
-                    cb.OnConstRef?.Invoke(code, w, (int)((code[w] >> 16) & 0xFFFF));
+                    cb.OnConstRef?.Invoke(ins.B);
                     break;
                 default:
-                    if (EcsFormat.ExtWords(op) > 0)
-                        cb.OnExt?.Invoke(code, w, op, code[w + 1]);
+                    if (ins.HasExt)
+                        cb.OnExt?.Invoke(ins.Op, ins.Ext);
                     break;
             }
             if (cb.Stop)
                 return;
-            w += EcsFormat.ExtWords(op);   // EXT 后随字是数据：步进跳过
         }
     }
 }

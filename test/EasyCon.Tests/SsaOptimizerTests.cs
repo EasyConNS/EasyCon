@@ -135,6 +135,19 @@ public class SsaOptimizerTests
         falseBlock.Predecessors.Add(block);
     }
 
+    private static void ValidateUseDef(SsaFunction func)
+    {
+        SsaUseDefValidator.ValidateProgram(new SsaProgram
+        {
+            MainFunction = func,
+            Functions = System.Collections.Immutable.ImmutableDictionary<FunctionSymbol, SsaFunction>.Empty,
+            ExternFunctions = [],
+            Diagnostics = [],
+            StructDefinitions = System.Collections.Immutable.ImmutableDictionary<string, EasyCon.Script.Runtime.EcsStructDef>.Empty,
+            ILNames = [],
+        });
+    }
+
     #endregion
 
     #region 代数化简
@@ -401,6 +414,82 @@ public class SsaOptimizerTests
         // 第二个相同表达式应被消除
         Assert.That(entry.Instructions, Does.Not.Contain(add2));
         Assert.That(entry.Instructions, Does.Contain(add1));
+    }
+
+    [Test]
+    public void Cse_ReplacesUsesInDownstreamBlocks()
+    {
+        var func = CreateFunction();
+        var entry = Block(func);
+        var duplicateBlock = Block(func);
+        var consumerBlock = Block(func);
+
+        var a = ConstI(entry, 3);
+        var b = ConstI(entry, 4);
+        var existing = Bin(entry, SsaOp.MulInt, a, b, ScriptType.Int);
+        Branch(entry, duplicateBlock);
+
+        var duplicate = Bin(duplicateBlock, SsaOp.MulInt, a, b, ScriptType.Int);
+        Branch(duplicateBlock, consumerBlock);
+
+        var expected = ConstI(entry, 12);
+        var comparison = Bin(consumerBlock, SsaOp.EqInt, duplicate, expected, ScriptType.Bool);
+        Ret(consumerBlock, comparison);
+
+        SsaRedundancyElimination.EliminateCommonSubexpressions(func);
+        ValidateUseDef(func);
+
+        Assert.That(duplicateBlock.Instructions, Does.Not.Contain(duplicate));
+        Assert.That(comparison.Arg0, Is.SameAs(existing));
+        Assert.That(existing.Uses, Is.EqualTo(1));
+        Assert.That(duplicate.Uses, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void SsaValidator_RejectsUseBeforeDefinition()
+    {
+        var func = CreateFunction();
+        var entry = Block(func);
+        var value = NonConst(entry);
+        var one = ConstI(entry, 1);
+        var lateDefinition = new SsaValue(_vid++, SsaOp.AddInt, ScriptType.Int)
+        {
+            Arg0 = value,
+            Arg1 = one,
+            Block = entry,
+        };
+        value.Uses++;
+        one.Uses++;
+        var comparison = Bin(entry, SsaOp.EqInt, lateDefinition, one, ScriptType.Bool);
+        Ret(entry, comparison);
+        entry.Instructions.Insert(entry.Instructions.IndexOf(comparison) + 1, lateDefinition);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ValidateUseDef(func));
+        Assert.That(ex!.Message, Does.Contain("before its definition"));
+    }
+
+    [Test]
+    public void SsaValidator_RejectsDefinitionThatDoesNotDominateUse()
+    {
+        var func = CreateFunction();
+        var entry = Block(func);
+        var left = Block(func);
+        var right = Block(func);
+        var merge = Block(func);
+
+        var a = ConstI(entry, 3);
+        var b = ConstI(entry, 4);
+        var condition = ConstB(entry, true);
+        CondBranch(entry, condition, left, right);
+        var leftOnly = Bin(left, SsaOp.AddInt, a, b, ScriptType.Int);
+        Branch(left, merge);
+        Branch(right, merge);
+        var one = ConstI(entry, 1);
+        var comparison = Bin(merge, SsaOp.EqInt, leftOnly, one, ScriptType.Bool);
+        Ret(merge, comparison);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => ValidateUseDef(func));
+        Assert.That(ex!.Message, Does.Contain("non-dominating"));
     }
 
     [Test]

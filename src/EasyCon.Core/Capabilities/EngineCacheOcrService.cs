@@ -51,8 +51,10 @@ public abstract class EngineCacheOcrService(IOcrEngineFactory defaultFactory, Oc
             Cache.LastConfidence = (int)(result.Confidence * 100);
             return result.Text;
         }
-        catch
+        catch (Exception ex)
         {
+            // 静默返回空串会让脚本 OCR「成功但永远识别不到」；至少把原因送进诊断通道
+            Logging.CoreLog.Error($"OCR 识别失败 (backend={Backend}, lang={query.Language}): {ex.Message}");
             return "";
         }
     }

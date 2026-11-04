@@ -1,8 +1,375 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- macOS 原生应用菜单标题（简体中文）。键名约定：Text.Menu.* -->
+    <!-- 简体中文。键名约定：Text.Menu.* / Text.Panel.* / Text.Tab.* / Text.Btn.* / Text.Status.* / Text.Msg.* / Text.Monitor.* / Text.Config.* / Text.Feature.* -->
+
+    <!-- macOS 原生应用菜单 -->
     <x:String x:Key="Text.Menu.About" xml:space="preserve">关于 EasyCon</x:String>
     <x:String x:Key="Text.Menu.Preferences" xml:space="preserve">设置</x:String>
     <x:String x:Key="Text.Menu.CheckUpdate" xml:space="preserve">检查更新</x:String>
     <x:String x:Key="Text.Menu.OpenConfigDir" xml:space="preserve">打开配置目录</x:String>
+
+    <!-- 面板与标签页 -->
+    <x:String x:Key="Text.Panel.Switch">单片机连接</x:String>
+    <x:String x:Key="Text.Panel.Capture">视频源</x:String>
+    <x:String x:Key="Text.Panel.Monitor">视频监视器</x:String>
+    <x:String x:Key="Text.Panel.Output">输出窗口</x:String>
+    <x:String x:Key="Text.Panel.RunControl">运行控制</x:String>
+    <x:String x:Key="Text.Panel.DebugMode">调试模式</x:String>
+    <x:String x:Key="Text.Panel.Controller">虚拟手柄</x:String>
+    <x:String x:Key="Text.Panel.Audio">游戏音频</x:String>
+    <x:String x:Key="Text.Tab.Editor">文本编辑</x:String>
+    <x:String x:Key="Text.Tab.TagEditor">标签编辑</x:String>
+    <x:String x:Key="Text.Tab.UserConfig">用户配置</x:String>
+    <x:String x:Key="Text.Tab.FeatureCenter">功能中心</x:String>
+
+    <!-- 工作树排序与脚本保存快捷键 -->
+    <x:String x:Key="Text.WorkTree.Sort">排序方式</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.NameAscending">名称：正序</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.NameDescending">名称：倒序</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.ModifiedNewest">修改时间：最新优先</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.ModifiedOldest">修改时间：最早优先</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.ExtensionAscending">文件类型：正序</x:String>
+    <x:String x:Key="Text.WorkTree.Sort.ExtensionDescending">文件类型：倒序</x:String>
+    <x:String x:Key="Text.WorkTree.SaveScript">保存文件</x:String>
+    <x:String x:Key="Text.WorkTree.SaveScriptAs">另存为文件</x:String>
+    <x:String x:Key="Text.Btn.SaveScript">保存 (Ctrl+S)</x:String>
+    <x:String x:Key="Text.Btn.SaveScriptAs">另存为 (Ctrl+Shift+S)</x:String>
+
+    <!-- 通用状态与按钮 -->
+    <x:String x:Key="Text.Status.NotConnected">未连接</x:String>
+    <x:String x:Key="Text.Status.Connected">已连接</x:String>
+    <x:String x:Key="Text.Status.ConnectedWithPort">已连接{0}</x:String>
+    <x:String x:Key="Text.Status.Disconnected">已断开</x:String>
+    <x:String x:Key="Text.Status.Connecting">连接中...</x:String>
+    <x:String x:Key="Text.Status.ConnectFailed">连接失败</x:String>
+    <x:String x:Key="Text.Status.AudioSilent">已收到音频，当前静音</x:String>
+    <x:String x:Key="Text.Status.AudioUnsupported">当前平台不支持音频输入</x:String>
+    <x:String x:Key="Text.Audio.Format">{0:N0} Hz · {1} 声道 · {2} bit</x:String>
+
+    <!-- 检查更新 -->
+    <x:String x:Key="Text.Status.CheckingUpdate">正在检查…</x:String>
+    <x:String x:Key="Text.Status.UpdateAvailable">发现新版本 v{0}</x:String>
+    <x:String x:Key="Text.Status.UpToDate">当前已是最新版本</x:String>
+    <x:String x:Key="Text.Status.UpdateCheckFailed">检查失败</x:String>
+
+    <!-- 单片机 -->
+    <x:String x:Key="Text.Btn.ConnectSwitch">连接单片机</x:String>
+    <x:String x:Key="Text.Btn.DisconnectSwitch">断开连接</x:String>
+    <x:String x:Key="Text.Btn.AutoConnect">自动连接</x:String>
+    <x:String x:Key="Text.Status.AutoConnecting">自动连接中...</x:String>
+    <x:String x:Key="Text.Status.AutoConnectFailed">自动连接失败</x:String>
+    <x:String x:Key="Text.Msg.ConnectSwitchPrepare">准备连接单片机({0})...</x:String>
+    <x:String x:Key="Text.Msg.ConnectSwitchOk">单片机 ({0}) 连接成功</x:String>
+    <x:String x:Key="Text.Msg.ConnectSwitchError">连接单片机异常: {0}</x:String>
+    <x:String x:Key="Text.Msg.SwitchLost">单片机已断开连接</x:String>
+    <x:String x:Key="Text.Msg.ScanStart">开始自动扫描串口...</x:String>
+    <x:String x:Key="Text.Msg.AutoConnectOk">自动连接成功: {0}</x:String>
+    <x:String x:Key="Text.Msg.AutoConnectFail">自动连接失败，未找到可用设备</x:String>
+    <x:String x:Key="Text.Msg.AutoConnectError">自动连接异常: {0}</x:String>
+    <x:String x:Key="Text.Msg.ConnectFirst">请先连接单片机</x:String>
+    <x:String x:Key="Text.Msg.RemoteRunOk">远程运行成功</x:String>
+    <x:String x:Key="Text.Msg.RemoteRunFail">远程运行失败</x:String>
+    <x:String x:Key="Text.Msg.RemoteRunError">远程运行失败: {0}</x:String>
+    <x:String x:Key="Text.Msg.RemoteStopOk">远程停止成功</x:String>
+    <x:String x:Key="Text.Msg.RemoteStopFail">远程停止失败</x:String>
+    <x:String x:Key="Text.Msg.RemoteStopError">远程停止失败: {0}</x:String>
+
+    <!-- 运行控制 -->
+    <x:String x:Key="Text.Btn.Run">运行</x:String>
+    <x:String x:Key="Text.Btn.Stop">停止</x:String>
+    <x:String x:Key="Text.Msg.RunScriptFail">运行脚本失败: {0}</x:String>
+
+    <!-- 视频源 -->
+    <x:String x:Key="Text.Btn.ConnectCapture">连接视频源</x:String>
+    <x:String x:Key="Text.Btn.DisconnectCapture">关闭视频源</x:String>
+    <x:String x:Key="Text.Msg.OpenCapturePrepare">准备打开视频源({0})...</x:String>
+    <x:String x:Key="Text.Msg.CaptureOk">视频源 ({0}) 已连接</x:String>
+    <x:String x:Key="Text.Msg.CaptureOpenFail">视频源打开失败</x:String>
+    <x:String x:Key="Text.Msg.CaptureError">视频源连接异常: {0}</x:String>
+    <x:String x:Key="Text.Msg.CaptureDisconnected">视频源已断开连接</x:String>
+    <x:String x:Key="Text.Msg.DisconnectCaptureError">断开视频源异常: {0}</x:String>
+
+    <!-- 游戏音频 -->
+    <x:String x:Key="Text.Btn.ConnectAudio">连接音频源</x:String>
+    <x:String x:Key="Text.Btn.DisconnectAudio">断开音频源</x:String>
+    <x:String x:Key="Text.Msg.SelectAudioSource">请选择音频输入设备</x:String>
+    <x:String x:Key="Text.Msg.OpenAudioPrepare">准备打开音频源 ({0})...</x:String>
+    <x:String x:Key="Text.Msg.AudioOk">音频源 ({0}) 已连接</x:String>
+    <x:String x:Key="Text.Msg.AudioOpenFail">音频源打开失败</x:String>
+    <x:String x:Key="Text.Msg.AudioConnectError">音频源连接异常: {0}</x:String>
+    <x:String x:Key="Text.Msg.AudioDisconnectError">音频源断开异常: {0}</x:String>
+    <x:String x:Key="Text.Msg.AudioDisconnected">音频源已断开连接</x:String>
+    <x:String x:Key="Text.Msg.AudioListError">读取音频输入设备失败: {0}</x:String>
+    <x:String x:Key="Text.Msg.AudioTimeout">打开音频输入超时，请检查设备连接和 Windows 麦克风权限。</x:String>
+
+    <!-- 监视器 -->
+    <x:String x:Key="Text.Monitor.NotConnected">视频源未连接</x:String>
+    <x:String x:Key="Text.Monitor.ConnectFirst">视频源未连接，请先连接视频源</x:String>
+    <x:String x:Key="Text.Monitor.Reconnecting">视频源已断开连接，等待重连...</x:String>
+    <x:String x:Key="Text.Monitor.ReadFail">视频读取失败: {0}</x:String>
+    <x:String x:Key="Text.Btn.MonitorShow">监视器显示</x:String>
+    <x:String x:Key="Text.Btn.MonitorHide">监视器关闭</x:String>
+    <x:String x:Key="Text.Btn.Pause">暂停</x:String>
+    <x:String x:Key="Text.Btn.Resume">继续</x:String>
+
+    <!-- 虚拟手柄 -->
+    <x:String x:Key="Text.Btn.StartMapping">开启映射</x:String>
+    <x:String x:Key="Text.Btn.DisconnectController">断开手柄</x:String>
+    <x:String x:Key="Text.Btn.KeyMapping">按键映射</x:String>
+    <x:String x:Key="Text.Msg.ConnectControllerPrepare">正在连接手柄 ({0})...</x:String>
+    <x:String x:Key="Text.Msg.ConnectControllerOk">手柄 ({0}) 连接成功</x:String>
+    <x:String x:Key="Text.Msg.ConnectControllerFail">手柄 ({0}) 连接失败</x:String>
+    <x:String x:Key="Text.Msg.ConnectControllerError">连接手柄异常: {0}</x:String>
+    <x:String x:Key="Text.Msg.ControllerDisconnected">手柄已断开连接</x:String>
+
+    <!-- 烧录与固件 -->
+    <x:String x:Key="Text.Msg.NoScriptToFlash">没有可烧录的脚本</x:String>
+    <x:String x:Key="Text.Msg.CompileStart">开始编译...</x:String>
+    <x:String x:Key="Text.Msg.CompileFailFlash">编译失败，无法烧录</x:String>
+    <x:String x:Key="Text.Msg.CompileEmptyFlash">编译结果为空，无法烧录</x:String>
+    <x:String x:Key="Text.Msg.VersionMismatch">固件版本不匹配 (当前: 0x{0:X2}，需要: 0x{1:X2})，请先更新固件</x:String>
+    <x:String x:Key="Text.Msg.Flashing">正在烧录 ({0} 字节)...</x:String>
+    <x:String x:Key="Text.Msg.FlashOk">烧录成功</x:String>
+    <x:String x:Key="Text.Msg.FlashFail">烧录失败</x:String>
+    <x:String x:Key="Text.Msg.FlashError">烧录失败: {0}</x:String>
+    <x:String x:Key="Text.Msg.ClearFlashing">正在清除烧录...</x:String>
+    <x:String x:Key="Text.Msg.ClearFlashOk">清除烧录成功</x:String>
+    <x:String x:Key="Text.Msg.ClearFlashFail">清除烧录失败</x:String>
+    <x:String x:Key="Text.Msg.ClearFlashError">清除烧录失败: {0}</x:String>
+    <x:String x:Key="Text.Msg.NoScriptForFirmware">没有可生成固件的脚本</x:String>
+    <x:String x:Key="Text.Msg.CompileFailFirmware">编译失败，无法生成固件</x:String>
+    <x:String x:Key="Text.Msg.CompileEmptyFirmware">编译结果为空，无法生成固件</x:String>
+    <x:String x:Key="Text.Msg.FirmwareGenerateStart">正在生成固件 ({0})...</x:String>
+    <x:String x:Key="Text.Msg.FirmwareDirMissing">固件目录不存在，请确认程序Firmware目录下是否有对应固件文件</x:String>
+    <x:String x:Key="Text.Msg.FirmwareFileMissing">未找到 {0} 对应的固件文件</x:String>
+    <x:String x:Key="Text.Msg.FirmwareGenerated">固件已生成: {0}</x:String>
+    <x:String x:Key="Text.Msg.FirmwareError">生成固件失败: {0}</x:String>
+
+    <!-- 录制 -->
+    <x:String x:Key="Text.Btn.RecordStart">录制脚本</x:String>
+    <x:String x:Key="Text.Btn.RecordStop">停止录制</x:String>
+    <x:String x:Key="Text.Msg.RecordStart">开始录制脚本</x:String>
+
+    <!-- 标签测试 -->
+    <x:String x:Key="Text.Msg.TagTestNoFrame">标签测试失败：无法获取视频帧</x:String>
+    <x:String x:Key="Text.Msg.TagTestResult">标签测试 [{0}]: 匹配度 {1:F1}%</x:String>
+    <x:String x:Key="Text.Msg.TagTestFail">标签测试失败: {0}</x:String>
+
+    <!-- 输出与编辑器 -->
+    <x:String x:Key="Text.Btn.ClearOutput">清空输出</x:String>
+    <x:String x:Key="Text.Btn.ScriptSyntax">脚本语法</x:String>
+    <x:String x:Key="Text.Status.NoScriptSelected">未选择脚本</x:String>
+    <x:String x:Key="Text.Status.UntitledScript">未命名脚本</x:String>
+
+    <!-- 用户配置页 -->
+    <x:String x:Key="Text.Config.Appearance">外观</x:String>
+    <x:String x:Key="Text.Config.AppearanceStyle">外观样式</x:String>
+    <x:String x:Key="Text.Config.LightScheme">浅色</x:String>
+    <x:String x:Key="Text.Config.WarmScheme">暖色</x:String>
+    <x:String x:Key="Text.Config.DarkScheme">深色</x:String>
+    <x:String x:Key="Text.Config.ClassicStyle">默认</x:String>
+    <x:String x:Key="Text.Config.CardStyle">卡片</x:String>
+    <x:String x:Key="Text.Config.Language">语言</x:String>
+    <x:String x:Key="Text.Config.WelcomeTitle">欢迎使用 easycon</x:String>
+    <x:String x:Key="Text.Config.WelcomeWord">欢迎词</x:String>
+    <x:String x:Key="Text.Config.AutoComplete">代码自动补全</x:String>
+    <x:String x:Key="Text.Config.ShowFolding">显示代码折叠</x:String>
+    <x:String x:Key="Text.Config.AutoSwitchLayout">视运行状态自动切换布局</x:String>
+    <x:String x:Key="Text.Config.AutoSwitchScheme">跟随系统自动切换</x:String>
+    <x:String x:Key="Text.Config.IdlePreview">未运行时预览</x:String>
+    <x:String x:Key="Text.Config.RunningPreview">运行时预览</x:String>
+    <x:String x:Key="Text.Config.EditorArea">编辑区</x:String>
+    <x:String x:Key="Text.Config.OutputArea">输出区</x:String>
+    <x:String x:Key="Text.Config.WindowBar">窗口栏</x:String>
+    <x:String x:Key="Text.Config.WorkTree">工作树</x:String>
+    <x:String x:Key="Text.Config.CustomLayout">自定义布局区域</x:String>
+    <x:String x:Key="Text.Config.Capture">视频源</x:String>
+    <x:String x:Key="Text.Config.About">关于</x:String>
+    <x:String x:Key="Text.Config.PushSettings">推送设置</x:String>
+    <x:String x:Key="Text.Config.McpServers">MCP 服务器</x:String>
+    <x:String x:Key="Text.Config.Models">模型设置</x:String>
+    <x:String x:Key="Text.Config.CheckUpdate">检查更新</x:String>
+    <x:String x:Key="Text.Config.Configuration">配置</x:String>
+    <x:String x:Key="Text.Config.CaptureType">采集卡类型</x:String>
+    <x:String x:Key="Text.Config.SetEnvVariable">设置环境变量</x:String>
+    <x:String x:Key="Text.Config.OpenConfig">打开配置</x:String>
+    <x:String x:Key="Text.Config.HighPrecisionMode">高精度模式</x:String>
+    <x:String x:Key="Text.Config.Reset">重置</x:String>
+    <x:String x:Key="Text.Config.Style">风格</x:String>
+    <x:String x:Key="Text.Config.RestoreDefault">恢复默认</x:String>
+    <x:String x:Key="Text.Config.GitHubToolTip">在浏览器中打开 GitHub</x:String>
+    <x:String x:Key="Text.Config.CurrentVersion">当前版本：v{0}</x:String>
+
+    <!-- 功能中心页 -->
+    <x:String x:Key="Text.Feature.CompileFlash">编译烧录</x:String>
+    <x:String x:Key="Text.Feature.ClearFlash">清除烧录</x:String>
+    <x:String x:Key="Text.Feature.Generate">生成</x:String>
+    <x:String x:Key="Text.Feature.Firmware">固件</x:String>
+    <x:String x:Key="Text.Feature.RemoteRun">远程运行</x:String>
+    <x:String x:Key="Text.Feature.RemoteStop">远程停止</x:String>
+    <x:String x:Key="Text.Feature.ControllerBt">蓝牙手柄设置</x:String>
+    <x:String x:Key="Text.Feature.ESPConfig">ESP32 手柄参数配置</x:String>
+    <x:String x:Key="Text.Feature.Drawing">画图</x:String>
+    <x:String x:Key="Text.Feature.Splatoon">喷射战士</x:String>
+    <x:String x:Key="Text.Feature.FreeDraw">自由画板</x:String>
+    <x:String x:Key="Text.DrawingBoard.Title">画板</x:String>
+    <x:String x:Key="Text.DrawingBoard.LoadPicture">加载图片</x:String>
+    <x:String x:Key="Text.DrawingBoard.LoadPictureTip">支持 PNG、JPG、BMP、GIF、WebP、ICO、WBMP；也可以直接把图片拖进窗口</x:String>
+    <x:String x:Key="Text.DrawingBoard.ImageFilter">图片</x:String>
+    <x:String x:Key="Text.DrawingBoard.SavePicture">保存图片</x:String>
+    <x:String x:Key="Text.DrawingBoard.SavePictureTip">把预览中的 320×120 图片保存为 PNG：默认是二值化结果（最终画出的样子），勾选“显示原图”时保存旋转、适配后的原图</x:String>
+    <x:String x:Key="Text.DrawingBoard.Saved">图片已保存：{0}</x:String>
+    <x:String x:Key="Text.DrawingBoard.SaveFailed">图片保存失败</x:String>
+    <x:String x:Key="Text.DrawingBoard.Reverse">反转黑白</x:String>
+    <x:String x:Key="Text.DrawingBoard.ReverseTip">最后一步：把处理完的结果（含去杂点、轮廓）黑白互换，例如黑色轮廓线变成黑底白线</x:String>
+    <x:String x:Key="Text.DrawingBoard.Threshold">阈值</x:String>
+    <x:String x:Key="Text.DrawingBoard.ShowOriginal">显示原图</x:String>
+    <x:String x:Key="Text.DrawingBoard.ResetAll">重置</x:String>
+    <x:String x:Key="Text.DrawingBoard.ResetAllTip">所有选项恢复默认值，已载入的图片保留</x:String>
+    <x:String x:Key="Text.DrawingBoard.DropHint">把图片拖到这里，或点击“加载图片”</x:String>
+    <x:String x:Key="Text.DrawingBoard.TabPicture">图片</x:String>
+    <x:String x:Key="Text.DrawingBoard.TabTone">明暗</x:String>
+    <x:String x:Key="Text.DrawingBoard.TabInk">黑白</x:String>
+    <x:String x:Key="Text.DrawingBoard.TabDraw">绘制</x:String>
+    <x:String x:Key="Text.DrawingBoard.Milliseconds">毫秒</x:String>
+    <x:String x:Key="Text.DrawingBoard.PixelArt">像素画（最近邻缩放）</x:String>
+    <x:String x:Key="Text.DrawingBoard.PixelArtTip">缩放时不做平滑插值：像素画放大后边缘不出现灰色过渡，二值化后线条不会变粗或断开</x:String>
+    <x:String x:Key="Text.DrawingBoard.ToneBrightness">亮度</x:String>
+    <x:String x:Key="Text.DrawingBoard.ToneContrast">对比度</x:String>
+    <x:String x:Key="Text.DrawingBoard.ToneGamma">伽马</x:String>
+    <x:String x:Key="Text.DrawingBoard.ResetTone">重置明暗</x:String>
+    <x:String x:Key="Text.DrawingBoard.Speck">去杂点</x:String>
+    <x:String x:Key="Text.DrawingBoard.SpeckTip">去掉总点数不超过该值的孤立墨点块（八方向相连算一块），0 为关闭。抖动后浅色区域的零散点会被清掉，线段数与耗时明显减少</x:String>
+    <x:String x:Key="Text.DrawingBoard.SpeckOff">关闭</x:String>
+    <x:String x:Key="Text.DrawingBoard.SpeckValue">≤ {0} 点</x:String>
+    <x:String x:Key="Text.DrawingBoard.Outline">轮廓模式（只画边缘）</x:String>
+    <x:String x:Key="Text.DrawingBoard.OutlineTip">只保留墨点区域的边缘，实心部分被挖空；线条和单点保持不变</x:String>
+    <x:String x:Key="Text.DrawingBoard.Dither">抖动</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherTip">用点的疏密表现明暗，灰度照片效果更好，但墨点更碎、绘制更久。Atkinson 点最少、画得最快；蛇形扫描可减少斜纹；Bayer 图案规整</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherNone">关闭</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherFloydSteinberg">Floyd–Steinberg</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherFloydSteinbergSerpentine">Floyd–Steinberg（蛇形）</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherAtkinson">Atkinson（点少、对比强）</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherJarvisJudiceNinke">Jarvis–Judice–Ninke（最平滑）</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherStucki">Stucki</x:String>
+    <x:String x:Key="Text.DrawingBoard.DitherBayer">Bayer 有序（规则网格）</x:String>
+    <x:String x:Key="Text.DrawingBoard.Duration">按键持续</x:String>
+    <x:String x:Key="Text.DrawingBoard.Delay">延迟</x:String>
+    <x:String x:Key="Text.DrawingBoard.Start">开始画图</x:String>
+    <x:String x:Key="Text.DrawingBoard.Stop">停止</x:String>
+    <x:String x:Key="Text.DrawingBoard.SelectRegion">框选绘制区域</x:String>
+    <x:String x:Key="Text.DrawingBoard.SelectRegionTip">勾选后在预览上按住鼠标拖动，框出只画的一块区域，可随时重新拖动；开画时光标仍会先归位到画布左上角</x:String>
+    <x:String x:Key="Text.DrawingBoard.ResetRegion">全图</x:String>
+    <x:String x:Key="Text.DrawingBoard.RegionAll">绘制整张画布 320×120</x:String>
+    <x:String x:Key="Text.DrawingBoard.RegionRange">绘制区域：第 {0}–{1} 列，第 {2}–{3} 行</x:String>
+    <x:String x:Key="Text.DrawingBoard.Pause">暂停</x:String>
+    <x:String x:Key="Text.DrawingBoard.Continue">继续</x:String>
+    <x:String x:Key="Text.DrawingBoard.Paused">已暂停 · {0} · 第 {1}/{2} 段 · 已用 {3}</x:String>
+    <x:String x:Key="Text.DrawingBoard.EraserMode">橡皮擦模式（画布已涂黑）</x:String>
+    <x:String x:Key="Text.DrawingBoard.EraserHelp">橡皮擦模式：开始前先在游戏里用最大笔刷把整个画布涂黑，再把笔刷调到最小。程序会按住 B（橡皮擦）擦出图中的空白部分，最终效果与画笔模式相同。黑多白少的图要处理的点更少，通常更快，可对比右下角的耗时选择。只处理绘制区域内的点，区域外保持涂黑。</x:String>
+    <x:String x:Key="Text.DrawingBoard.Tip">开始前，请先进入画画页面，笔刷调整到最小。开画前会自动把光标归位到左上角（可在“绘制”页关闭），再从左上到右下绘制</x:String>
+    <x:String x:Key="Text.DrawingBoard.StayAwake">绘制时保持唤醒</x:String>
+    <x:String x:Key="Text.DrawingBoard.StayAwakeTip">绘制期间阻止电脑休眠、熄屏和进入屏幕保护，画完或停止后恢复。关闭后，电脑进入屏幕保护时绘制可能明显变慢甚至中断。建议保持勾选</x:String>
+    <x:String x:Key="Text.DrawingBoard.AutoHome">开画前自动归位</x:String>
+    <x:String x:Key="Text.DrawingBoard.AutoHomeTip">开画前自动把光标归位到画布左上角，并防止开头的输入因丢帧而失效。会多花几秒，强烈建议保持勾选</x:String>
+    <x:String x:Key="Text.DrawingBoard.AutoHomeOffWarning">已关闭自动归位。Switch 可能丢掉开头的输入帧，即使开始前手动把光标移到了左上角，也可能出现不可预测的绘制错位或整行缺失。除非确有需要，请保持勾选。</x:String>
+    <x:String x:Key="Text.DrawingBoard.OverheadLog">画板实测额外耗时：每次点按 {0} 毫秒，每次落笔/抬笔 {1} 毫秒，每次延迟 {2} 毫秒（用于之后的耗时估算）</x:String>
+    <x:String x:Key="Text.DrawingBoard.EstimateNone">预计耗时：—</x:String>
+    <x:String x:Key="Text.DrawingBoard.EstimateInvalid">预计耗时：参数有误</x:String>
+    <x:String x:Key="Text.DrawingBoard.EstimateResult">预计耗时：{0:0.00} 分钟</x:String>
+    <x:String x:Key="Text.DrawingBoard.LoadFailed">图片加载失败（支持 PNG、JPG、BMP、GIF、WebP、ICO、WBMP；HEIC、TIFF 等请先转换格式）</x:String>
+    <x:String x:Key="Text.DrawingBoard.Fit">适配</x:String>
+    <x:String x:Key="Text.DrawingBoard.FitContain">等比留白</x:String>
+    <x:String x:Key="Text.DrawingBoard.FitCover">等比裁切</x:String>
+    <x:String x:Key="Text.DrawingBoard.FitStretch">拉伸</x:String>
+    <x:String x:Key="Text.DrawingBoard.CoverAngle">角度</x:String>
+    <x:String x:Key="Text.DrawingBoard.CoverZoom">缩放</x:String>
+    <x:String x:Key="Text.DrawingBoard.CoverPanX">左右</x:String>
+    <x:String x:Key="Text.DrawingBoard.CoverPanY">上下</x:String>
+    <x:String x:Key="Text.DrawingBoard.CoverReset">重置取景</x:String>
+    <x:String x:Key="Text.DrawingBoard.SourceSize">原图 {0}×{1}</x:String>
+    <x:String x:Key="Text.DrawingBoard.Rotate">旋转</x:String>
+    <x:String x:Key="Text.DrawingBoard.RotateTip">顺时针旋转原图；翻转按旋转后的方向进行</x:String>
+    <x:String x:Key="Text.DrawingBoard.FlipHorizontal">水平翻转</x:String>
+    <x:String x:Key="Text.DrawingBoard.FlipVertical">垂直翻转</x:String>
+    <x:String x:Key="Text.DrawingBoard.NotConnected">串口未连接</x:String>
+    <x:String x:Key="Text.DrawingBoard.NoPicture">未加载图片</x:String>
+    <x:String x:Key="Text.DrawingBoard.InvalidField">{0}应为 {1}～{2} 的整数</x:String>
+    <x:String x:Key="Text.DrawingBoard.Preparing">准备中…</x:String>
+    <x:String x:Key="Text.DrawingBoard.Progress">{0} · 第 {1}/{2} 段 · 已用 {3} · 剩余约 {4}</x:String>
+    <x:String x:Key="Text.DrawingBoard.Finished">已完成 · 用时 {0}</x:String>
+    <x:String x:Key="Text.DrawingBoard.Stopped">已停止 · 完成 {0}</x:String>
+    <x:String x:Key="Text.DrawingBoard.Interrupted">已中断 · 完成 {0}</x:String>
+    <x:String x:Key="Text.DrawingBoard.Error">画图中断: {0}</x:String>
+    <x:String x:Key="Text.DrawingBoard.Busy">手柄正被脚本或其他任务占用，请先停止后再画</x:String>
+    <x:String x:Key="Text.DrawingBoard.Disconnected">手柄连接已断开</x:String>
+    <!-- Audio label editor -->
+    <x:String x:Key="Text.AudioLabel.Title">声音标签</x:String>
+    <x:String x:Key="Text.AudioLabel.Intro">开始录制后触发目标音效，或截取最近的声音，再圈选、试听并保存。编辑时游戏音频会继续采集。</x:String>
+    <x:String x:Key="Text.AudioLabel.Record">开始录制</x:String>
+    <x:String x:Key="Text.AudioLabel.StopRecording">停止录制</x:String>
+    <x:String x:Key="Text.AudioLabel.RecordingSummary">已录 {0:F1} / {1:F1} 秒</x:String>
+    <x:String x:Key="Text.AudioLabel.Recording">正在录制新声音，点击“停止录制”结束；达到显示的时长上限后自动停止。</x:String>
+    <x:String x:Key="Text.AudioLabel.Recorded">已录制 {0:F3} 秒。请圈选完整音效并试听。</x:String>
+    <x:String x:Key="Text.AudioLabel.RecordedLimit">已达到录制上限，保留从开始录制起的 {0:F3} 秒。请圈选完整音效并试听。</x:String>
+    <x:String x:Key="Text.AudioLabel.Capture">截取最近 10 秒</x:String>
+    <x:String x:Key="Text.AudioLabel.Open">打开 WAV / 声音标签</x:String>
+    <x:String x:Key="Text.AudioLabel.FileFilter">WAV 音频 / 声音标签</x:String>
+    <x:String x:Key="Text.AudioLabel.WaveformHint">单击波形或拖动红色游标定位试听；拖动其他区域框选片段，拖动左右边界微调。</x:String>
+    <x:String x:Key="Text.AudioLabel.Empty">连接游戏音频后截取，或打开已有音频</x:String>
+    <x:String x:Key="Text.AudioLabel.Start">开始时间（秒）</x:String>
+    <x:String x:Key="Text.AudioLabel.End">结束时间（秒）</x:String>
+    <x:String x:Key="Text.AudioLabel.SelectAll">选择全部</x:String>
+    <x:String x:Key="Text.AudioLabel.Play">试听选区</x:String>
+    <x:String x:Key="Text.AudioLabel.Pause">暂停试听</x:String>
+    <x:String x:Key="Text.AudioLabel.Resume">继续试听</x:String>
+    <x:String x:Key="Text.AudioLabel.SpaceHint">空格：播放 / 暂停</x:String>
+    <x:String x:Key="Text.AudioLabel.Stop">停止试听</x:String>
+    <x:String x:Key="Text.AudioLabel.PreviewUnsupported">当前平台暂不支持试听，可以编辑和保存已有音频。</x:String>
+    <x:String x:Key="Text.AudioLabel.Name">标签名称</x:String>
+    <x:String x:Key="Text.AudioLabel.NamePlaceholder">例如：闪光音效</x:String>
+    <x:String x:Key="Text.AudioLabel.Save">保存选区为标签</x:String>
+    <x:String x:Key="Text.AudioLabel.SaveHint">已保存脚本：自动保存到脚本旁的 audiolabel；否则请选择脚本所在文件夹，程序会创建 audiolabel。</x:String>
+    <x:String x:Key="Text.AudioLabel.InvalidName">名称不能包含路径或文件名禁用字符，也不能以空格或句点结尾。</x:String>
+    <x:String x:Key="Text.AudioLabel.Ready">连接游戏音频后开始录制，或截取最近 10 秒。每次录制最多 15 秒，高采样率或多声道时上限可能更短。</x:String>
+    <x:String x:Key="Text.AudioLabel.NoHistory">暂无最近音频。请连接音频源并确认数据持续到达；已有选区会保留。</x:String>
+    <x:String x:Key="Text.AudioLabel.Captured">已截取最近 {0:F3} 秒。请圈选完整音效并试听。</x:String>
+    <x:String x:Key="Text.AudioLabel.Loaded">音频已打开。调整选区后可以另存为新标签。</x:String>
+    <x:String x:Key="Text.AudioLabel.ClipSummary">总长 {0:F3} 秒 · {1:N0} Hz · {2} 声道 · {3} bit</x:String>
+    <x:String x:Key="Text.AudioLabel.SelectionSummary">选区 {0:F3} → {1:F3} 秒 · 时长 {2:F3} 秒</x:String>
+    <x:String x:Key="Text.AudioLabel.PlaybackSummary">当前位置 {0:F3} 秒 / 总长 {1:F3} 秒</x:String>
+    <x:String x:Key="Text.AudioLabel.Playing">正在通过默认扬声器试听选区，红色游标显示播放位置。</x:String>
+    <x:String x:Key="Text.AudioLabel.Played">试听完成。</x:String>
+    <x:String x:Key="Text.AudioLabel.Paused">试听已暂停。单击波形或拖动红色游标后，继续试听将从新位置开始，不改变保存选区。</x:String>
+    <x:String x:Key="Text.AudioLabel.Stopped">试听已停止，游标保留在停止位置。下次从选区起点试听，也可单击波形重新定位。</x:String>
+    <x:String x:Key="Text.AudioLabel.SaveFolder">选择脚本所在文件夹（自动创建 audiolabel）</x:String>
+    <x:String x:Key="Text.AudioLabel.AlreadyExists">同名标签已存在：{0}。请修改标签名称后再保存。</x:String>
+    <x:String x:Key="Text.AudioLabel.Saved">标签已保存：{0}</x:String>
+    <x:String x:Key="Text.AudioLabel.Error">操作未完成：{0}</x:String>
+    <x:String x:Key="Text.AudioMatch.Title">声音匹配测试</x:String>
+    <x:String x:Key="Text.AudioMatch.Intro">打开已保存的声音标签，开始监听后在游戏中触发目标音效，观察分数和命中记录。</x:String>
+    <x:String x:Key="Text.AudioMatch.NoTemplate">尚未选择标签 · 支持 0.15～10 秒的音效</x:String>
+    <x:String x:Key="Text.AudioMatch.TemplateSummary">{0} · {1:F3} 秒</x:String>
+    <x:String x:Key="Text.AudioMatch.Start">开始监听</x:String>
+    <x:String x:Key="Text.AudioMatch.Stop">停止监听</x:String>
+    <x:String x:Key="Text.AudioMatch.Threshold">匹配阈值</x:String>
+    <x:String x:Key="Text.AudioMatch.Cooldown">命中间隔（秒）</x:String>
+    <x:String x:Key="Text.AudioMatch.CurrentScore">当前匹配分数</x:String>
+    <x:String x:Key="Text.AudioMatch.PeakScore">本次最高分</x:String>
+    <x:String x:Key="Text.AudioMatch.HitSummary">已命中 {0} 次 · 显示最近 100 条</x:String>
+    <x:String x:Key="Text.AudioMatch.Clear">清空结果</x:String>
+    <x:String x:Key="Text.AudioMatch.Time">检测时间</x:String>
+    <x:String x:Key="Text.AudioMatch.HitScore">命中分数</x:String>
+    <x:String x:Key="Text.AudioMatch.Ready">先打开声音标签目录中的 label.json，也可使用 WAV 音效。</x:String>
+    <x:String x:Key="Text.AudioMatch.Loaded">标签已加载。连接游戏音频输入后，点击“开始监听”。</x:String>
+    <x:String x:Key="Text.AudioMatch.InvalidDuration">匹配标签需为 0.15～10 秒，请在声音标签编辑器中裁剪完整的目标音效。</x:String>
+    <x:String x:Key="Text.AudioMatch.NoSignal">标签为静音、音量过低或缺少可用频谱，请重新截取清晰的目标音效。</x:String>
+    <x:String x:Key="Text.AudioMatch.WaitingForAudio">正在等待新的音频。请在主窗口连接游戏音频输入。</x:String>
+    <x:String x:Key="Text.AudioMatch.WarmingUp">正在积累完整音效长度的音频…</x:String>
+    <x:String x:Key="Text.AudioMatch.Listening">正在匹配。阈值和命中间隔的修改对后续音频生效。</x:String>
+    <x:String x:Key="Text.AudioMatch.Interrupted">音频中断或处理积压，已清空旧数据，等待连续音频后重新匹配。</x:String>
+    <x:String x:Key="Text.AudioMatch.Disconnected">音频输入未连接。连接后会自动重新积累音频。</x:String>
+    <x:String x:Key="Text.AudioMatch.InvalidAudio">收到无效音频，已清空旧数据。请检查输入设备和格式。</x:String>
+    <x:String x:Key="Text.AudioMatch.Stopped">监听已停止，命中记录保留。再次开始会清空本次结果。</x:String>
+    <x:String x:Key="Text.AudioMatch.Hint">分数为 0～100 的整数相似度，向下取整，与 ECS 的 AUDIO_SCORE 一致。初始阈值 85；请同时测试目标音效和普通游戏声音，并在脚本 IF 中填写校准后的阈值。</x:String>
 </ResourceDictionary>

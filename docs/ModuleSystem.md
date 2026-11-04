@@ -3,24 +3,31 @@
 > **版本 2.0**。本文档描述模块系统现状：每个 `.ecs` 文件是一个模块（编译单元），
 > 产物为 `.ecm`（接口区 + 代码区）；消费者只读依赖的接口区，接口内容寻址缓存，源码或依赖接口不变则永不重编。
 > 理论对应物：C++20 Named Modules（BMI/IFC）、Rust rmeta、Go build cache、OCaml `.cmi`。
-> 关联：`docs/VM2.md`、`docs/EcmEcxFormat.md`（.ecm 位级布局）、`docs/Pipeline.md`（统一链路）。
+> 关联：`docs/VM2.md`、`docs/Pipeline.md`（统一链路；.ecm 位级布局见 `EcsContainer`/链接器测试）。
 
 ## 1. 编译模型
 
 ```
-main.ecs ─► ModuleGraphBuilder（IMPORT 递归展开 + 环检测 DFS + lib/ 自动加载）
+main.ecs ─► ModuleGraphBuilder（显式 IMPORT 闭包 + 同目录互见/lib/ 自动导入 + 显式环检测 DFS）
              │  依赖模块只做 Lexer 令牌级导入扫描（建图不 parse；全量 parse 推迟到缓存未命中）
-             ▼  拓扑序（std → vision → 依赖序 → main；DAG 强制，环 = 编译错误）
-ModuleCompilePipeline（逐模块）：cacheKey 三路查找（disk .ecm / 进程缓存 / .err 重放）
+             ▼  编译序：std → vision → 显式边层级 + 同层名序 → main（docs/ModuleImportRules.md §2）
+ModuleCompilePipeline（逐模块）：接口先行预提取（.eci 缓存）→ cacheKey 三路查找
+             │  （disk .ecm / 进程缓存 / .err 重放）
              │  未命中 → parse → InterfaceScopeSynthesizer（依赖以接口区提供）
              │        → Binder 急切绑定 → SSA → 优化（导出为根）→ EcxModuleEncoder → 原子写回 obj/
              ▼
 EcxPipeline.Link ─► EcxImage（桌面 EcxInterpreter 与 MCU C VM 共用同一产物）
 ```
 
+- **导入规则**：R1 模块同目录互见（目录即包）、R2 导入基准 = 导入文件所在目录、R3 main 隐式导入
+  lib/、R4 跨目录显式导入、R5 模块名 = 相对主脚本目录的规范化路径、R7 主脚本并列互不打扰
+  （入口所在目录豁免同目录互见）——完整规则与可见环的编译序论证见 `docs/ModuleImportRules.md`；
+  `ezcon init` 生成的骨架是该规则的参考布局。
 - **无源码级合并**：任何编译只 parse 自己那份源码；stdlib（std/vision）内嵌源码随编译器发布，
   首次编译任一脚本时与用户模块同走 obj/ 缓存自然产出 `.ecm`，此后零解析。
-- `lib/` 自动加载：main 同目录 `lib/*.ecs` 注册为隐式模块（显式 import 之后、main 之前编译，全局可见无 alias，按文件名序，跳过显式 import）。
+- **接口先行预提取**：同目录互见产生接口级依赖环，编译序不再保证依赖接口就绪——管线先经
+  `.eci` 接口缓存（按源码内容寻址，含路径上下文）为全部模块备好接口；缓存命中零 parse，
+  未命中 parse 提取并回写。接口提取失败（源码语义错误）留空接口，真实诊断由绑定阶段报告。
 - 关键接缝：接口合成的函数符号 `Declaration = null`，Binder 的 `EnsureFunctionBodyBound`
   天然跳过绑体、调用点直接生成 Call（体由链接期提供）——绑定器零改动消费接口。
 
@@ -67,8 +74,10 @@ interface_hash = SHA-256(CompilerVersion
 
 ## 5. 缓存系统（`Modules/ModuleCache.cs`）
 
-- **cacheKey** = SHA256(源码 ⊕ Σ直接依赖接口哈希 ⊕ 编译器版本 ⊕ `CompileOptions.ProductFingerprint()`)。
+- **cacheKey** = SHA256(源码 ⊕ 文件模块的规范化源路径上下文 ⊕ Σ直接依赖接口哈希 ⊕ 编译器版本 ⊕ `CompileOptions.ProductFingerprint()`)。
   影响产物的选项集中在 ProductFingerprint（Optimize / LegacySyntax / ExtVars）；其余选项不进键。
+  源路径上下文用于保证 `EXTERN ... FROM "相对路径"` 始终按声明 `.ecs` 所在目录解析；内嵌 `std/vision` 与内存伪文件名使用空上下文，仍可跨项目共享。
+  `.eci` 预声明接口缓存也包含相同路径上下文，避免复用其他项目目录解析出的原生库绝对路径。
   文件名 = `<模块名>-<key 前 8 位>.ecm`，不同版本并存免锁竞争。
 - **读**：全量校验 interface_hash（短码碰撞防御）+ `ModuleArtifact.IntegrityCheck()`（disk 与进程缓存两条 TryLoad 共享）；损坏按未命中重编。
 - **写**：`temp + rename` 原子替换；成功后删除同键 `.err`。
@@ -77,7 +86,13 @@ interface_hash = SHA-256(CompilerVersion
 - **进程缓存**：仅 `UseDiskCache=false` 现编路径，存 EcmFormat 字节、命中反序列化出新实例（杜绝别名共享）。
 - **GC**：运行末扫描 obj/，删除引用闭包之外且 mtime 超龄（默认 30 天，可配）的 .ecm/.err。
 
-## 6. 语义保持要点
+## 6. FFI 原生库路径
+
+`EXTERN FUNC ... FROM "..."` 中含目录分隔符的相对路径，以声明所在 `.ecs` 文件的目录为基准解析为绝对路径；主脚本中的声明以主脚本目录为基准。绝对路径保持原样，`FrlgFfi.dll` 这类不含目录分隔符的库名继续交由操作系统按默认规则搜索。格式化只重写语法树中的原始声明，不会把本机绝对路径写回脚本。
+
+运行时加载失败会包含最终尝试的库路径，并区分声明文件缺失、文件格式/位数不兼容及目标库存在但其本体或原生依赖无法加载；底层异常保留为内部异常信息。
+
+## 7. 语义保持要点
 
 | 语义 | 行为 |
 |------|------|
@@ -89,7 +104,7 @@ interface_hash = SHA-256(CompilerVersion
 | lib 顶层语句先于 main | 链接器在 `<main>` 头部按拓扑序前插 `<init>` 调用（无合成壳） |
 | LSP/编辑器语义 | 源码级实时分析，不经模块管线（明确出界） |
 
-## 7. 测试锚点
+## 8. 测试锚点
 
 `ModuleProjectTests`（管线/诊断/警告/GC，M7 区段）、`Cache_MerkleInvalidation` 等缓存组
 （`ModuleCacheOptimizationTests`）、`ModuleInterfaceTests`（round-trip）、

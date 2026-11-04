@@ -1,6 +1,6 @@
 namespace EasyCon.Script.Bytecode;
 
-/// <summary>指令编码格式（docs/VM2.md §4.1）。</summary>
+/// <summary>指令编码格式（docs/VM2.md §4.1；v3 定长编码——线格式与内存布局一一对应）。</summary>
 public enum EcsInsFormat : byte
 {
     /// <summary>op:8 | A:8 | B:8 | C:8（4 字节）</summary>
@@ -9,10 +9,12 @@ public enum EcsInsFormat : byte
     AsBx,
     /// <summary>op:8 | A:8 | Bx:16（4 字节，无符号）</summary>
     ABx,
-    /// <summary>op:8 | s24:24（4 字节，有符号，单位=指令字）</summary>
+    /// <summary>op:8 | sJ:24（4 字节，有符号，单位=字节）</summary>
     IsJ,
     /// <summary>iABC + 后随 ext:32（8 字节）</summary>
     Ext,
+    /// <summary>iABC + 后随跳转偏移字:32（8 字节；ForStep/CmpJ 融合指令的第 4 操作数）</summary>
+    IabcJ,
 }
 
 /// <summary>EXT 后随 32 位数据字的语义（docs/VM2.md §4.1/§4.2）。</summary>
@@ -34,6 +36,10 @@ public enum EcsExtKind : byte
     StickDuration,
     /// <summary>StickPv：高16位x | 低16位y 的 packed 坐标。</summary>
     StickXY,
+    /// <summary>WaitI：持续毫秒立即数。</summary>
+    WaitDuration,
+    /// <summary>KeyI：持续毫秒立即数。</summary>
+    KeyDuration,
 }
 
 /// <summary>结果槽写集（docs/VM2.md §4.2）：指令执行后写回的帧槽位字段。
@@ -52,7 +58,7 @@ public enum EcsResultSlot : byte
 /// 指令格式单一事实源（docs/VM2.md §4.1/§4.2）：每操作码恰一行的编码格式、EXT 数据字语义、
 /// 结果槽写集。发射侧（BytecodeEncoder.Emit* 自检）、扫描侧（EcxLinker 各 pass 经 ExtWords
 /// 步进、InstructionScanner）、反汇编（EcxDisassembler）、体积分析（BytecodeSizeAnalysisTests）
-/// 与 C VM 的 ecs_op_has_ext 表（ecs_vm.c，紧邻 OP_ 枚举）均以本表为对齐基准。
+/// 与 C VM 的 ecs_op_words 表（ecs_vm.h，紧邻 OP_ 枚举）均以本表为对齐基准。
 /// 关键不变量：EXT 后随字是「数据」，其数值可能恰好等于某个操作码（如元素类型码 3 == LoadK），
 /// 一切线性扫描必须按 ExtWords 步进跳过，否则把数据误读为指令（轻则静默改坏 Slice 槽位/
 /// StickPv 时长，重则越界崩溃——历史 F4 缺陷即此类）。
@@ -68,11 +74,12 @@ public static class EcsFormat
     /// <summary>结果槽写集（执行语义的编码侧投影，见 EcsResultSlot）。</summary>
     public static EcsResultSlot ResultSlot(EcsOpcode op) => Table[(int)op].Result;
 
-    /// <summary>指令总字数（4 字节字为单位；EXT=2，其余=1）。</summary>
-    public static int WordCount(EcsOpcode op) => Get(op) == EcsInsFormat.Ext ? 2 : 1;
+    /// <summary>指令总字数（4 字节字为单位；Ext/IabcJ=2，其余=1）。</summary>
+    public static int WordCount(EcsOpcode op) => Get(op) is EcsInsFormat.Ext or EcsInsFormat.IabcJ ? 2 : 1;
 
-    /// <summary>EXT 后随 32 位数据字个数（非 EXT 指令为 0）。线性扫描器的唯一步进依据。</summary>
-    public static int ExtWords(EcsOpcode op) => Get(op) == EcsInsFormat.Ext ? 1 : 0;
+    /// <summary>后随 32 位数据字个数（4 字节指令为 0）。定长线性扫描的唯一步进依据；
+    /// IabcJ 的数据字 = 跳转偏移（ForStep 出口 / CmpJ 跳转），同样是「数据不可误读为指令」。</summary>
+    public static int ExtWords(EcsOpcode op) => WordCount(op) - 1;
 
     struct InsInfo
     {
@@ -196,9 +203,9 @@ public static class EcsFormat
         F(EcsOpcode.PutFI, EcsInsFormat.Ext, EcsResultSlot.None, EcsExtKind.FieldElemSlot);
 
         // ---- 域操作 ----
-        F(EcsOpcode.WaitI, EcsInsFormat.ABx, EcsResultSlot.None);
+        F(EcsOpcode.WaitI, EcsInsFormat.Ext, EcsResultSlot.None, EcsExtKind.WaitDuration);   // v3：时长进数据字（无上限）
         F(EcsOpcode.WaitV, EcsInsFormat.Iabc, EcsResultSlot.None);
-        F(EcsOpcode.KeyI, EcsInsFormat.ABx, EcsResultSlot.None);
+        F(EcsOpcode.KeyI, EcsInsFormat.Ext, EcsResultSlot.None, EcsExtKind.KeyDuration);     // v3：时长进数据字（无上限）
         F(EcsOpcode.KeyV, EcsInsFormat.Iabc, EcsResultSlot.None);
         F(EcsOpcode.KeySt, EcsInsFormat.Iabc, EcsResultSlot.None);
         F(EcsOpcode.StickSet, EcsInsFormat.Iabc, EcsResultSlot.None);
@@ -206,6 +213,10 @@ public static class EcsFormat
         F(EcsOpcode.StickPv, EcsInsFormat.Ext, EcsResultSlot.None, EcsExtKind.StickXY);
         F(EcsOpcode.Img, EcsInsFormat.ABx);
         F(EcsOpcode.Rand, EcsInsFormat.Iabc);
+
+        // ---- FOR 快速路径 ----
+        F(EcsOpcode.ForStep, EcsInsFormat.IabcJ, EcsResultSlot.A);   // 数据字 = 出口偏移（Patch 期回填）
+        F(EcsOpcode.CmpJ, EcsInsFormat.IabcJ, EcsResultSlot.None);   // C = kind 码，数据字 = 跳转偏移（Patch 期回填）
 
         // 完整性自检：每个枚举值必须显式登记。新增 EcsOpcode 值漏登时在此抛出
         //（而不是静默按 Iabc 编码/扫描——那正是历史 EXT 误读缺陷的成因形态）。

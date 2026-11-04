@@ -60,34 +60,52 @@ public sealed class EcsGlobal
     public int ImageSlot;
 }
 
+/// <summary>
+/// 唯一指令表示（解码形态，docs/SingleStreamFormat.md §2）：完整宽度操作数，形态与线格式无关。
+/// 线格式的 iABC/ABx/AsBx/IsJ 打包与 EXT 数据字只是 v3 定长序列化投影（<see cref="InstructionCodec"/>），
+/// 内存中不存在第二套字节码。
+/// Jump 仅对 Jmp/Jpt/Jpf 有效，语义 = 相对**指令下标**偏移（前插平移不变；
+/// 线格式投影时由 InstructionCodec 换算为相对字节偏移——内存解释器按下标取指，字节偏移无处落点）。
+/// Call/CallN 的接收槽 C 恒为寄存器号（0 = RET 固定落点）。
+/// </summary>
+public readonly record struct EcsInstruction(EcsOpcode Op, int A, int B, int C = 0, uint Ext = 0, int Jump = 0)
+{
+    public bool IsJump => Op is EcsOpcode.Jmp or EcsOpcode.Jpt or EcsOpcode.Jpf;
+    public bool HasExt => EcsFormat.ExtWords(Op) > 0;
+}
+
 /// <summary>链接后的函数。</summary>
 public sealed class EcsFunction
 {
     public required string Name;
     public required string Module;
     public int NParams;
+    /// <summary>不再受 8 位限制；线格式字段为 u16。</summary>
     public int NSlots;
     public bool HasReturn;
-    public List<uint> Code = new();
+    /// <summary>唯一真值：解码形态指令流（链接各 pass 与解释器的唯一消费形态）。</summary>
+    public List<EcsInstruction> Instructions = new();
     /// <summary>链接后在本镜像函数表中的下标。</summary>
     public int ImageIndex;
 
     /// <summary>
-    /// 行号表（交错 [pc, line, ...]，pc 严格递增；JVM LineNumberTable 同型稀疏表）。
-    /// 运行错误经 LineAt(pc) 映射回源码行；仅进 ECM 缓存与桌面诊断，不写入 MCU .ecx。
+    /// 行号表（交错 [insIndex, line, ...]，insIndex 严格递增；单位 = 指令下标；JVM
+    /// LineNumberTable 同型稀疏表）。运行错误经 LineAt 映射回源码行；
+    /// 容器投影为行号块（字节偏移单位），仅诊断用，MCU 发布镜像省略。
     /// </summary>
     public List<int> LineTable = new();
 
-    /// <summary>pc → 源码行（1 基；空表或 pc 早于首登记返回 0）。二分取 ≤pc 的最近登记。</summary>
-    public int LineAt(int pc)
+    /// <summary>指令下标 → 源码行（1 基；空表或早于首登记返回 0）。二分取 ≤idx 的最近登记。</summary>
+    public int LineAt(int insIndex)
     {
-        int lo = 0, hi = LineTable.Count / 2 - 1, result = 0;
+        List<int> table = LineTable;
+        int lo = 0, hi = table.Count / 2 - 1, result = 0;
         while (lo <= hi)
         {
             int mid = (lo + hi) / 2;
-            if (LineTable[mid * 2] <= pc)
+            if (table[mid * 2] <= insIndex)
             {
-                result = LineTable[mid * 2 + 1];
+                result = table[mid * 2 + 1];
                 lo = mid + 1;
             }
             else
@@ -103,7 +121,7 @@ public sealed class EcsNative
     public required string Name;
 }
 
-/// <summary>模块导入：需要的外部函数（按 名+参数个数 解析，docs/EcmEcxFormat.md §4.2）。</summary>
+/// <summary>模块导入：需要的外部函数（按 名+参数个数 解析）。</summary>
 public sealed class EcsImport
 {
     public required string Name;
@@ -121,7 +139,7 @@ public sealed class EcsExport
 }
 
 /// <summary>
-/// 模块产物（.ecm 的内存表示，docs/EcmEcxFormat.md §4）。
+/// 模块产物（.ecm 的内存表示）。
 /// 函数 Call 目标：本模块 = 局部 fid；外部 = 0x80000000 | 导入表索引。
 /// LoadG/StoreG Bx = 模块局部全局槽；CallN ext = 模块局部原生 idx；LoadK Bx = 模块常量池 idx。
 /// </summary>
@@ -180,7 +198,7 @@ public sealed class EcxImage
     /// u16 @0x0A）。加载规则：host 掩码缺位 → 拒跑（IL → ECS_ERR_IL，其余 → ECS_ERR_FEAT）。
     /// </summary>
     public uint Features;
-    /// <summary>全程序最大帧槽数（max(funcs.nslots)，静态预分配帧区用，EcmEcxFormat §2.1）。</summary>
+    /// <summary>全程序最大帧槽数（max(funcs.nslots)，静态预分配帧区用）。</summary>
     public int MaxSlots;
     /// <summary>静态调用图最长链（递归按 1 计；运行期上限另由 ECS_MAX_CALL_DEPTH 约束）。</summary>
     public int MaxDepth;

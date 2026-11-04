@@ -25,6 +25,9 @@ public interface IScriptEngine
     /// <summary>编译源码并返回会话（诊断经 <see cref="IScriptSession.Info"/> 查看）。</summary>
     IScriptSession FromSource(string code, ScriptHostOptions options);
 
+    /// <summary>编译内存源码并按源文件路径解析 IMPORT 与根级 lib/。</summary>
+    IScriptSession FromSource(string code, string fileName, ScriptHostOptions options);
+
     /// <summary>编译脚本文件并返回会话。</summary>
     IScriptSession LoadFile(string path, ScriptHostOptions options);
 }

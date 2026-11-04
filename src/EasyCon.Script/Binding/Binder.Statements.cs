@@ -301,6 +301,16 @@ internal sealed partial class Binder
                 if (operand == null) return null;
                 return unary.Op.Operate(Value.From(operand));
 
+            case BoundConversionExpression conv:
+                var convOperand = TryEvaluateConstant(conv.Expression);
+                if (convOperand == null) return null;
+                var convValue = Value.From(convOperand);
+                if (conv.Type.Equals(ScriptType.Double))
+                    return Value.FromDouble(convValue.Type.Equals(ScriptType.Double) ? convValue.AsDouble() : convValue.ToInt());
+                if (conv.Type.Equals(ScriptType.Int))
+                    return Value.FromInt(convValue.ToInt());
+                return convOperand;
+
             case BoundBinaryExpression bin:
                 var left = TryEvaluateConstant(bin.Left);
                 var right = TryEvaluateConstant(bin.Right);
@@ -350,7 +360,8 @@ internal sealed partial class Binder
     private static Value FoldConvertConstant(Value v, ScriptType targetType)
     {
         if (v.Type.Equals(targetType)) return v;
-        if (targetType.Equals(ScriptType.Double)) return Value.FromDouble(v.AsInt());
+        if (targetType.Equals(ScriptType.Double))
+            return Value.FromDouble(v.Type.Equals(ScriptType.Double) ? v.AsDouble() : v.AsInt());
         if (targetType.Equals(ScriptType.UInt)) return Value.FromUInt(unchecked((uint)v.AsInt()));
         if (targetType.Equals(ScriptType.UInt64)) return Value.FromUInt64((ulong)v.AsInt());
         if (targetType.Equals(ScriptType.Byte)) return Value.FromByte((byte)v.AsInt());

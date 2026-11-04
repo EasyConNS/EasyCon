@@ -110,7 +110,8 @@ internal sealed class BoundBinaryOperator
             return (left, right);
         }
 
-        // 比较运算: ptr 与 int 互转
+        // 比较运算: ptr 与 int 互转（int 侧提升为 ptr；ptr 只与 0 比较做有效性判断，
+        // PTR 比较语义 = 64 位整数序，仅 PC 侧出现）
         if (IsComparison(kind))
         {
             if (left.Equals(ScriptType.Int) && right.Equals(ScriptType.Ptr))

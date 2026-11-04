@@ -1,5 +1,8 @@
+using EasyCon.Capture;
+using EasyCon.Core.Services;
 using EasyCon.Script;
 using EasyScript;
+using OpenCvSharp;
 
 namespace EasyCon.Core.Capabilities;
 
@@ -22,11 +25,15 @@ public sealed class PadInputAdapter(ICGamePad pad) : IPadInput
 }
 
 /// <summary><see cref="IIoAdapter"/> → <see cref="IConsoleIo"/> 适配。</summary>
-public sealed class ConsoleIoAdapter(IIoAdapter io) : IConsoleIo
+public sealed class ConsoleIoAdapter(IIoAdapter io, IAlertService? alertService = null) : IConsoleIo
 {
     public void Print(string message, bool newline = true) => io.Print(message, newline);
 
-    public void Alert(string message) => io.Alert(message);
+    public void Alert(string message)
+    {
+        io.Alert(message);
+        alertService?.Dispatch(message);
+    }
 }
 
 /// <summary>ARG/APP 宿主环境缺省实现。</summary>
@@ -37,10 +44,35 @@ public sealed class HostEnvironment(string[] args, string appDir) : IHostEnviron
     public string AppDir { get; } = appDir;
 }
 
-/// <summary><see cref="FrameDelegate"/> → <see cref="ICaptureSource"/> 适配（P1 过渡件）。</summary>
+/// <summary>
+/// <see cref="FrameDelegate"/> → <see cref="ICaptureSource"/> 适配（P1 过渡件）。
+/// 旧委托以「采集卡检查异常」等哨兵字符串传达失败，本适配器按端口契约归一为 null
+/// （否则哨兵会被下游当成 Base64 图像，报出无从排查的解码错误）；帧序号不可知，恒为 null。
+/// </summary>
 public sealed class DelegateCaptureSource(FrameDelegate frame) : ICaptureSource
 {
-    public string? CaptureFrame(int x, int y, int width, int height) => frame(x, y, width, height);
+    public string? CaptureFrame(int x, int y, int width, int height)
+    {
+        var result = frame(x, y, width, height);
+        return result is null or FrameDelegateFactory.NoFrameError or FrameDelegateFactory.RoiError
+            ? null
+            : result;
+    }
+}
+
+/// <summary>
+/// <see cref="FrameStore"/>（最新帧 + 单调帧号）→ <see cref="ICaptureSource"/> 适配。
+/// 相比委托适配多出 <see cref="FrameIndex"/>：编排图的「等待新帧」与慢感知 everyFrames 依赖它。
+/// </summary>
+public sealed class FrameStoreCaptureSource(FrameStore store) : ICaptureSource
+{
+    public long? FrameIndex => store.FrameCount;
+
+    public string? CaptureFrame(int x, int y, int width, int height)
+    {
+        using var lease = store.AcquireLatest();
+        return FrameDelegateFactory.CropToBase64(lease?.Mat, x, y, width, height);
+    }
 }
 
 /// <summary>
@@ -54,6 +86,35 @@ public sealed class DelegateVisionService(RoiDelegate? roi, LabelMatchDelegate? 
 
     public string? Crop(string imageBase64, int x, int y, int width, int height)
         => roi?.Invoke(imageBase64, x, y, width, height);
+}
+
+/// <summary>
+/// 桌面参考视觉实现（__ROI__ 洞的能力缺省回落，同 <see cref="DesktopFileSystem"/> 先例）：
+/// OpenCV 解码 + <see cref="FrameDelegateFactory.CropToBase64"/> 裁剪——与采集路径共享同一
+/// 裁剪核（采集形态即本核按坐标裁帧）。MatchLabel 无匹配器语义（抛错）与适配器一致。
+/// </summary>
+public sealed class DesktopVisionService : IVisionService
+{
+    public static readonly DesktopVisionService Instance = new();
+
+    DesktopVisionService()
+    {
+    }
+
+    public string? Crop(string imageBase64, int x, int y, int width, int height)
+    {
+        try
+        {
+            using var mat = Cv2.ImDecode(Convert.FromBase64String(imageBase64), ImreadModes.Color);
+            return FrameDelegateFactory.CropToBase64(mat, x, y, width, height);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public int MatchLabel(string labelName) => throw new Exception("图像标签匹配器未初始化");
 }
 
 /// <summary>

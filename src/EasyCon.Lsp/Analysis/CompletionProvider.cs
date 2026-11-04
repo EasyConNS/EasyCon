@@ -7,7 +7,7 @@ namespace EasyCon.Lsp.Analysis;
 
 internal static class CompletionProvider
 {
-    public static CompletionList GetCompletions(CompicationUnit? root)
+    public static CompletionList GetCompletions(CompilationUnit? root, string? prefix = null)
     {
         var items = new List<CompletionItem>();
 
@@ -110,6 +110,13 @@ internal static class CompletionProvider
                 });
             }
         }
+
+        // 按光标前当前词前缀过滤（协议语义：服务端负责 textEdit 级精度或前缀过滤，
+        // 而不是任何位置都吐同一份全量列表）
+        if (!string.IsNullOrEmpty(prefix))
+            items = items
+                .Where(i => i.Label.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
         return new() { IsIncomplete = false, Items = items };
     }

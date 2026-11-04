@@ -1,3 +1,4 @@
+using EasyCon.Script.Resolution;
 using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
 using EasyCon.Script.Syntax;
@@ -29,6 +30,10 @@ internal sealed partial class Binder
         }
 
         var returnType = BindTypeClause(syntax.Declare, syntax.Declare.Type) ?? ScriptType.Void;
+
+        // 参数数受指令编码/函数帧预算约束，不设独立的固定参数窗容量。
+        if (syntax.Declare.Paramters.Length > Bytecode.EcsRegisters.ArgCount)
+            _diagnostics.ReportParamWindowOverflow(syntax.Declare.Location, syntax.Declare.Name, syntax.Declare.Paramters.Length);
 
         // 尝试复用 DeclarationCollector 已创建的 FunctionSymbol 实例，
         // 避免 Binder 和 DeclarationCollector 各持一份实例导致 Layout 等运行时属性不一致。
@@ -76,6 +81,10 @@ internal sealed partial class Binder
 
         var returnType = BindTypeClause(syntax, syntax.ReturnType) ?? ScriptType.Void;
 
+        // EXTERN 与用户函数使用同一参数数编码上限。
+        if (syntax.Parameters.Length > Bytecode.EcsRegisters.ArgCount)
+            _diagnostics.ReportParamWindowOverflow(syntax.Location, syntax.Name, syntax.Parameters.Length);
+
         // 尝试复用 DeclarationCollector 已创建的 FunctionSymbol 实例
         var existing = TryFindMatchingFunction(syntax.Name, parameters);
         if (existing != null)
@@ -86,7 +95,9 @@ internal sealed partial class Binder
         }
 
         // 兜底：DeclarationCollector 未创建过
-        var function = new FunctionSymbol(syntax.Name, parameters.ToImmutable(), returnType, libraryName: syntax.Library, externalName: syntax.ExportName != syntax.Name ? syntax.ExportName : null);
+        var function = new FunctionSymbol(syntax.Name, parameters.ToImmutable(), returnType,
+            libraryName: ExternLibraryPath.Resolve(syntax.Library, syntax.Location.FileName),
+            externalName: syntax.ExportName != syntax.Name ? syntax.ExportName : null);
         function.LocalSlotCount = parameters.Count;
 
         if (BuiltinFunctions.GetAll().Any(b => b.Name == syntax.Name.ToUpper()))

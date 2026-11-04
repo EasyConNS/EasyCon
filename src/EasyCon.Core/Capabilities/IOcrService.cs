@@ -6,7 +6,7 @@ namespace EasyCon.Core.Capabilities;
 /// </summary>
 public interface IOcrService : IDisposable
 {
-    /// <summary>后端标识（"tesseract" | "paddle-onnx" | "delegate"）。</summary>
+    /// <summary>后端标识（"tesseract" | "paddle-onnx" | "maa" | "delegate"）。</summary>
     string Backend { get; }
 
     /// <summary>按具名配置初始化（幂等，重复调用以已初始化引擎为准）；失败返回 false。</summary>

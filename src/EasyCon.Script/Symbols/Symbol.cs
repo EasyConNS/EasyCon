@@ -62,13 +62,17 @@ public sealed class FunctionSymbol(
     IEnumerable<ParamSymbol> parameters,
     ScriptType returnType,
     string libraryName = "internal",
-    string? externalName = null) : Symbol(name), IEquatable<FunctionSymbol>
+    string? externalName = null,
+    string? originModule = null) : Symbol(name), IEquatable<FunctionSymbol>
 {
     public ImmutableArray<ParamSymbol> Parameters { get; } = [.. parameters];
     internal FuncDeclBlock? Declaration { get; init; }
     public ScriptType ReturnType { get; } = returnType;
     public readonly string LibraryName = libraryName;
     public string ExternalName => externalName ?? Name;
+    /// <summary>导入符号的来源模块名（独立编译注入；null = 本模块/内建。
+    /// 供编码器区分跨模块同名导入（N2 层级命名），不参与 FFI 名编码。</summary>
+    public string? OriginModule { get; init; } = originModule;
 
     /// <summary>函数局部变量帧大小（含参数），由 Binder 在绑定完成后设置</summary>
     public int LocalSlotCount { get; set; }

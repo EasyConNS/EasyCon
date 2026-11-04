@@ -60,17 +60,16 @@ internal sealed class EcsTextDocumentHandler(DocumentManager docManager, Languag
         var diagnostics = new List<EmmyLua.LanguageServer.Framework.Protocol.Model.Diagnostic.Diagnostic>();
         foreach (var diag in tree.Diagnostics)
         {
-            if (!diag.IsError) continue;
-            var line = diag.Location.StartLine;
-            var lineLength = 0;
-            if (line >= 0 && line < tree.Text.Lines.Length)
-                lineLength = tree.Text.Lines[line].Length;
-
+            if (diag.Severity == EasyCon.Script.DiagnosticSeverity.Info) continue;
             diagnostics.Add(new()
             {
-                Range = new(new(line, 0), new(line, lineLength)),
-                Severity = EmmyLua.LanguageServer.Framework.Protocol.Model.Diagnostic.DiagnosticSeverity.Error,
+                Range = new(new(diag.Location.StartLine, diag.Location.StartCharacter),
+                            new(diag.Location.EndLine, diag.Location.EndCharacter)),
+                Severity = diag.IsError
+                    ? EmmyLua.LanguageServer.Framework.Protocol.Model.Diagnostic.DiagnosticSeverity.Error
+                    : EmmyLua.LanguageServer.Framework.Protocol.Model.Diagnostic.DiagnosticSeverity.Warning,
                 Message = diag.Message,
+                Code = diag.Code,
                 Source = "ecs-lsp",
             });
         }

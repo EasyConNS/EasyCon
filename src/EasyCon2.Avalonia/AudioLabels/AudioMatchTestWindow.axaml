@@ -1,0 +1,87 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:audio="using:EasyCon2.Avalonia.AudioLabels"
+        xmlns:loc="using:EasyCon2.Avalonia.Markup"
+        x:Class="EasyCon2.Avalonia.AudioLabels.AudioMatchTestWindow"
+        x:DataType="audio:AudioMatchTestViewModel"
+        Title="{loc:Translate Text.AudioMatch.Title}"
+        Width="820" Height="760" MinWidth="680" MinHeight="640"
+        Background="{DynamicResource WorkbenchWindowBrush}"
+        Foreground="{DynamicResource WorkbenchTextBrush}"
+        WindowStartupLocation="CenterOwner">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <Grid Margin="24" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="18">
+            <StackPanel Spacing="6">
+                <TextBlock Text="{loc:Translate Text.AudioMatch.Title}" FontSize="22" FontWeight="SemiBold"/>
+                <TextBlock Text="{loc:Translate Text.AudioMatch.Intro}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+            </StackPanel>
+            <Border Grid.Row="1" Background="{DynamicResource WorkbenchPanelBrush}" CornerRadius="8" Padding="16">
+                <StackPanel Spacing="12">
+                    <TextBlock x:Name="TemplateSummary" Text="{Binding TemplateSummary}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                    <WrapPanel Orientation="Horizontal">
+                        <Button x:Name="OpenTemplateButton" Content="{loc:Translate Text.AudioLabel.Open}" Command="{Binding OpenCommand}" Margin="0,0,10,0"/>
+                        <Button x:Name="StartMatchButton" Content="{loc:Translate Text.AudioMatch.Start}" Command="{Binding StartCommand}" Margin="0,0,10,0"/>
+                        <Button Content="{loc:Translate Text.AudioMatch.Stop}" Command="{Binding StopCommand}"/>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+            <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="20">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="{loc:Translate Text.AudioMatch.Threshold}"/>
+                    <NumericUpDown x:Name="ThresholdInput" Value="{Binding Threshold, Mode=TwoWay}" Minimum="10" Maximum="100"
+                                   Increment="1" FormatString="F0" ParsingNumberStyle="Integer" AutomationProperties.Name="{loc:Translate Text.AudioMatch.Threshold}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock Text="{loc:Translate Text.AudioMatch.Cooldown}"/>
+                    <NumericUpDown x:Name="CooldownInput" Value="{Binding CooldownSeconds, Mode=TwoWay}" Minimum="0" Maximum="30"
+                                   Increment="0.1" FormatString="F1" AutomationProperties.Name="{loc:Translate Text.AudioMatch.Cooldown}"/>
+                </StackPanel>
+            </Grid>
+            <Border Grid.Row="3" Background="{DynamicResource WorkbenchPanelBrush}" CornerRadius="8" Padding="16">
+                <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,*" RowSpacing="8" ColumnSpacing="20">
+                    <TextBlock Text="{loc:Translate Text.AudioMatch.CurrentScore}"/>
+                    <TextBlock Grid.Column="1" Text="{loc:Translate Text.AudioMatch.PeakScore}"/>
+                    <TextBlock Grid.Row="1" x:Name="CurrentScoreText" Text="{Binding ScoreText}" FontSize="32" FontWeight="SemiBold"
+                               Foreground="{DynamicResource WorkbenchAccentBrush}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="PeakScoreText" Text="{Binding PeakScoreText}" FontSize="32" FontWeight="SemiBold"/>
+                    <ProgressBar Grid.Row="2" Grid.ColumnSpan="2" Minimum="0" Maximum="100" Value="{Binding ScoreValue}" Height="8"/>
+                </Grid>
+            </Border>
+            <StackPanel Grid.Row="4" Spacing="10">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding HitSummary}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    <Button Grid.Column="1" Content="{loc:Translate Text.AudioMatch.Clear}" Command="{Binding ClearCommand}"/>
+                </Grid>
+                <Grid ColumnDefinitions="*,*,*" Margin="12,0">
+                    <TextBlock Text="{loc:Translate Text.AudioMatch.Time}"/>
+                    <TextBlock Grid.Column="1" Text="{loc:Translate Text.AudioMatch.HitScore}"/>
+                    <TextBlock Grid.Column="2" Text="{loc:Translate Text.AudioMatch.Threshold}"/>
+                </Grid>
+                <ListBox x:Name="HitList" ItemsSource="{Binding Hits}" Height="150">
+                    <ListBox.Styles>
+                        <Style Selector="ListBoxItem">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        </Style>
+                    </ListBox.Styles>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="audio:AudioMatchHitRow">
+                            <Grid ColumnDefinitions="*,*,*" Margin="4,2">
+                                <TextBlock Text="{Binding Time}"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Score}"/>
+                                <TextBlock Grid.Column="2" Text="{Binding Threshold}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </StackPanel>
+            <Border Grid.Row="5" Background="{DynamicResource WorkbenchPanelBrush}" CornerRadius="6" Padding="12">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Status}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+                    <TextBlock Text="{loc:Translate Text.AudioMatch.Hint}" TextWrapping="Wrap"
+                               Foreground="{DynamicResource WorkbenchMutedTextBrush}"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </ScrollViewer>
+</Window>

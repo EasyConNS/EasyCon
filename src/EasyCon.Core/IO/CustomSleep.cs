@@ -25,25 +25,27 @@ public sealed class CustomDelay
         if (milliseconds <= 0) return;
 
         var sw = Stopwatch.StartNew();
-        long remainingTicks = milliseconds * 10000L; // Stopwatch 以 100ns 为单位
+        long targetTicks = (long)(milliseconds * (double)Stopwatch.Frequency / 1000.0);
+        long remainingTicks = targetTicks;
 
         // 如果剩余时间 > 5ms，先使用平台特定高精度睡眠
-        if (remainingTicks > 50000) // 5ms
+        if (remainingTicks > Stopwatch.Frequency / 200) // 5ms
         {
             // 预留 2-3ms 给最后自旋
-            int sleepMs = Math.Max(1, (int)((remainingTicks - 30000) / 10000));
+            double remainingMilliseconds = remainingTicks * 1000.0 / Stopwatch.Frequency;
+            int sleepMs = Math.Max(1, (int)(remainingMilliseconds - 3));
 
             // 调用平台特定的高精度睡眠
             HighResolutionSleep(sleepMs);
 
             // 重新计算剩余时间
-            remainingTicks = milliseconds * 10000L - sw.ElapsedTicks;
+            remainingTicks = targetTicks - sw.ElapsedTicks;
         }
 
         // 最后自旋微调（精度关键阶段）
         while (remainingTicks > 0)
         {
-            if (remainingTicks <= 2000) // 剩余 < 0.2ms，极短自旋
+            if (remainingTicks <= Stopwatch.Frequency / 5000) // 剩余 < 0.2ms，极短自旋
             {
                 Thread.SpinWait(1);
             }
@@ -51,7 +53,7 @@ public sealed class CustomDelay
             {
                 Thread.Yield(); // 主动让出CPU，但保持就绪状态
             }
-            remainingTicks = milliseconds * 10000L - sw.ElapsedTicks;
+            remainingTicks = targetTicks - sw.ElapsedTicks;
         }
     }
     /// <summary>

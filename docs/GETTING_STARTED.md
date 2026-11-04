@@ -8,6 +8,7 @@
 - ✅ 如何编写您的第一个自动化脚本
 - ✅ 如何控制Switch游戏主机
 - ✅ 如何使用图像识别功能
+- ✅ 如何通过 [qq bot](QQ_BOT_SETUP.md) 接收脚本的图文提醒
 
 ---
 
@@ -40,7 +41,7 @@
    - 解压到您喜欢的文件夹（比如桌面或D盘）
 
 2. **直接运行**
-   - 双击 `EasyCon.exe` 就可以使用了
+   - 双击 `EasyCon2.Avalonia.<版本号>.exe` 就可以使用了（发布包内会有一个以版本号结尾的可执行文件）
    - 不需要安装任何其他软件
 
 ### Mac用户
@@ -135,11 +136,18 @@ PRINT "完成！"    # 显示完成消息
 3. **选择您刚保存的 `test.ecs` 文件**
 4. **点击"运行"按钮**
 
-**如果您使用命令行版本**：
+**如果您使用命令行版本**（默认 `ezcon` 已加入 PATH；发布包中的 Windows 可执行文件为 `ezcon.exe`，仓库内构建产物名为 `EasyCon2.CLI.exe`）：
 ```bash
+# 初始化脚本项目框架（生成 main.ecs / lib/mod1.ecs / models/ / ImgLabel/）
+ezcon init my-project
+cd my-project
+
 # 在命令行中运行
-./ezcon run test.ecs
+ezcon run main.ecs --port mock
 ```
+
+`ezcon init` 的路径可省略（默认当前目录）；已存在模板文件时默认拒绝写入，
+使用 `--force` 只覆盖 `main.ecs` 与 `lib/mod1.ecs`，不会删除任何目录。
 
 ---
 
@@ -298,6 +306,7 @@ WAIT 5000    # 等待5秒
 - **[完整脚本语法](./Script.md)** - 学习更强大的脚本功能
 - **[示例脚本库](../examples/)** - 查看更多实用脚本
 - **[图像识别详解](./Script.md#图像识别)** - 学习视觉自动化
+- **[声音标签接入 ECS](./AudioLabels.md#第一次在-ecs-中使用)** - 按步骤放置标签，用 LOAD/SCORE/UNLOAD 在按键期间识别声音并读取累计最高分（Windows GUI）
 
 ### 实际应用
 

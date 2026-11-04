@@ -53,6 +53,10 @@ public record ImgLabel
     internal Rect _round => new(RangeX, RangeY, RangeWidth, RangeHeight);
     internal Rect _target => new(TargetX, TargetY, TargetWidth, TargetHeight);
 
+    /// <summary>缓存替换/失效与外借快照的同步锁。</summary>
+    [JsonIgnore]
+    private readonly object _matLock = new();
+
     private Image _image;
 
     public Image GetImage() => _image ??= Base64StringToImage(ImgBase64, searchMethod);
@@ -65,27 +69,29 @@ public record ImgLabel
     }
 
     /// <summary>
-    /// 获取缓存的 BGR 目标 Mat。首次调用时从 ImgBase64 解码，后续直接返回缓存。
+    /// 获取缓存的 BGR 目标 Mat 快照。缓存只用于避免每次重新解码 base64；
+    /// 返回值为独立克隆，由调用方 Dispose——缓存本体可能在匹配执行中途
+    /// 被并发编辑线程 Invalidate（Dispose），直接外借会踩已释放原生内存。
     /// </summary>
     internal Mat GetCachedTargetMat()
     {
-        if (_cachedMat is { } cached)
-            return cached;
-        byte[] imageBytes = Convert.FromBase64String(ImgBase64);
-        _cachedMat = imageBytes.ToMat(); // ImreadModes.Color → BGR
-        return _cachedMat;
+        lock (_matLock)
+        {
+            _cachedMat ??= Convert.FromBase64String(ImgBase64).ToMat(); // ImreadModes.Color → BGR
+            return _cachedMat.Clone();
+        }
     }
 
     /// <summary>
-    /// 获取缓存的 RGBA 目标 Mat（MaskedSqDiffNormed 路径使用）。
+    /// 获取缓存的 RGBA 目标 Mat 快照（MaskedSqDiffNormed 路径使用），语义同上。
     /// </summary>
     internal Mat GetCachedTargetMatRGBA()
     {
-        if (_cachedMatRGBA is { } cached)
-            return cached;
-        byte[] imageBytes = Convert.FromBase64String(ImgBase64);
-        _cachedMatRGBA = Cv2.ImDecode(imageBytes, ImreadModes.Unchanged);
-        return _cachedMatRGBA;
+        lock (_matLock)
+        {
+            _cachedMatRGBA ??= Cv2.ImDecode(Convert.FromBase64String(ImgBase64), ImreadModes.Unchanged);
+            return _cachedMatRGBA.Clone();
+        }
     }
 
     /// <summary>
@@ -93,10 +99,16 @@ public record ImgLabel
     /// </summary>
     internal void InvalidateTargetCache()
     {
-        _cachedMat?.Dispose();
-        _cachedMat = null;
-        _cachedMatRGBA?.Dispose();
-        _cachedMatRGBA = null;
+        Mat? bgr, rgba;
+        lock (_matLock)
+        {
+            bgr = _cachedMat;
+            _cachedMat = null;
+            rgba = _cachedMatRGBA;
+            _cachedMatRGBA = null;
+        }
+        bgr?.Dispose();
+        rgba?.Dispose();
     }
 
     private static bool IsBase64String(string s)
@@ -153,21 +165,14 @@ public record ImgLabel
 
     private static string ImageToBase64(Image bmp)
     {
-        try
-        {
-            var ms = new MemoryStream();
-            bmp.Save(ms, ImageFormat.Png);
-            byte[] arr = new byte[ms.Length];
-            ms.Position = 0;
-            ms.Read(arr, 0, (int)ms.Length);
-            ms.Close();
-            string strbaser64 = Convert.ToBase64String(arr);
-            return strbaser64;
-        }
-        catch (Exception ex)
-        {
-            return "err!!" + ex.Message;
-        }
+        // 不吞编码失败：把错误哨兵串写进 ImgBase64 会随 .IL 持久化污染标签数据
+        var ms = new MemoryStream();
+        bmp.Save(ms, ImageFormat.Png);
+        byte[] arr = new byte[ms.Length];
+        ms.Position = 0;
+        ms.Read(arr, 0, (int)ms.Length);
+        ms.Close();
+        return Convert.ToBase64String(arr);
     }
 
     public bool Valid()

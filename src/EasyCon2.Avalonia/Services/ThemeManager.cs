@@ -134,6 +134,7 @@ public sealed partial class ThemeManager : ObservableObject
         SetFluentAccentResources(palette);
         SetDirectionalShadowResources(SelectedThemeStyleName == ClassicStyleName, palette.DirectionalShadow);
         SetComboBoxGlyphResources(colorSchemeName, palette);
+        SetMappingResources(colorSchemeName, palette);
         DarkModeChanged?.Invoke(IsDarkMode);
     }
 
@@ -188,6 +189,7 @@ public sealed partial class ThemeManager : ObservableObject
             SetResource("WorkbenchSettingsCardBrush", new SolidColorBrush(settingsCardColor));
             SetResource("WorkbenchStatusDisconnectedBackgroundColor", statusDisconnectedBackground);
             SetResource("WorkbenchStatusDisconnectedBrush", new SolidColorBrush(statusDisconnectedBackground));
+            SetMappingResources(SelectedColorSchemeName, palette);
         }
 
         SetDirectionalShadowResources(themeStyleName == ClassicStyleName, palette?.DirectionalShadow ?? Colors.Transparent);
@@ -279,6 +281,37 @@ public sealed partial class ThemeManager : ObservableObject
                 new GradientStop(reverse ? Colors.Transparent : shadowColor, 1)
             }
         };
+    }
+
+    private static void SetMappingResources(string colorSchemeName, WorkbenchColorScheme palette)
+    {
+        bool isDark = colorSchemeName == DarkModeSchemeName;
+        Color background = isDark ? Color.FromRgb(0x10, 0x10, 0x11) : palette.Window;
+        Color accent = Color.Parse("#FF5C7FA0");
+        Color title = palette.Text;
+        Color muted = palette.MutedText;
+        Color highlight = isDark ? Color.FromRgb(0xFF, 0xFF, 0xFF) : palette.Text;
+        // 冲突色：略微鲜艳但不刺眼，三套配色统一
+        Color conflict = Color.Parse("#FFE5484D");
+        Color unmapped = isDark
+            ? Color.FromRgb(0x6E, 0x73, 0x7C)
+            : colorSchemeName == whiteGraySchemeName
+                ? Color.FromRgb(0xA9, 0xB0, 0xBA)
+                : Color.FromRgb(0xB4, 0xAD, 0xA2);
+
+        SetMappingResource("MappingBackground", background);
+        SetMappingResource("MappingAccent", accent);
+        SetMappingResource("MappingTitle", title);
+        SetMappingResource("MappingMuted", muted);
+        SetMappingResource("MappingUnmapped", unmapped);
+        SetMappingResource("MappingHighlight", highlight);
+        SetMappingResource("MappingConflict", conflict);
+    }
+
+    private static void SetMappingResource(string key, Color color)
+    {
+        SetResource(key + "Color", color);
+        SetResource(key + "Brush", new SolidColorBrush(color));
     }
 
     private static void SetComboBoxGlyphResources(string colorSchemeName, WorkbenchColorScheme palette)

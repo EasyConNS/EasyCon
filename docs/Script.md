@@ -498,7 +498,27 @@ $攻击力 = 50
 $名字 = "勇者"
 ```
 
-### 5.2 数据类型
+### 5.2 常量与弃赋值
+
+以 `_` 开头（不带 `$`）的标识符是**常量**：声明时必须赋值，且右侧须为编译期可求值的表达式（字面量、其他常量及其算术组合），求值结果折叠进使用点；同名常量重复定义报错。常量在编译期固定，不占运行时存储。同一常量在函数外声明即为模块级常量，库文件中的常量对本模块可见（跨模块不导出）。
+
+```ecs
+_MAX_HP = 100
+_NAME = "勇者"
+_RATIO = 1.5
+_ENABLED = true
+
+PRINT _MAX_HP          # 100
+_MAX_HP = 200          # 错误：常量重复定义
+```
+
+`_ = 表达式` 是**弃赋值**：求值右侧表达式但丢弃结果（用于显式消费有副作用的调用）。
+
+```ecs
+_ = RAND(10)           # 消耗一个随机数，不保存
+```
+
+### 5.3 数据类型
 
 #### 整数 (INT)
 
@@ -512,13 +532,15 @@ $zero = 0
 
 #### 布尔值 (BOOL)
 
-布尔值通过比较表达式产生，不支持 `true`/`false` 字面量。
+布尔字面量仅支持全小写的 `true`/`false`（`TRUE`/`True` 等写法报错）；布尔值也可由比较与逻辑表达式产生。
 
 ```ecs
+$ready = true
+$busy = false
 $is_ready = 1 > 0     # true
 $isValid = 1 > 2      # false
-$result = 1 > 2       # false
 $flag = 5 == 5        # true
+$ok = true and not $busy   # 逻辑运算
 ```
 
 #### 字符串 (STRING)
@@ -539,12 +561,15 @@ $backslash = "路径\\到\\文件"
 
 #### 数组
 
-支持同类型数组，使用方括号定义。
+支持同类型数组，使用方括号定义。**初始化元素仅允许编译期常量**（数字、字符串、`true`/`false`、`_` 常量及其一元负号）；变量、函数调用与识图标签在语法阶段即被拒绝。需要运行时构造的数组用 `APPEND` 逐个添加。
 
 ```ecs
 $numbers = [1, 2, 3, 4, 5]
 $empty = []
 $names = ["Alice", "Bob", "Charlie"]
+$table = [1, -2, _MAX_HP]
+$bad = [$x]            # 错误：数组初始化只允许常量元素
+$good = APPEND([], $x) # 运行时构造用 APPEND
 ```
 
 ---
@@ -653,6 +678,10 @@ $a >>= 1       # 右移赋值
 ## 第七部分：函数
 
 ### 7.1 函数定义
+
+函数参数不再限制为 7 个。参数数受字节码上限（最多 254 个）和**单个函数的 255 槽寄存器预算**
+共同约束：参数、调用暂存、存活值和表达式临时值均占槽位，预算不足时会报寄存器溢出。普通函数与
+`EXTERN FUNC` 使用相同的调用规则；GUI 与 CLI 均可调用超过 7 个参数的函数。
 
 #### 无参数函数
 
@@ -972,26 +1001,39 @@ AMIIBO $slot         # 使用变量
 
 ## 第十一部分：模块与导入
 
-### 11.1 导入库脚本
+### 11.1 导入规则
+
+模块可见性由目录结构决定（目录即包，类 Go）：
+
+- **主脚本并列互不打扰**：项目根可并列任意多个主脚本，各自独立编译运行；
+  主脚本只默认导入 std/vision/lib，不与同目录其他脚本互见。
+- **模块同目录互相可见**：同一目录内的模块互见函数/结构体/常量，无需 IMPORT；扫描不递归，
+  lib/ 的各级子目录各自适用该规则。
+- **lib/ 目录自动导入**：主脚本同目录 `lib/*.ecs` 自动对主脚本可见（lib 内文件互见同上）。
+- **跨目录必须显式导入**：导入路径相对**当前脚本所在目录**解析。
+
+完整规则与编译序见 [ModuleImportRules.md](ModuleImportRules.md)；脚手架可通过
+`ezcon init` 生成（见 §11.4）。
 
 ```ecs
-# 导入库文件（必须放在脚本开头）
-IMPORT "utils.ecs"
-IMPORT "math.ecs"
+# 显式导入（跨目录时必须；须放在脚本开头）
+IMPORT "net/http.ecs"          # → 当前目录 net/http.ecs，模块名 "net/http"
+IMPORT "lib/tools.ecs" AS t    # AS 别名：只能 t.func() 限定访问
 
-# 库文件放在脚本同目录的 lib/ 文件夹中
+# 同目录 / lib/ 内的函数直接调用，无需 IMPORT
+$r = twice(21)
 ```
 
 ### 11.2 库脚本规范
 
-库脚本只能包含：
+库脚本（被他人调用的模块）只能包含：
 - 函数定义（FUNC/ENDFUNC）
 - 结构体定义（STRUCT/END）
 - 外部函数声明（EXTERN）
-- 全局变量或常量定义
+- 全局变量或常量定义（模块私有，调用方不可见；顶层语句编译为模块初始化，先于 main 执行）
 
 ```ecs
-# lib/utils.ecs
+# lib/math.ecs
 FUNC max($a, $b):INT
     IF $a > $b
         RETURN $a
@@ -1011,11 +1053,35 @@ ENDFUNC
 
 ### 11.3 标准库
 
-以下函数自动可用，无需导入：
+std 与 vision 标准库自动可用，无需导入：
 
 ```ecs
 $t = TIME()           # 获取脚本运行时间（毫秒）
 ```
+
+### 11.4 项目初始化（ezcon init）
+
+CLI 提供脚手架命令，默认在当前目录生成基础项目框架：
+
+```bash
+ezcon init [path] [--force]
+```
+
+生成结构：
+
+```
+<项目根>/
+├── main.ecs          主脚本（调用 lib/ 中的 ADD 并打印欢迎信息）
+├── lib/mod1.ecs      库模块（FUNC ADD）
+├── models/           模型/字典资产（空）
+└── ImgLabel/         识图标签（空；运行时只识别顶层 *.IL）
+```
+
+- `path` 缺省为当前目录，目录不存在时自动创建
+- 已存在 `main.ecs` / `lib/mod1.ecs` 时默认拒绝且不做任何写入；`--force` 只覆盖这两个模板文件
+- `lib/*.ecs` 自动导入（规则 R3），`main.ecs` 无需 `IMPORT`
+- `models/` 只是脚本相对路径约定（如 `NET_LOAD("models/x.onnx")`），运行前需在项目根目录执行
+  `ezcon run main.ecs`
 
 ---
 
@@ -1255,18 +1321,118 @@ ENDFUNC
 
 ---
 
-## ONNX 推理实验函数（NET_*）
+## ONNX 句柄族（NET_IMAGE / NET_RUNH / NET_SCALE / NET_FREE / NET_UNLOAD）
 
-> 实验面：走 L3 名表，宿主须装配 `IInference` 能力（OpenCvSharp.Dnn 后端）；
+> 与 NET_* 同族（L3 名表 + VISION 特征位，单片机拒跑）。大数组驻留宿主侧，
+> 脚本只见句柄——原生边界纯标量协议不变。适合卷积类视觉模型（det/rec/分类器）。
+
+```ecs
+# 图像 → 张量句柄（抓当前画面；负坐标 = 全帧，正坐标 = ROI）
+$img = NET_IMAGE(-1, -1, -1, -1, 640, 640, "rgb")    # RGB [1,3,640,640]，像素 0-255
+$img = NET_IMAGE(100, 50, 200, 80, 320, 32)          # 灰度 [1,1,32,320]（缺省 mode）
+
+# 逐元素变换 t2 = t·scale + offset（归一化在此组合，如 1/255）
+$t = NET_SCALE($img, 0.003921568627, 0.0)
+
+# 以句柄张量为输入推理：返回输出元素个数（0 = 失败）；NET_OUT(i) 逐元素读取
+$n = NET_RUNH($net, $t)
+$o = NET_OUT(0)
+
+# 释放资源（长脚本建议显式释放张量；会话结束宿主统一回收）
+NET_FREE($img)
+NET_UNLOAD($net)
+```
+
+约定：
+- `NET_IMAGE` 模式串：`"gray"`（[1,1,H,W]）| `"rgb"`（[1,3,H,W]，CHW 平铺）|
+  `"letter"`（YOLO letterbox：等比缩放至目标内、居中、四周垫 114 灰、RGB 通道）；
+  `"rgb"`/`"gray"` 可加 `'c'` 后缀（如 `"rgbc"`）改为 cover 缩放 + 居中裁剪
+  （不变形不垫边，分类模型常规）。`NET_IMAGE_FILE(path, w, h [, mode])` 同管线吃本地图片文件。
+- 像素为 0-255 原始值，模型专属归一化用 `NET_SCALE`（全局仿射）与
+  `NET_NORM`（逐通道 (x-mean[c])/std[c]，通道号按张量形状自动推断）组合；宿主保持模型中立。
+- 张量形状由宿主按模式自动声明，`NET_RUNH` 校验会话与句柄有效性。
+
+---
+
+## 分类链路配方（NET_NORM + NET_ARGMAX + NET_LABEL）
+
+> ResNet 类图像分类模型全链路——预处理策略全部留在脚本可见的 ECS 层
+> （`NET_SCALE` ⊕ `NET_NORM` 任意组合），解码用已修二维的 `NET_ARGMAX`，类名走标签表。
+
+```ecs
+$net = NET_LOAD("resnet18.onnx")
+
+# 预处理：cover 裁剪 → /255 → ImageNet 逐通道归一化（每步都是通用原语，可自由替换）
+$t = NET_SCALE(NET_IMAGE_FILE("test.png", 224, 224, "rgbc"), 1.0 / 255, 0)
+$t = NET_NORM($t, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+
+# 推理 + 解码：[1,1000] 向量输出按 1 行 1000 列解码
+NET_RUNH($net, $t)
+$cls = NET_ARGMAX(0)
+
+# 类名（可选辅助层：不加载标签表就零依赖）
+NET_LABELS("imagenet_classes.txt")
+PRINT NET_LABEL($cls)
+```
+
+约定：
+- `NET_NORM(tensor, mean, std): PTR` 返回新句柄；mean/std 长度须为 1 或等于通道数，否则 -1。
+- `NET_ARGMAX` **末维 = 类别维**：`[1,T,C]` 逐行（PP-OCR rec/序列解码）、
+  `[1,N]` 向量输出按 1 行 N 列（分类 logits）。`NET_ROWS()` 同口径。
+- `NET_LABELS(path): INT`（**行号即索引**：逐行原样占位，空行/空白字符行也是条目，
+  仅去行尾 CR——保 PP-OCR 类字典的行号语义；重复加载整体替换，失败 -1）、
+  `NET_LABEL(i): STRING`（越界/未加载 → ""）。纯字符串处理，不依赖推理能力。
+  CTC 字典配合：class id c → `NET_LABEL(c - 1)`（blank 占位）。
+- top-k / 概率序列等自定义解码：`NET_OUT(i)` 循环自写（预处理与解码均可替换的出口）。
+
+---
+
+## YOLO26 检测配方（YOLO_DETECT + YOLO_* 访问器）
+
+> std 配方 + 宿主加速洞（与 PP-OCR 的 CTC_FOLD 同一模式）。面向 **YOLO26 端到端导出**
+> （Ultralytics 默认导出即端到端，免 NMS）：输出 `[1,300,6]` =
+> `[x1, y1, x2, y2, conf, class_id]`，坐标在 640×640 letterbox 空间，按分数降序。
+
+```ecs
+$net = NET_LOAD("models/yolo26n.onnx")
+$c = YOLO_DETECT($net, 100, 80, 400, 300, 0.5)   # 采集 ROI → letterbox → 1/255 → 推理 → 解码
+$i = 0
+WHILE $i < YOLO_COUNT()
+    $cls = YOLO_CLS($i)
+    $s = YOLO_SCORE($i)
+    $x = YOLO_X1($i)
+    PRINT $cls
+    $i = $i + 1
+END
+NET_UNLOAD($net)
+```
+
+约定：
+- `YOLO_DETECT(net, x, y, w, h, thresh): INT` 返回命中数；访问器按**命中列表**下标读取，
+  坐标已逆映射回屏幕并**裁剪回 ROI 内容区**（Ultralytics predict 同约定，可直接用于点击/绘制；
+  letterbox 几何由配方计算，与宿主 `"letter"` 模式同式零漂移）。
+- 防呆在配方层：输出元素数 / `NET_ROWS()` ≠ 6（如 `end2end=False` 导出的 `[1,8400,·]`）→ 返回 -1
+  （宿主不做形状假设，协议知识归配方）。
+- 越界语义：`YOLO_CLS`/坐标访问器返回 -1，`YOLO_SCORE` 返回 -1.0（与 NET_ARGMAX 同约定）。
+- 类别名映射（class_id → 名称）属用户脚本策略（COCO 或自训模型的类别表脚本自理）。
+- 想自实现解码策略：`NET_ROWS` + `NET_OUT(i*6+j)` 扁平寻址原始输出。
+- 真模型 smoke（OpenCV DNN × YOLO26n 端到端图已验证兼容，见 test/assets/README.md 资产约定）。
+
+---
+
+## ONNX 推理函数（NET_*）
+
+> 走 L3 名表，宿主须装配 `IInference` 能力（OpenCvSharp.Dnn 后端）；
 > 镜像带 VISION 特征位——单片机参考桩不支持，加载期拒跑（ECS_ERR_FEAT）。
 
 ```ecs
 # 加载 ONNX 模型，返回会话句柄（-1 = 失败）
 $net = NET_LOAD("models/demo.onnx")
 
-# 执行推理：输入为数值数组（展平），返回输出元素个数（0 = 失败）
-$in = [1, 2, 3]
-$n = NET_RUN($net, $in)
+# 句柄族：图像/张量大数组驻留宿主，脚本只见句柄
+$img = NET_IMAGE(0, 0, 0, 0, 64, 32, "rgb")   # 采集 → 张量句柄
+$t = NET_SCALE($img, 1.0 / 255, -0.25)        # 仿射变换（如 PP-OCR 归一化）
+$n = NET_RUNH($net, $t)                       # 推理，返回输出元素个数（0 = 失败）
 
 # 逐元素读取输出（越界返回 0）
 $o0 = NET_OUT(0)
@@ -1274,8 +1440,8 @@ PRINT $o0
 ```
 
 约束：
-- 纯标量协议——原生调用边界不携带数组，输出只能经 `NET_OUT(i)` 逐个读取。
-- 未装配推理能力时：`NET_LOAD` 返回 -1、`NET_RUN` 返回 0、`NET_OUT` 返回 0（不报错）。
+- 纯标量协议——原生调用边界不携带数组，大数组驻留宿主（张量/输出经句柄引用），输出经 `NET_OUT(i)` 逐个读取。
+- 未装配推理能力时按 S-21 缺省值表降级（不报错）：`NET_LOAD` 返回 -1、`NET_ARGMAX` 返回 -1、句柄族（`__NET_IMAGE__`/`__NET_IMAGE_FILE__`/`NET_RUNH`/`NET_SCALE`/`NET_NORM`/`NET_ROWS`/`NET_FREE`/`NET_UNLOAD`）返回 0、`NET_OUT` 返回 0；标签表 `NET_LABELS` 返回 -1、`NET_LABEL` 返回 ""；YOLO 侧 `__YOLO_DECODE__`/`YOLO_COUNT` 返回 0、`YOLO_*` 访问器返回 -1/-1.0。
 - 模型文件为外部资产，不入库。
 
 ---

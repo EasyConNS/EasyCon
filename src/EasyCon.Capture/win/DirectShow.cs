@@ -29,6 +29,32 @@ static class DirectShow
         return result.ToImmutableArray();
     }
 
+    public static IReadOnlyList<(string Name, string? DevicePath)> GetDevices()
+    {
+        List<(string, string?)> result = new();
+        EnumMonikers(DsGuid.CLSID_VideoInputDeviceCategory, (moniker, prop) =>
+        {
+            object name = null;
+            prop.Read("FriendlyName", ref name, 0);
+            string? identity = null;
+            try
+            {
+                object path = null;
+                prop.Read("DevicePath", ref path, 0);
+                identity = path as string;
+            }
+            catch (Exception ex) when (ex is COMException or IOException) { }
+            if (string.IsNullOrWhiteSpace(identity))
+            {
+                try { moniker.GetDisplayName(null, null, out identity); }
+                catch (Exception ex) when (ex is COMException or IOException) { }
+            }
+            result.Add(((string)name, identity));
+            return false;
+        });
+        return result;
+    }
+
     /// <summary>モニカを列挙する。</summary>
     /// <remarks>モニカとはCOMオブジェクトを識別する別名のこと。</remarks>
     private static void EnumMonikers(Guid category, Func<IMoniker, IPropertyBag, bool> func)

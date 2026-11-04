@@ -11,77 +11,124 @@ public enum Status
 
 public partial class NintendoSwitch
 {
-    private IConnection clientCon { get; set; }
+    private IConnection? clientCon { get; set; }
 
-    private ConnectResult _TryConnect(string connStr, int baudrate = 115200)
+    public bool SupportsLegacyCommands => clientCon?.SupportsLegacyCommands == true;
+    public string? FirmwareName => clientCon?.FirmwareName;
+    public string? FirmwareVersion => clientCon?.FirmwareVersion;
+    public bool? ConsoleConnected => clientCon?.ConsoleConnected;
+    public string? LastConnectionError { get; private set; }
+
+    private ConnectResult _TryConnect(Func<IConnection> createConnection)
     {
-        if (connStr == "")
+        Disconnect();
+        LastConnectionError = null;
+        IConnection connection;
+        try
+        {
+            connection = createConnection();
+        }
+        catch (ArgumentException ex)
+        {
+            LastConnectionError = ex.Message;
             return ConnectResult.InvalidArgument;
-
-        var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
-        var result = ConnectResult.None;
+        }
+        clientCon = connection;
+        TaskCompletionSource<ConnectResult> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         void statuschanged(Status status)
         {
-            lock (ewh)
+            if (status == Status.Connected)
+                completion.TrySetResult(ConnectResult.Success);
+            if (status == Status.Error)
+                completion.TrySetResult(ConnectResult.Error);
+        }
+        connection.BytesSent += (port, bytes) => { if (ReferenceEquals(clientCon, connection)) BytesSent?.Invoke(port, bytes); };
+        connection.BytesReceived += (port, bytes) => { if (ReferenceEquals(clientCon, connection)) BytesReceived?.Invoke(port, bytes); };
+        connection.StatusChanged += status =>
+        {
+            if (ReferenceEquals(clientCon, connection))
             {
-                if (result != ConnectResult.None)
-                    return;
-                if (status == Status.Connected)
-                {
-                    result = ConnectResult.Success;
-                    ewh.Set();
-                }
                 if (status == Status.Error)
                 {
-                    result = ConnectResult.Error;
-                    ewh.Set();
+                    LastConnectionError = connection.LastError;
+                    Log?.Invoke(LastConnectionError ?? "设备连接已断开。");
                 }
+                StatusChanged?.Invoke(status);
             }
-        }
-
-        Disconnect();
-        clientCon = new TTLSerialClient(connStr, baudrate);
-        clientCon.BytesSent += BytesSent;
-        clientCon.BytesReceived += BytesReceived;
-        clientCon.StatusChanged += StatusChanged;
-
-        clientCon.StatusChanged += statuschanged;
-        clientCon.Connect();
-        if (!ewh.WaitOne(1000))
+        };
+        connection.StatusChanged += statuschanged;
+        try
         {
-            clientCon.Disconnect();
-            clientCon = null;
-            return ConnectResult.Timeout;
-        }
-        if (result != ConnectResult.Success)
-        {
-            clientCon?.Disconnect();
-            clientCon = null;
+            connection.Connect();
+            ConnectResult result = completion.Task.Wait(connection.ConnectTimeoutMilliseconds)
+                ? completion.Task.Result : ConnectResult.Timeout;
+            if (result != ConnectResult.Success)
+            {
+                clientCon = null;
+                connection.Disconnect();
+                LastConnectionError = connection.LastError ?? LastConnectionError;
+            }
             return result;
         }
-        clientCon.StatusChanged -= statuschanged;
-
-        return ConnectResult.Success;
+        finally
+        {
+            connection.StatusChanged -= statuschanged;
+        }
     }
 
     public void Disconnect()
     {
-        clientCon?.Disconnect();
+        CancelStaleLoop();
+        IConnection? connection = clientCon;
         clientCon = null;
-        source?.Cancel();
+        connection?.Disconnect();
+    }
+
+    /// <summary>复位并等待串口实际写出中性包；不表示主机/游戏已确认。</summary>
+    public async Task<bool> ResetAndWaitForWriteAsync(TimeSpan timeout, CancellationToken token = default)
+    {
+        IConnection? connection = clientCon;
+        if (connection == null || !IsConnected()) { Reset(); return false; }
+        byte[] neutral = new SwitchReport().GetBytes().ToArray();
+        TaskCompletionSource<bool> written = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        void OnWritten(string port, byte[] bytes)
+        {
+            // 一次串口写可合并多个包，最后一个必须是中性包。
+            if (bytes.AsSpan().EndsWith(neutral)) written.TrySetResult(true);
+        }
+        void OnStatus(Status status)
+        {
+            if (status == Status.Error) written.TrySetResult(false);
+        }
+        connection.BytesSent += OnWritten;
+        connection.StatusChanged += OnStatus;
+        try
+        {
+            Reset();
+            return await written.Task.WaitAsync(timeout, token).ConfigureAwait(false);
+        }
+        catch (TimeoutException) { return false; }
+        finally
+        {
+            connection.BytesSent -= OnWritten;
+            connection.StatusChanged -= OnStatus;
+        }
     }
 
     public bool IsConnected() => clientCon?.CurrentStatus == Status.Connected;
 
-    void WriteReport(Span<byte> b)
+    void WriteReport(SwitchReport report)
     {
         Log?.Invoke($"[Send {DateTime.Now:ss.fff}] {_report}");
 
-        clientCon.Write(b.ToArray());
+        var con = clientCon;   // 局部快照：Disconnect 可并发置 null
+        con?.WriteReport(report);
     }
 
     bool SendSync(Func<byte, bool> predicate, int timeout = 100, params byte[] bytes)
     {
+        if (!RequireLegacyCommands())
+            return false;
         var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
         void h(string port, byte[] bytes_)
         {
@@ -94,20 +141,26 @@ public partial class NintendoSwitch
         }
         try
         {
-            clientCon.BytesReceived += h;
-            clientCon.Write(bytes);
+            var con = clientCon;
+            if (con == null)
+                return false;
+            con.BytesReceived += h;
+            con.Write(bytes);
             if (!ewh.WaitOne(timeout))
                 return false;
             return true;
         }
         finally
         {
-            clientCon.BytesReceived -= h;
+            if (clientCon != null)
+                clientCon.BytesReceived -= h;
         }
     }
 
     bool ResetControl()
     {
+        if (!RequireLegacyCommands())
+            return false;
         var ewh = new EventWaitHandle(false, EventResetMode.AutoReset);
         void h(string port, byte[] bytes_)
         {
@@ -116,19 +169,25 @@ public partial class NintendoSwitch
         }
         try
         {
-            clientCon.BytesReceived += h;
+            var con = clientCon;
+            if (con == null)
+                return false;
+            con.BytesReceived += h;
             for (int i = 0; i < 3; i++)
-                clientCon.Write(EzDvCommand.Ready, EzDvCommand.Hello);
+                con.Write(EzDvCommand.Ready, EzDvCommand.Hello);
             return ewh.WaitOne(50);
         }
         finally
         {
-            clientCon.BytesReceived -= h;
+            if (clientCon != null)
+                clientCon.BytesReceived -= h;
         }
     }
 
     public bool Flash(byte[] asmBytes)
     {
+        if (!RequireLegacyCommands())
+            return false;
         const int PacketSize = 20;
         List<byte> list = new(asmBytes);
         for (int i = 0; i < list.Count; i += PacketSize)
@@ -231,6 +290,8 @@ public partial class NintendoSwitch
 
     public bool SaveAmiibo(byte index, byte[] amiibo)
     {
+        if (!RequireLegacyCommands())
+            return false;
         const int PacketSize = 20;
         List<byte> list = [.. amiibo];
         for (int i = 0; i < list.Count; i += PacketSize)
@@ -269,5 +330,14 @@ public partial class NintendoSwitch
     public bool ChangeAmiiboIndex(byte index)
     {
         return SendSync(b => b == Reply.Ack, 200, EzDvCommand.Ready, index, EzDvCommand.ChangeAmiiboIndex);
+    }
+
+    private bool RequireLegacyCommands()
+    {
+        if (SupportsLegacyCommands)
+            return true;
+        if (IsConnected())
+            Log?.Invoke($"{FirmwareName} 仅支持在线手柄控制；不支持伊机控离线脚本烧录、远程运行、Amiibo、颜色及解除配对命令。");
+        return false;
     }
 }

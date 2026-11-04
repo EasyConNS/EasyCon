@@ -1,80 +1,58 @@
 # 伊机控 EasyCon 文档中心
 
-欢迎使用伊机控文档系统！这里包含项目的完整技术文档。
+文档分四类。改代码前先读对应类；所有文档以**现状**为准——描述与代码冲突时，改文档或改代码，
+不留"两说"。
 
-## 📚 文档导航
+## 📖 使用（面向脚本作者/用户）
 
-### 核心文档
-- **[快速开始](GETTING_STARTED.md)** - 安装配置和使用教程
-- **[系统架构](Framework.md)** - 系统架构和设计理念
-- **[模块系统](models.md)** - 模块化设计和FFI接口  
-- **[脚本语法](Script.md)** - ECS脚本语言完整语法说明
+| 文档 | 内容 |
+|---|---|
+| [GETTING_STARTED.md](GETTING_STARTED.md) | 安装、`ezcon init` 项目初始化、GUI/CLI 运行脚本、采集画面来源（含 OBS 虚拟摄像头） |
+| [DeviceConnections.md](DeviceConnections.md) | 通用串口协议注册、TCP / 蓝牙桥接配置、协议扩展与端点占用规则 |
+| [Pokeldn.md](Pokeldn.md) | pokeldn-pad 固件分析、ESP32 串口 / ESP32-S3 BLE 服务连接、能力范围与验证 |
+| [Script.md](Script.md) | ECS 脚本语言完整语法：变量/常量/类型/流程控制/函数/结构体/数组/按键语句/识图标签/IMPORT |
+| [Functions.md](Functions.md) | 内置函数手册（按功能域；速查表含桌面/单片机可用性） |
+| [AudioSource.md](AudioSource.md) | 连接 Windows 游戏音频输入、查看电平及连接排查 |
+| [AudioLabels.md](AudioLabels.md) | 声音标签制作、ECS 目录、LOAD/SCORE/UNLOAD 后台识别示例、0～100 整数分数校准与排错 |
+| [DrawingBoard.md](DrawingBoard.md) | 喷射战士画板：图片处理（适配/明暗/抖动/去杂点/轮廓）、绘制设置、橡皮擦模式、框选区域、耗时估算与常见问题 |
 
-### 虚拟机文档
-- **[V1指令集](VM1.md)** - 单片机端虚拟机指令集文档
-- **[V2指令集](VM2.md)** - 新一代虚拟机指令集设计
-- **[双端语义契约](VmSemanticContract.md)** - ECS 字节码双端语义/RC 协议权威表（S-01..S-19）与验证体系
-- **[二进制格式](EcmEcxFormat.md)** - ECM/ECX 位级格式规范
-- **[模块系统设计](ModuleSystem.md)** - 接口式独立编译与内容寻址缓存
-- **[统一编译链路](Pipeline.md)** - 编译链路现状与单一事实源落点
+## 🏗️ 架构与编译管线（改编译器/宿主前必读）
 
-### 功能文档
-- **[EasyCon Assist](EasyCon%20Assist.md)** - 远程助手功能说明
-- **[OBS虚拟摄像头](obs-virtual-cam.md)** - OBS虚拟摄像头支持
+| 文档 | 内容 |
+|---|---|
+| [Framework.md](Framework.md) | 分层依赖图、组合根规则（能力装配/编译档位唯一落点）、三条主链路、已知短板 |
+| [Pipeline.md](Pipeline.md) | 源码 → EcxImage 统一编译链路、链接期行为、单一事实源落点表 |
+| [ModuleImportRules.md](ModuleImportRules.md) | 模块导入规则 R1–R5/R7、自动边收敛、编译序与常见误区 |
+| [ModuleSystem.md](ModuleSystem.md) | 接口式独立编译、Merkle 缓存键、接口完备性清单、缓存 GC |
+| [Flow.md](Flow.md) | 节点编排（`*.flow.json`）：图格式、节点目录与语义、执行模型（看门狗/计时/停止/慢感知）、HTTP + MCP 接口、Python 画布（`frontend/`）、已知挂账 |
 
-### 模块实现文档
-- **[EasyCon.Core](../src/EasyCon.Core/README.md)** - 核心功能模块
-- **[EasyCon.Device](../src/EasyCon.Device/README.md)** - 设备通信模块
-- **[EasyCon.Capture](../src/EasyCon.Capture/README.md)** - 图像处理模块
-- **[EasyCon.Script](../src/EasyCon.Script/README.md)** - 脚本解析模块
-- **[EasyCon.VPad](../src/EasyCon.VPad/README.md)** - 虚拟手柄模块
+## ⚙️ 虚拟机与字节码（改 VM/格式/双端前必读）
 
-### UI设计文档
-- **[UI文档索引](../src/EasyCon2.Avalonia/DOCUMENTATION_INDEX.md)** - UI模块完整文档
-- **[系统设计文档](../src/EasyCon2.Avalonia/DESIGN_DOCUMENT.md)** - 详细架构设计
-- **[UI设计规范](../src/EasyCon2.Avalonia/UI_DESIGN.md)** - 界面设计文档
-- **[模块详细设计](../src/EasyCon2.Avalonia/MODULE_DESIGN.md)** - 功能模块设计
+| 文档 | 内容 |
+|---|---|
+| [VM2.md](VM2.md) | 现役 VM 规格：L0-L3 分层、值模型、指令表、宿主 ABI、调用约定、能力降级（§6.3）。双端语义一致性由 corpus/FullChain/ABI 对拍测试锁定（`test/EasyCon.Tests/Bytecode/`），产物容器位级规格见 `EcsContainer`/链接器测试 |
 
-## 🎯 文档分类
+## 📐 设计思路与方案
 
-### 开发者文档
-- 系统架构文档
-- 模块系统文档
-- 虚拟机指令集文档
+| 文档 | 状态 | 内容 |
+|---|---|---|
+| [McuBytecodeDelivery.md](McuBytecodeDelivery.md) | 📋 方案（未实施） | MCU 下发链路：McuImageBuilder/预检/能力查询 0x8A/四条件判定/标签不脱机硬门 |
+| [Maa-EasyCon-dev维护与v2设计大纲-20261020.md](Maa-EasyCon-dev维护与v2设计大纲-20261020.md) | ✅ 部分实施·含实施记录 | dev 维护边界、已落地的编译错误闸门/GUI ECX 导出，以及尚未实施的 Maa v2 信息/决策/执行工作流大纲 |
 
-### 用户文档  
-- 脚本语法文档
-- 功能使用说明
+## 📎 其他
 
-### 维护状态
-- ✅ **已实现**: 系统架构和模块系统
-- ✅ **已完成**: 脚本系统和虚拟机
-- 🔄 **持续更新**: 文档与代码同步
+- `架构图drawio.drawio` — 分层架构图源文件
+- `../baselines/` — 产物尺寸与解释器性能基线（尺寸门 N1②、性能回退判据的对照物）
 
-## 📖 阅读建议
+## 阅读路径
 
-### 新手入门路径
-1. 阅读 [系统架构](Framework.md) 了解整体设计
-2. 学习 [脚本语法](Script.md) 掌握脚本编写
-3. 参考 [模块系统](models.md) 理解扩展机制
+- **写脚本**：GETTING_STARTED → Script → Functions
+- **改编译器/VM**：Pipeline → ModuleSystem → VM2（双端语义以对拍测试为准绳，见 `test/EasyCon.Tests/Bytecode/`）
+- **改宿主/UI**：Framework → `AGENTS.md` 分层规则 → `src/EasyCon.Core/README.md`
+- **做编排/画布**：Flow（＋ `frontend/README.md`；改节点必须同时改 `FlowNodeCatalog` 与 `FlowNodeRuntime`）
 
-### 开发者路径
-1. 系统架构 → 了解设计原则
-2. 模块系统 → 理解接口设计
-3. 虚拟机文档 → 深入底层实现
+## 维护规则
 
-## 🔗 相关资源
-
-- [主项目README](../README.md)
-- [源代码目录](../src/)
-- [详细设计文档](../src/EasyCon2.Avalonia/DOCUMENTATION_INDEX.md)
-
-## 📝 文档信息
-
-**状态**: ✅ 已更新至最新架构  
-**最后更新**: 2026年4月16日  
-**版本**: 2.0
-
----
-
-如有问题或建议，请通过 [GitHub Issues](https://github.com/EasyConNS/EasyCon/issues) 反馈。
+- 每份文档头部标**状态**（现状 / 已实施·含实施记录 / 方案·未实施）；改代码同步改文档。
+- 格式/指令/契约改动遵循各文档内的 checklist（VM2 新增指令流程；ABI/语义以对拍测试期望为准）。
+- 历史文档不保留在 docs/（v1 设计、旧格式规格、已并入的调研均在 git 历史）。

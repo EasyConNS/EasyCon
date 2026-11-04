@@ -11,9 +11,20 @@ using System.Collections.Immutable;
 
 namespace EasyCon.Script;
 
-public class ScriptException(string message, int address = 0) : Exception(message)
+public class ScriptException : Exception
 {
-    public int Address { get; private set; } = address;
+    public ScriptException(string message, int address = 0) : base(message)
+    {
+        Address = address;
+    }
+
+    public ScriptException(string message, Exception innerException, int address = 0)
+        : base(message, innerException)
+    {
+        Address = address;
+    }
+
+    public int Address { get; private set; }
 }
 
 /// <summary>
@@ -71,8 +82,8 @@ public sealed class CompileOptions
 {
     /// <summary>外部变量名集合（识图标签等）。</summary>
     public ImmutableHashSet<string>? ExtVars { get; set; }
-    /// <summary>启用 obj/ 磁盘缓存（默认 true：compile/MCU 分发路径收益）。
-    /// 桌面解释器路径应显式置 false 每次现编（与 v1 等价、无回归，ModuleSystem.md §7）。</summary>
+    /// <summary>启用 obj/ 磁盘缓存（默认 true：compile/MCU 分发路径收益；现编宿主可置 false，
+    /// 由进程级 <see cref="UseProcessCache"/> 兜底，ModuleSystem.md §7）。</summary>
     public bool UseDiskCache { get; set; } = true;
     /// <summary>false 时跳过 SSA 优化（DumpIr --raw 用）。</summary>
     public bool Optimize { get; set; } = true;
@@ -88,9 +99,6 @@ public sealed class CompileOptions
     /// ModuleProjectResult.ProcessCacheHits/Misses。
     /// </summary>
     public bool UseProcessCache { get; set; } = true;
-    /// <summary>旧版语法兼容（v1 PRINT/IF= 语义）。默认 true 保持行为；影响产物 → 进缓存键
-    /// （见 <see cref="ProductFingerprint"/>）。</summary>
-    public bool LegacySyntax { get; set; } = true;
 
     /// <summary>
     /// 影响编译产物的选项指纹（缓存键成分，docs/ModuleSystem.md §7.2）。
@@ -99,7 +107,12 @@ public sealed class CompileOptions
     /// </summary>
     public string ProductFingerprint()
     {
-        return $"O={(Optimize ? '1' : '0')}|L={(LegacySyntax ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}";
+        // M = 产物代数：凡「同源码会编出不同产物/语义」的编译器变更（作用域/路径/指令集等）
+        // 必须 +1，使全部旧缓存按未命中重编，不写迁移。2026-10-06 自 7 重置为 1
+        // （无旧版缓存、仅开发测试；旧履历 M4–M7 删除）。M2：参数/出站窗口按函数需求分配。
+        // M5：声音接口改为 AUDIO_LOAD/AUDIO_SCORE/AUDIO_UNLOAD。M6：AUDIO_SCORE 返回 INT。
+        // M7：合入 SSA 全局提升修复，使旧音频分支的编译缓存失效。
+        return $"O={(Optimize ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}|M=7";
     }
 }
 
@@ -116,6 +129,18 @@ public sealed class Compilation
     {
         options ??= new CompileOptions();
         var project = ProjectCompiler.CompileProject(SyntaxTree.Parse(code), options);
+        return FromProject(project);
+    }
+
+    /// <summary>统一链路编译内存源码并保留源文件路径与同目录 lib/ 上下文。</summary>
+    public static CompileResult CompileSource(string code, string fileName, CompileOptions? options = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
+        options ??= new CompileOptions();
+        string fullPath = Path.GetFullPath(fileName);
+        SyntaxTree mainTree = SyntaxTree.Parse(SourceText.From(code, fullPath));
+        string scriptDir = Path.GetDirectoryName(fullPath)!;
+        var project = ProjectCompiler.CompileProject(mainTree, scriptDir, options);
         return FromProject(project);
     }
 
@@ -148,6 +173,7 @@ public sealed class Compilation
         // MD_AMBIGUOUS_EXPORT 等项目级警告并入诊断流（v1 诊断数组本就含警告）
         var noLocation = new TextLocation(SourceText.From("", ""), new SourceSpan(0, 0));
         diagnostics.AddRange(project.Warnings.Select(w => Diagnostic.Warning(noLocation, w)));
+        diagnostics = diagnostics.DistinctStable().ToList();
 
         var image = project.Image;
         return new CompileResult(

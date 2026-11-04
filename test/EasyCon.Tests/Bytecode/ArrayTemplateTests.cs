@@ -57,7 +57,7 @@ public class ArrayTemplateTests
         var result = Compile(sb.ToString());
         Assert.That(result.Image!.MaxSlots, Is.LessThanOrEqualTo(255),
             "帧槽位与字面量长度无关（staging 分块区固定 ~128+尾槽）");
-        Assert.That(EcxWriter.Write(result.Image), Is.Not.Empty, "镜像应可过 MCU 冻结格式序列化");
+        Assert.That(EcsContainer.WriteImage(result.Image), Is.Not.Empty, "镜像应可过 MCU 冻结格式序列化");
     }
 
     [Test]
@@ -201,7 +201,7 @@ public class ArrayTemplateTests
             PRINT $r
             """;
         var result = Compile(source);
-        var restored = result.Artifacts.Select(a => EcmFormat.Read(EcmFormat.Write(a))).ToList();
+        var restored = result.Artifacts.Select(a => EcsContainer.ReadModule(EcsContainer.WriteModule(a))).ToList();
         var image = EcxPipeline.Link(restored, restored.Any(a => a.KeyAction), restored.Any(a => a.NeedIL));
         var io = new RecordingIo();
         var host = new EcxHost();
@@ -214,8 +214,10 @@ public class ArrayTemplateTests
     // ---------- EcxWriter 守卫：槽位超上限响亮失败（不静默截断） ----------
 
     [Test]
-    public void EcxWriter_RejectsOversizedSlots()
+    public void OversizedSlots_SerializeAndRoundTrip()
     {
+        // 档位塌缩（SingleStreamFormat §2 R-5）：槽位字段 u16 + varint 操作数无上限，
+        // >255 槽函数可编译、可序列化、可 round-trip；容量判定移到烧录前预检（宿主档案）。
         var image = new EcxImage
         {
             Functions =
@@ -227,18 +229,14 @@ public class ArrayTemplateTests
                     NParams = 0,
                     NSlots = 300,
                     HasReturn = false,
-                    Code = [(uint)EcsOpcode.Ret0],
+                    Instructions = [new EcsInstruction(EcsOpcode.Ret0, 0, 0, 0)],
                 },
             ],
             Entry = 0,
         };
-        Assert.Multiple(() =>
-        {
-            Assert.That(() => EcxWriter.Write(image), Throws.TypeOf<BytecodeException>(),
-                "FuncDef.nslots 为 u8，超上限必须拒绝");
-            image.MaxSlots = 300;
-            Assert.That(() => EcxWriter.Write(image), Throws.TypeOf<BytecodeException>(),
-                "头部 max_slots 为 u8，超上限必须拒绝");
-        });
+        var bytes = EcsContainer.WriteImage(image);
+        var restored = EcsContainer.ReadImage(bytes);
+        Assert.That(restored.Functions.Single().NSlots, Is.EqualTo(300),
+            "nslots:u16 —— 大帧函数跨容器无损");
     }
 }

@@ -1,13 +1,14 @@
 using EasyCon.Script.Runtime;
 using EasyCon.Script.Symbols;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace EasyCon.Script.Bytecode;
 
 /// <summary>
-/// 模拟解释器宿主：与 C VM 的 ecs_host vtable 同构（docs/VmSemanticContract.md §四）。
+/// 模拟解释器宿主：与 C VM 的 ecs_host vtable 同构。
 /// </summary>
-/// <summary>平台能力位（对齐 ecs_vm.h 的 ECS_CAP_*；MODULE_DESIGN.md §5 注入模式）。</summary>
+/// <summary>平台能力位（对齐 ecs_vm.h 的 ECS_CAP_*）。</summary>
 [Flags]
 public enum EcsCaps
 {
@@ -67,6 +68,7 @@ public sealed class EcxHost
     public Func<int, int> Rand { get; set; } = _ => 0;
     public Func<int> TimeMs { get; set; } = () => 0;
     public Action<int, int> Beep { get; set; } = (_, _) => { };
+    /// <summary>S-13 AMIIBO：槽位选择回调（0–19 合法，越界宿主静默——参考实现已判）。</summary>
     public Action<int> Amiibo { get; set; } = _ => { };
     /// <summary>FWRITE stdout 行断协议的落点（message 已按协议剥尾、newline 已解析）。</summary>
     public Action<string, bool> Print { get; set; } = (_, _) => { };
@@ -82,6 +84,12 @@ public sealed class EcxHost
     /// <see cref="ReferenceSyscall"/>（行断协议 + Caps 门控 + 文件族转发 Native）。返回 null = 未实现。
     /// </summary>
     public Func<int, TaggedValue[], EcxNativeContext, TaggedValue?>? Syscall { get; set; }
+    /// <summary>
+    /// S-21 strict_caps（默认 off）：off = 能力缺失按 <see cref="EcsCapabilityDefaults"/> 缺省值表
+    /// 降级（feats 仅元信息）；on = 恢复响亮行为（L2/L3 miss 即 ERR_NOSUCHNATIVE，
+    /// 图像标签 ERR_IL）——迁移保底、诊断模式、「同宿主能力集」对拍严格档。
+    /// </summary>
+    public bool StrictCaps { get; set; }
     public string[] Args { get; set; } = [];
     public string AppDir { get; set; } = "";
 
@@ -129,12 +137,20 @@ public sealed class EcxHost
                 return TaggedValue.FromInt(TimeMs());
             case EcsSyscall.OcrConf:
                 return Native?.Invoke(EcsSyscall.Names[id], args, ctx) ?? TaggedValue.FromInt(0);
+            case EcsSyscall.FOpen:
+            case EcsSyscall.FClose:
+            case EcsSyscall.FEof:
+            case EcsSyscall.FileExists:
+                // 文件族其余：句柄/存在性语义在 BuiltinMap（IFileSystem）；缺 File 能力 → 缺省值表
+                return Caps.HasFlag(EcsCaps.File)
+                    ? Native?.Invoke(EcsSyscall.Names[id], args, ctx)
+                    : EcsCapabilityDefaults.GetSyscallDefault(id, args, ctx);
             case EcsSyscall.Beep:
                 if (Caps.HasFlag(EcsCaps.Beep))
                     Beep(args[0].I32, args[1].I32);
                 return TaggedValue.Void;   // 无 Beep 能力：静默忽略
             case EcsSyscall.Amiibo:
-                if (args[0].I32 <= 9)   // S-13：n>9 静默忽略
+                if (args[0].I32 is >= 0 and <= 19)   // S-13：槽位 0–19，越界静默（宿主内判）
                     Amiibo(args[0].I32);
                 return TaggedValue.Void;
             default:
@@ -194,7 +210,7 @@ public sealed class EcxHost
 }
 
 /// <summary>
-/// ECX 模拟解释器：字节码语义的 C# 参考实现——语义契约见 docs/VmSemanticContract.md（S-01..S-18）。
+/// ECX 模拟解释器：字节码语义的 C# 参考实现——双端语义由 corpus/FullChain 对拍测试锁定。
 /// 在 C 虚拟机落地前承担"模拟验证"；C VM 完成后作为交叉对比的第二方。
 /// </summary>
 public sealed class EcxInterpreter
@@ -232,7 +248,6 @@ public sealed class EcxInterpreter
     readonly List<Frame> _framePool = new();    // 弹帧回收池：Slots 容量只增，出租时 Array.Clear 复位
     readonly TaggedValue[] _globals;
     readonly EcxNativeContext _nativeCtx;
-    TaggedValue[]? _internedStrings;            // 常量池串驻留（下标对齐 Consts；缓存持常驻引用）
     CancellationToken _token;                   // 当前 Run 的取消令牌（Step 装载）
     int _steps;
     int _budget = 1_000_000;
@@ -273,10 +288,24 @@ public sealed class EcxInterpreter
     public const int OK = 0;
     public const int YIELD = 1;
     public const int CANCELLED = 2;
-    public const int ERR_DIVZERO = 8;
-    public const int ERR_INDEX = 7;
+    // 错误码 ABI 与 native/ecs_vm.h 结果码枚举一致（VmHeaderContractTests 锁定头文件侧）
+    public const int ERR_IMAGE = 3;
+    public const int ERR_OPCODE = 4;
+    public const int ERR_SLOT = 5;
     public const int ERR_TYPE = 6;
+    public const int ERR_INDEX = 7;
+    public const int ERR_DIVZERO = 8;
+    public const int ERR_DEPTH = 9;
     public const int ERR_NOSUCHNATIVE = 10;
+    public const int ERR_HOST = 11;
+    public const int ERR_OOM = 12;
+    public const int ERR_IL = 13;
+    public const int ERR_FEAT = 14;
+
+    /// <summary>调用深度上限（与 C 侧 ECS_MAX_CALL_DEPTH 一致：深递归双端同样报 ERR_DEPTH，
+    /// 避免同一镜像在 MCU 报错而 PC 端 OOM 的对拍分裂）。帧为每函数栈窗口（典型高水位
+    /// 20–40 槽 ≈ 0.3–0.6KB），64 深度在 C VM 帧段（128KB）内余量充足；深递归由尾递归消除（TRE）兜底。</summary>
+    public const int MaxCallDepth = 64;
 
     EcxInterpreter(EcxImage image, EcxHost host)
     {
@@ -358,8 +387,11 @@ public sealed class EcxInterpreter
         return h;
     }
 
-    string Str(int h) => h > 0 && _heap[h] is string s ? s : throw new SimError(ERR_TYPE, "解引用非字符串句柄");
-    string? StrOrNull(int h) => h > 0 && _heap[h] is string s ? s : null;
+    /// <summary>静态（pinned）常量串的数据源（S-20）：直读镜像常量池，零拷贝零分配（对齐 C 侧 str_or_null）。</summary>
+    string? StaticStr(int kx) => kx >= 0 && kx < _image.Consts.Count ? _image.Consts[kx].Str ?? "" : null;
+
+    string Str(int h) => h < 0 ? StaticStr(h & 0x7FFFFFFF) ?? "" : h > 0 && _heap[h] is string s ? s : throw new SimError(ERR_TYPE, "解引用非字符串句柄");
+    string? StrOrNull(int h) => h < 0 ? StaticStr(h & 0x7FFFFFFF) : h > 0 && _heap[h] is string s ? s : null;
     SimArray Arr(int h) => _heap[h] as SimArray ?? throw new SimError(ERR_TYPE, "解引用非数组句柄");
     SimStruct St(int h) => _heap[h] as SimStruct ?? throw new SimError(ERR_TYPE, "解引用非结构体句柄");
 
@@ -564,8 +596,9 @@ public sealed class EcxInterpreter
 
     // ---- 主循环 ----
 
-    /// <summary>帧出租：池空新建；复用时槽位 Array.Clear 复位为 Void（StoreFresh「无旧值」直写契约），
-    /// 容量不足则扩容（容量只增不缩，递归峰值即池上限——池随弹帧回收，天然 ≤ 峰值深度）。</summary>
+    /// <summary>帧出租（每函数栈窗口）：帧长 = 函数寄存器高水位（NSlots ≤255），
+    /// 池空新建；复用时槽位 Array.Clear 复位为 Void（StoreFresh「无旧值」直写契约），
+    /// 容量不足则扩容（容量只增，峰值深度即池上限——池随弹帧回收）。</summary>
     Frame RentFrame(int nslots)
     {
         if (_framePool.Count > 0)
@@ -573,7 +606,7 @@ public sealed class EcxInterpreter
             var f = _framePool[^1];
             _framePool.RemoveAt(_framePool.Count - 1);
             if (f.Slots.Length < nslots)
-                f.Slots = new TaggedValue[nslots];
+                f.Slots = new TaggedValue[nslots];   // 新数组自带零值
             else
                 Array.Clear(f.Slots);
             return f;
@@ -581,20 +614,11 @@ public sealed class EcxInterpreter
         return new Frame { Slots = new TaggedValue[nslots] };
     }
 
-    /// <summary>常量池串驻留：同一串常量全镜像生命周期仅分配一次堆串（缓存自身持引用，句柄永不归零）。
-    /// 返回值为缓存借用，接收槽经 <see cref="MoveToSlot"/> retain 补引用——可观察语义不变：
-    /// 串不可变、EqS 按内容比较（EcxInterpreter.cs EqS case）。</summary>
-    TaggedValue InternedString(int kx)
-    {
-        var cache = _internedStrings ??= new TaggedValue[_image.Consts.Count];
-        var v = cache[kx];
-        if (v.Tag == EcsTag.String)
-            return v;
-        v = NewString(_image.Consts[kx].Str ?? "");
-        _refCounts[v.Handle]++;   // 缓存常驻引用（Store 的出生引用归缓存）
-        cache[kx] = v;
-        return v;
-    }
+    /// <summary>常量池串 → 静态（pinned）值（契约 S-20 / docs/ZeroAllocVm.md §2）：**不再新建堆对象**，
+    /// 直接返回指向镜像常量池的句柄（bit31 置位）；不参与 RC，因此无需驻留表、无需补引用。
+    /// 语义不变：串不可变、EqS/Cont/GetI/Len/Cat/TOSTR 一律按内容处理
+    /// （<see cref="StrOrNull"/> / <see cref="StaticStr"/> 同时服务动态与静态句柄）。</summary>
+    TaggedValue InternedString(int kx) => TaggedValue.FromStaticString(kx);
 
     int Step(CancellationToken token)
     {
@@ -611,31 +635,50 @@ public sealed class EcxInterpreter
         if (_token.IsCancellationRequested)
             return CANCELLED;
 
+        // 预算计数局部化：字段读改写 → JIT 寄存器驻留（每指令省 2 次内存访问；
+        // 预算值 Run 期内不变、_steps 仅本方法读写，回写点 = 切片边界）
+        var steps = _steps;
+        var budget = _budget;
+        // 取指通路局部化（P0b）：frame/指令流 span/R/pc 提升为循环局部，JIT 可驻留寄存器，
+        // 每指令省 4 次 _frames/frame 字段链解引用。不变量：指令流运行期只读（链接后不可变），
+        // span 恒指向当前帧函数的指令列表；换帧点（Call/Ret/Ret0）置 frameSwitched 由循环头重载；
+        // 切片出口（YIELD/宿主后 CANCELLED）写回 frame.Pc——Run 吸收 YIELD 后重入 Step 续跑。
+        Frame frame = null!;
+        ReadOnlySpan<EcsInstruction> code = default;
+        TaggedValue[] R = null!;
+        int pc = 0;
+        bool frameSwitched = true;
         while (true)
         {
+            if (frameSwitched)
+            {
+                frame = _frames[^1];
+                code = CollectionsMarshal.AsSpan(frame.Fn.Instructions);
+                R = frame.Slots;
+                pc = frame.Pc;
+                frameSwitched = false;
+            }
+
             // 取消检查合并：每指令只做预算计数（1 分支）；token 在入口、预算边界与宿主调用后检查
             // （纯计算最坏 1M 步 ≈ 十几毫秒感知；等待/按键型脚本在宿主调用返回后立即感知）
-            if (++_steps >= _budget)
+            if (++steps >= budget)
             {
+                frame.Pc = pc;
                 _steps = 0;
                 if (_token.IsCancellationRequested)
                     return CANCELLED;
                 return YIELD;
             }
 
-            var frame = _frames[^1];
-            var code = frame.Fn.Code;
-            var ins = code[frame.Pc++];
-            var op = (EcsOpcode)(ins & 0xFF);
-            int a = (int)((ins >> 8) & 0xFF);
-            int b = (int)((ins >> 16) & 0xFF);
-            int c = (int)((ins >> 24) & 0xFF);
-            // EXT 后随数据字按 EcsFormat 表预取（权威集合/语义见 ExtKind）：执行 case 只消费
-            // ext，不再各自负责「记得读后随字」——漏读会把数据误读为下一条指令（历史 F4 缺陷形态）。
-            uint ext = 0;
-            if (EcsFormat.ExtWords(op) > 0)
-                ext = code[frame.Pc++];
-            var R = frame.Slots;
+            int instructionPc = pc;
+            // 单一分派臂（SingleStreamFormat §2）：解码形态是唯一指令表示，
+            // 不再有 Code/PcCode 双流与宽窄两条取指路径。
+            var ins = code[pc++];
+            var op = ins.Op;
+            int a = ins.A;
+            int b = ins.B;
+            int c = ins.C;
+            uint ext = ins.Ext;
 
             try
             {
@@ -645,11 +688,11 @@ public sealed class EcxInterpreter
 
                     // ---- 常量与移动 ----
                     case EcsOpcode.LoadI:
-                        StoreFresh(ref R[a], TaggedValue.FromInt((short)(ins >> 16)));
+                        StoreFresh(ref R[a], TaggedValue.FromInt(b));
                         break;
                     case EcsOpcode.LoadK:
                         {
-                            var kx = b | (c << 8);
+                            int kx = b;
                             var k = _image.Consts[kx];
                             if (k.Tag == EcsTag.String)
                                 MoveToSlot(ref R[a], InternedString(kx));   // 驻留串：借用 + retain，槽旧值照常释放
@@ -674,39 +717,72 @@ public sealed class EcxInterpreter
                         StoreFresh(ref R[a], DeepCopyCopyOnWrite(R[b]));
                         break;
                     case EcsOpcode.LoadG:
-                        MoveToSlot(ref R[a], _globals[b | (c << 8)]);
+                        MoveToSlot(ref R[a], _globals[b]);
                         break;
                     case EcsOpcode.StoreG:
                         {
                             var nv = DeepCopyCopyOnWrite(R[a]);
-                            var gx = b | (c << 8);
+                            int gx = b;
                             Release(_globals[gx]);
                             _globals[gx] = nv;
                             break;
                         }
 
                     case EcsOpcode.Jmp:
-                        frame.Pc += Sign24(ins >> 8);
+                        pc += ins.Jump;
                         break;
                     case EcsOpcode.Jpt:
-                        frame.Pc += R[a].I32 != 0 ? Sign16(ins >> 16) : 0;
+                        pc += R[a].I32 != 0 ? ins.Jump : 0;
                         break;
                     case EcsOpcode.Jpf:
-                        frame.Pc += R[a].I32 == 0 ? Sign16(ins >> 16) : 0;
+                        pc += R[a].I32 == 0 ? ins.Jump : 0;
                         break;
 
+                    // ---- 比较跳转融合（P2′）：R[a] kind R[b] 成立 → 跳 Jump；否则落入后继 ----
+                    case EcsOpcode.CmpJ:
+                        {
+                            bool taken;
+                            switch (c / 6)
+                            {
+                                case 0: { int l = R[a].I32, r = R[b].I32; taken = (c % 6) switch { 0 => l == r, 1 => l != r, 2 => l < r, 3 => l <= r, 4 => l > r, _ => l >= r }; break; }
+                                case 1: { uint l = (uint)R[a].I32, r = (uint)R[b].I32; taken = (c % 6) switch { 0 => l == r, 1 => l != r, 2 => l < r, 3 => l <= r, 4 => l > r, _ => l >= r }; break; }
+                                case 2: { double l = R[a].F64, r = R[b].F64; taken = (c % 6) switch { 0 => l == r, 1 => l != r, 2 => l < r, 3 => l <= r, 4 => l > r, _ => l >= r }; break; }
+                                default: { long l = R[a].I64, r = R[b].I64; taken = (c % 6) switch { 0 => l == r, 1 => l != r, 2 => l < r, 3 => l <= r, 4 => l > r, _ => l >= r }; break; }
+                            }
+                            if (taken)
+                                pc += ins.Jump;
+                            break;
+                        }
+
+                    // ---- FOR 快速路径：tmp=i+1 写入 R[c]；tmp>limit → 跳 Jump（出循环，$i 保持 ==upper）；否则落入后继 ----
+                    // 信任字节码：跳转目标不校验
+                    case EcsOpcode.ForStep:
+                        {
+                            int next = R[a].I32 + 1;
+                            StoreFresh(ref R[c], TaggedValue.FromInt(next));
+                            if (next > R[b].I32)
+                                pc = instructionPc + 1 + ins.Jump;
+                            break;
+                        }
+
                     // ---- 调用 ----
+                    // 每函数栈窗口帧：实参从调用方 STAGING（A）深拷贝播种进被调方
+                    // R1 起的参数窗（S-17 语义）；C = 接收寄存器（0 = RET 固定落点）
                     case EcsOpcode.Call:
                         {
                             uint target = ext;
                             var callee = _image.Functions[(int)target];
+                            if (_frames.Count >= MaxCallDepth)
+                                throw new SimError(ERR_DEPTH, $"调用深度超过上限 {MaxCallDepth}");
                             var nf = RentFrame(callee.NSlots);
                             nf.Fn = callee;
-                            nf.RetSlot = c == 255 ? -1 : c;   // C=255：无接收槽（结果未使用的调用）
+                            nf.RetSlot = c;
                             nf.Pc = 0;
                             for (int i = 0; i < b; i++)
-                                StoreFresh(ref nf.Slots[i], DeepCopyCopyOnWrite(R[a + i]));   // S-17 实参（COW：唯一引用移交；池出租槽已清零，StoreFresh 恒等价）
+                                StoreFresh(ref nf.Slots[EcsRegisters.ArgBase + i], DeepCopyCopyOnWrite(R[a + i]));   // S-17 实参（COW：唯一引用移交）
+                            frame.Pc = pc;   // 调用者续跑点写回（Ret 时经重载读回）
                             _frames.Add(nf);
+                            frameSwitched = true;
                             break;
                         }
                     case EcsOpcode.CallN:
@@ -719,58 +795,68 @@ public sealed class EcxInterpreter
                             if ((target & EcsSyscall.CallFlag) != 0)
                             {
                                 // L2：编号 syscall，语义在宿主参考实现（VM 核纯调度）
-                                var handler = _host.Syscall;
-                                ret = handler is { } h && h((int)(target & 0x7FFFFFFFu), args, _nativeCtx) is { } v
-                                    ? v
-                                    : throw new SimError(ERR_NOSUCHNATIVE, $"syscall 未实现: 编号 {target & 0x7FFFFFFFu}");
+                                int id = (int)(target & 0x7FFFFFFFu);
+                                var resolved = _host.Syscall?.Invoke(id, args, _nativeCtx);
+                                if (resolved is null)
+                                {
+                                    // S-21：miss → 缺省值表降级；strict 或表外编号 → 响亮
+                                    resolved = EcsCapabilityDefaults.GetSyscallDefault(id, args, _nativeCtx);
+                                    if (resolved is null || _host.StrictCaps)
+                                        throw new SimError(ERR_NOSUCHNATIVE, $"syscall 未实现: 编号 {id}");
+                                }
+                                ret = resolved.Value;
                             }
                             else
                             {
-                                if (target >= (uint)_image.Natives.Count)
-                                    throw new SimError(ERR_NOSUCHNATIVE, $"原生索引越界 {target}");
-                                ret = HostNative(_image.Natives[(int)target].Name, args);   // L3 名表路径：FFI/采集洞/ENCODE/JQ
+                                ret = HostNative(_image.Natives[(int)target].Name, args);   // L3 名表路径：FFI/采集洞/ENCODE/JQ（信任字节码，目标不校验）
                             }
-                            if (c != 255)
-                                StoreFresh(ref R[c], ret);   // C=255：无接收槽；原生返回值恒为新建对象/标量（EcxNativeContext 契约），出生引用即接收槽引用
+                            if (c >= 0)
+                                StoreFresh(ref R[c], ret);   // 接收寄存器（0 = RET 固定落点）；原生返回值恒为新建对象/标量（EcxNativeContext 契约），出生引用即接收槽引用
                             if (_token.IsCancellationRequested)
+                            {
+                                frame.Pc = pc;
                                 return CANCELLED;   // 宿主调用后即时取消（原生内含 PRINT/READ/WAIT 类长延迟）
+                            }
                             break;
                         }
                     case EcsOpcode.Ret:
                         {
-                            var callee = _frames[^1];
-                            var val = callee.Slots[a];
+                            var val = R[a];
                             if (_frames.Count == 1)
                             {
                                 Result = DeepCopyCopyOnWrite(val);   // 入口返回值（顶层 RETURN）：Result 持独立引用，跨弹帧存活
-                                PopFrame(callee);
+                                PopFrame(frame);
                                 return OK;
                             }
-                            TaggedValue copy = default;
-                            var hasCopy = callee.RetSlot >= 0;
-                            if (hasCopy)
-                                copy = DeepCopyCopyOnWrite(val);   // S-17 返回（COW：唯一引用移交；先于弹帧：val 所属槽位将被释放）
-                            PopFrame(callee);
-                            if (hasCopy)
-                                StoreFresh(ref _frames[^1].Slots[callee.RetSlot], copy);
+                            TaggedValue copy = DeepCopyCopyOnWrite(val);   // S-17 返回（COW：唯一引用移交；先于弹帧：val 所属槽位将被释放）
+                            int retSlot = frame.RetSlot;
+                            PopFrame(frame);
+                            StoreFresh(ref _frames[^1].Slots[retSlot], copy);
+                            frameSwitched = true;
                             break;
                         }
                     case EcsOpcode.Ret0:
-                        PopFrame(_frames[^1]);
+                        PopFrame(frame);
                         if (_frames.Count == 0)
                             return OK;
+                        frameSwitched = true;
                         break;
 
                     default:
-                        if (ExecOther(op, ins, ext, R))
+                        if (ExecOther(op, a, b, c, ext, R))
+                        {
+                            frame.Pc = pc;
                             return CANCELLED;
+                        }
                         break;
                 }
             }
             catch (SimError e)
             {
+                if (e.Code == OK)
+                    return OK;   // Halt 正常停机：不留错误现场（与 C VM 对齐）
                 ErrorFunc = _image.Functions.IndexOf(frame.Fn);
-                ErrorPc = frame.Pc - 1;   // 取指后已自增，回退到失败指令下标（与 C VM 对齐）
+                ErrorPc = instructionPc;
                 return e.Code;
             }
         }
@@ -778,12 +864,8 @@ public sealed class EcxInterpreter
 
     /// <summary>非控制流/非调用的算术与数据指令。返回 true = 本指令调用了宿主且取消已请求，
     /// 调用方立即终止（等待/按键类长延迟宿主调用的取消感知点）。</summary>
-    bool ExecOther(EcsOpcode op, uint ins, uint ext, TaggedValue[] R)
+    bool ExecOther(EcsOpcode op, int a, int b, int c, uint ext, TaggedValue[] R)
     {
-        int a = (int)((ins >> 8) & 0xFF);
-        int b = (int)((ins >> 16) & 0xFF);
-        int c = (int)((ins >> 24) & 0xFF);
-
         switch (op)
         {
             // ---- 算术（S-02/S-05）----
@@ -820,28 +902,31 @@ public sealed class EcxInterpreter
             case EcsOpcode.BnotI: StoreFresh(ref R[a], TaggedValue.FromInt(~R[b].I32)); break;
 
             // ---- 比较 ----
-            case EcsOpcode.EqI: CmpI(R, a, b, c, x => x == 0); break;
-            case EcsOpcode.LtI: CmpI(R, a, b, c, x => x < 0); break;
-            case EcsOpcode.LeI: CmpI(R, a, b, c, x => x <= 0); break;
-            case EcsOpcode.GtI: CmpI(R, a, b, c, x => x > 0); break;
-            case EcsOpcode.GeI: CmpI(R, a, b, c, x => x >= 0); break;
-            case EcsOpcode.EqU: CmpU(R, a, b, c, x => x == 0); break;
-            case EcsOpcode.LtU: CmpU(R, a, b, c, x => x < 0); break;
-            case EcsOpcode.LeU: CmpU(R, a, b, c, x => x <= 0); break;
-            case EcsOpcode.GtU: CmpU(R, a, b, c, x => x > 0); break;
-            case EcsOpcode.GeU: CmpU(R, a, b, c, x => x >= 0); break;
-            case EcsOpcode.EqD: CmpD(R, a, b, c, x => x == 0); break;
-            case EcsOpcode.LtD: CmpD(R, a, b, c, x => x < 0); break;
-            case EcsOpcode.LeD: CmpD(R, a, b, c, x => x <= 0); break;
-            case EcsOpcode.GtD: CmpD(R, a, b, c, x => x > 0); break;
-            case EcsOpcode.GeD: CmpD(R, a, b, c, x => x >= 0); break;
-            case EcsOpcode.EqL: CmpL(R, a, b, c, x => x == 0); break;
-            case EcsOpcode.LtL: CmpL(R, a, b, c, x => x < 0); break;
-            case EcsOpcode.LeL: CmpL(R, a, b, c, x => x <= 0); break;
-            case EcsOpcode.GtL: CmpL(R, a, b, c, x => x > 0); break;
-            case EcsOpcode.GeL: CmpL(R, a, b, c, x => x >= 0); break;
+            // 比较族直写（P0）：委托间接调用 + CompareTo 是热点路径纯开销；
+            // 浮点直接用 C# 比较符（NaN → false），与 C VM 的 C 语义一致
+            //（原 CmpD 的 CompareTo 把 NaN 排在最前，与 C VM 存在潜在分歧）
+            case EcsOpcode.EqI: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].I32 == R[c].I32)); break;
+            case EcsOpcode.LtI: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].I32 < R[c].I32)); break;
+            case EcsOpcode.LeI: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].I32 <= R[c].I32)); break;
+            case EcsOpcode.GtI: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].I32 > R[c].I32)); break;
+            case EcsOpcode.GeI: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].I32 >= R[c].I32)); break;
+            case EcsOpcode.EqU: StoreFresh(ref R[a], TaggedValue.FromBool((uint)R[b].I32 == (uint)R[c].I32)); break;
+            case EcsOpcode.LtU: StoreFresh(ref R[a], TaggedValue.FromBool((uint)R[b].I32 < (uint)R[c].I32)); break;
+            case EcsOpcode.LeU: StoreFresh(ref R[a], TaggedValue.FromBool((uint)R[b].I32 <= (uint)R[c].I32)); break;
+            case EcsOpcode.GtU: StoreFresh(ref R[a], TaggedValue.FromBool((uint)R[b].I32 > (uint)R[c].I32)); break;
+            case EcsOpcode.GeU: StoreFresh(ref R[a], TaggedValue.FromBool((uint)R[b].I32 >= (uint)R[c].I32)); break;
+            case EcsOpcode.EqD: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].F64 == R[c].F64)); break;
+            case EcsOpcode.LtD: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].F64 < R[c].F64)); break;
+            case EcsOpcode.LeD: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].F64 <= R[c].F64)); break;
+            case EcsOpcode.GtD: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].F64 > R[c].F64)); break;
+            case EcsOpcode.GeD: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].F64 >= R[c].F64)); break;
+            case EcsOpcode.EqL: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].I64 == R[c].I64)); break;
+            case EcsOpcode.LtL: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].I64 < R[c].I64)); break;
+            case EcsOpcode.LeL: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].I64 <= R[c].I64)); break;
+            case EcsOpcode.GtL: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].I64 > R[c].I64)); break;
+            case EcsOpcode.GeL: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].I64 >= R[c].I64)); break;
             case EcsOpcode.EqS: StoreFresh(ref R[a], TaggedValue.FromBool(string.Equals(StrOrNull(R[b].Handle) ?? "", StrOrNull(R[c].Handle) ?? "", StringComparison.Ordinal))); break;
-            case EcsOpcode.EqP: CmpL(R, a, b, c, x => x == 0); break;
+            case EcsOpcode.EqP: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].I64 == R[c].I64)); break;
 
             case EcsOpcode.Not: StoreFresh(ref R[a], TaggedValue.FromBool(R[b].I32 == 0)); break;
             case EcsOpcode.NegI: StoreFresh(ref R[a], TaggedValue.FromInt(-R[b].I32)); break;
@@ -861,7 +946,7 @@ public sealed class EcxInterpreter
                     break;
                 }
             case EcsOpcode.NewArrE:   // ABx：元素类型码在 Bx
-                StoreFresh(ref R[a], TaggedValue.FromArrayHandle(Store(new SimArray { ElemTag = (byte)(b | (c << 8)) })));
+                StoreFresh(ref R[a], TaggedValue.FromArrayHandle(Store(new SimArray { ElemTag = (byte)b })));
                 break;
             case EcsOpcode.GetI:
                 {
@@ -992,7 +1077,7 @@ public sealed class EcxInterpreter
             // ---- 结构体 ----
             case EcsOpcode.NewSt:   // ABx：类型表索引在 Bx
                 {
-                    var layout = _image.Structs[b | (c << 8)];
+                    var layout = _image.Structs[b];
                     var st = new SimStruct { Layout = layout, Slots = new TaggedValue[layout.SlotCount] };
                     ZeroFill(layout, st.Slots);
                     StoreFresh(ref R[a], TaggedValue.FromStructHandle(Store(st)));
@@ -1022,9 +1107,9 @@ public sealed class EcxInterpreter
                 }
 
             // ---- 域操作（宿主调用：返回取消状态，取消感知点）----
-            case EcsOpcode.WaitI: _host.WaitMs(b | (c << 8)); return _token.IsCancellationRequested;
+            case EcsOpcode.WaitI: _host.WaitMs(unchecked((int)ext)); return _token.IsCancellationRequested;
             case EcsOpcode.WaitV: _host.WaitMs(R[a].I32); return _token.IsCancellationRequested;
-            case EcsOpcode.KeyI: _host.Key(a, b | (c << 8)); return _token.IsCancellationRequested;
+            case EcsOpcode.KeyI: _host.Key(a, unchecked((int)ext)); return _token.IsCancellationRequested;
             case EcsOpcode.KeyV: _host.Key(a, R[b].I32); return _token.IsCancellationRequested;
             case EcsOpcode.KeySt: _host.KeyState(a, b); return _token.IsCancellationRequested;
             case EcsOpcode.StickSet: _host.StickSet(a, b, c); return _token.IsCancellationRequested;
@@ -1040,7 +1125,9 @@ public sealed class EcxInterpreter
                 }
             case EcsOpcode.Img:   // ABx：标签名 = 常量池[Bx]（EcsOpcode.cs 注释为权威）
                 {
-                    var name = _image.Consts[b | (c << 8)].Str ?? "";
+                    if (_host.StrictCaps)
+                        throw new SimError(ERR_IL, $"图像标签能力缺失（strict_caps）: {_image.Consts[b].Str}");
+                    var name = _image.Consts[b].Str ?? "";
                     StoreFresh(ref R[a], TaggedValue.FromInt(_host.ImgLabel(name)));
                     return _token.IsCancellationRequested;
                 }
@@ -1055,7 +1142,7 @@ public sealed class EcxInterpreter
             case EcsOpcode.Halt:
                 throw new SimError(OK, "halt");
             default:
-                throw new SimError(4, $"未实现操作码 {op}");
+                throw new SimError(ERR_OPCODE, $"未实现操作码 {op}");
         }
         return false;
     }
@@ -1250,15 +1337,6 @@ public sealed class EcxInterpreter
             throw new SimError(ERR_DIVZERO, "整数除零");
     }
 
-    void CmpI(TaggedValue[] R, int a, int b, int c, Func<int, bool> f)
-        => StoreFresh(ref R[a], TaggedValue.FromBool(f(R[b].I32.CompareTo(R[c].I32))));
-    void CmpU(TaggedValue[] R, int a, int b, int c, Func<int, bool> f)
-        => StoreFresh(ref R[a], TaggedValue.FromBool(f(((uint)R[b].I32).CompareTo((uint)R[c].I32))));
-    void CmpD(TaggedValue[] R, int a, int b, int c, Func<int, bool> f)
-        => StoreFresh(ref R[a], TaggedValue.FromBool(f(R[b].F64.CompareTo(R[c].F64))));
-    void CmpL(TaggedValue[] R, int a, int b, int c, Func<int, bool> f)
-        => StoreFresh(ref R[a], TaggedValue.FromBool(f(R[b].I64.CompareTo(R[c].I64))));
-
     bool ValueEquals(TaggedValue x, TaggedValue y)
     {
         if (x.Tag != y.Tag)
@@ -1276,11 +1354,13 @@ public sealed class EcxInterpreter
 
     TaggedValue HostNative(string name, TaggedValue[] args)
     {
-        if (_host.Native == null)
-            throw new SimError(ERR_NOSUCHNATIVE, $"原生函数未注册: {name}");
-        if (_host.Native(name, args, _nativeCtx) is { } ret)
+        // S-21：miss（无处理器/未实现名）→ strict 恢复响亮；非 strict 查缺省值表（表外未知名仍响亮）
+        if (_host.Native is { } native && native(name, args, _nativeCtx) is { } ret)
             return ret;
-        throw new SimError(ERR_NOSUCHNATIVE, $"原生函数未实现: {name}");
+        if (_host.StrictCaps)
+            throw new SimError(ERR_NOSUCHNATIVE, $"原生函数未实现: {name}");
+        return EcsCapabilityDefaults.GetNativeDefault(name, _nativeCtx)
+            ?? throw new SimError(ERR_NOSUCHNATIVE, $"原生函数未注册: {name}");
     }
 
     /// <summary>堆上下文实现：宿主原生回调读写解释器堆的唯一通道。</summary>
@@ -1319,7 +1399,8 @@ public sealed class EcxInterpreter
             EcsTag.Bool => ScriptType.Bool,
             EcsTag.Byte => ScriptType.Byte,
             EcsTag.UInt => ScriptType.UInt,
-            EcsTag.Double => ScriptType.UInt64,
+            EcsTag.Double => ScriptType.Double,
+            EcsTag.UInt64 => ScriptType.UInt64,
             EcsTag.String => ScriptType.String,
             EcsTag.Ptr => ScriptType.Ptr,
             _ => ScriptType.Int,
@@ -1430,8 +1511,6 @@ public sealed class EcxInterpreter
 
     string? StrOrNullPub(TaggedValue v) => v.IsString ? StrOrNull(v.Handle) : null;
 
-    static int Sign16(uint v) => (int)(ushort)v << 16 >> 16;
-    static int Sign24(uint v) => (int)(v & 0xFFFFFF) << 8 >> 8;
 
     sealed class SimError : Exception
     {

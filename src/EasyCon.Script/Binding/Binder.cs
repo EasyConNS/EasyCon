@@ -22,7 +22,6 @@ internal sealed partial class Binder
     private readonly DiagnosticBag? _programDiagnostics;
     private readonly Resolution.ResolutionResult? _resolution;
     private readonly HashSet<FunctionSymbol>? _bindingFunctions;
-    private readonly bool _legacySyntax;
 
     public DiagnosticBag Diagnostics => _diagnostics;
 
@@ -30,8 +29,7 @@ internal sealed partial class Binder
         ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Builder? lazyFunctionBodies = null,
         DiagnosticBag? programDiagnostics = null,
         HashSet<FunctionSymbol>? bindingFunctions = null,
-        Resolution.ResolutionResult? resolution = null,
-        bool legacySyntax = true)
+        Resolution.ResolutionResult? resolution = null)
     {
         _scope = new BoundScope(parent);
         _function = function;
@@ -39,7 +37,6 @@ internal sealed partial class Binder
         _programDiagnostics = programDiagnostics;
         _resolution = resolution;
         _bindingFunctions = bindingFunctions;
-        _legacySyntax = legacySyntax;
 
         if (function != null)
         {
@@ -56,7 +53,7 @@ internal sealed partial class Binder
     /// 随源码级合并管线一并退役。
     /// </summary>
     public static BoundProgram BindProgram(Resolution.ResolutionResult resolution, ImmutableHashSet<string>? externalVariables = default,
-        bool eagerBindMainFunctions = false, bool legacySyntax = true)
+        bool eagerBindMainFunctions = false)
     {
         var parentScope = resolution.GlobalScope ?? CreateRootScope();
         parentScope.SetValidExternalVariables(externalVariables ?? []);
@@ -75,7 +72,7 @@ internal sealed partial class Binder
         // --- 模块声明绑定（函数/extern）---
         var bindingFunctions = new HashSet<FunctionSymbol>();
         var moduleBinder = new Binder(new BoundScope(parentScope), function: null,
-            functionBodies, diagnostics, bindingFunctions, resolution: resolution, legacySyntax: legacySyntax);
+            functionBodies, diagnostics, bindingFunctions, resolution: resolution);
 
         var moduleFunctions = new List<FunctionSymbol>();
         foreach (var member in resolution.Trees.SelectMany(t => t.Root.Members))
@@ -107,7 +104,7 @@ internal sealed partial class Binder
             foreach (var function in moduleFunctions)
             {
                 if (functionBodies.ContainsKey(function)) continue;
-                var (body, binderFn) = BindFunctionBody(function, moduleBinder._scope, legacySyntax: legacySyntax);
+                var (body, binderFn) = BindFunctionBody(function, moduleBinder._scope);
                 if (function.ReturnType != ScriptType.Void && !ControlFlowGraph.AllPathsReturn(body))
                     binderFn.Diagnostics.ReportAllPathsMustReturn(function.Declaration!.Declare.Location);
                 functionBodies.Add(function, body);
@@ -135,10 +132,9 @@ internal sealed partial class Binder
         FunctionSymbol function, BoundScope scope,
         ImmutableDictionary<FunctionSymbol, BoundBlockStatement>.Builder? lazyFunctionBodies = null,
         DiagnosticBag? programDiagnostics = null,
-        HashSet<FunctionSymbol>? bindingFunctions = null,
-        bool legacySyntax = true)
+        HashSet<FunctionSymbol>? bindingFunctions = null)
     {
-        var binderFn = new Binder(scope, function, lazyFunctionBodies, programDiagnostics, bindingFunctions, legacySyntax: legacySyntax);
+        var binderFn = new Binder(scope, function, lazyFunctionBodies, programDiagnostics, bindingFunctions);
         var stmts = ImmutableArray.CreateBuilder<BoundStmt>();
         foreach (var stmt in function.Declaration!.Statements)
             stmts.Add(binderFn.BindStatement(stmt));

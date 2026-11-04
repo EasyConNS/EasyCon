@@ -110,6 +110,80 @@ static class SsaCfgSimplification
         func.Blocks.RemoveAt(blockIndex);
     }
 
+    // ============ 空 trampoline 折叠 ============
+
+    /// <summary>
+    /// 空 trampoline 块折叠：无指令、无 phi、纯 JumpTarget 的中转块 T（T→S），
+    /// 前驱重定向到 S 并按 T 的臂值对齐 S 的 phi——每处省一条 Jmp（常驻循环周边路径，
+    /// FOR 嵌套场景每轮 1-2 条）。MergeBlocks 不覆盖此形态：T 的前驱是条件分支块
+    /// （两个后继）时无法合并入前驱，T 作为「合并汇」幸存到编码期，只贡献一条跳转。
+    /// 语义依据：T 无 phi 无指令 ⟹ 经 T 到达 S 的所有路径携带同一臂值（T 的原臂），
+    /// 重定向后按前驱逐边补臂即可（Predecessors↔ExtraArgs 对齐由增删配对维护）。
+    /// </summary>
+    internal static bool FoldEmptyTrampolines(SsaFunction func)
+    {
+        bool changed = false;
+        for (int i = func.Blocks.Count - 1; i >= 0; i--)
+        {
+            var t = func.Blocks[i];
+            if (t == func.Entry)
+                continue;
+            if (t.Instructions.Count > 0 || t.Phis.Count > 0)
+                continue;
+            if (t.BranchCondition != null || t.IsReturn)
+                continue;
+            var s = t.JumpTarget;
+            if (s == null || s == t)
+                continue;
+            int tIdx = s.Predecessors.IndexOf(t);
+            if (tIdx < 0)
+                continue;   // 无前驱：死块，RemoveUnreachableBlocks 处理
+            var preds = t.Predecessors.ToList();
+            if (preds.Contains(s))
+                continue;   // S→T→S 自环形态：重定向即自跳，保守跳过
+            if (preds.Any(p => p.TrueSuccessor == s || p.FalseSuccessor == s || p.JumpTarget == s))
+                continue;   // 重定向将产生重复边（P→S 既有直连又有经 T）：SCCP 的 executableEdges
+                            // 是 (from,to) 集合，φ 双臂被同一条边标记门控、meet 误并两臂值
+                            //（素数筛 9999 实证）——此形态保留 trampoline 不折
+
+            // T 贡献给 S 的臂值（删除前捕获）
+            var arms = new List<SsaValue?>();
+            foreach (var phi in s.Phis)
+                arms.Add(phi.ExtraArgs != null && tIdx < phi.ExtraArgs.Count ? phi.ExtraArgs[tIdx] : null);
+
+            // 前驱重定向到 S
+            foreach (var p in preds)
+            {
+                if (p.TrueSuccessor == t) p.TrueSuccessor = s;
+                if (p.FalseSuccessor == t) p.FalseSuccessor = s;
+                if (p.JumpTarget == t) p.JumpTarget = s;
+            }
+
+            // S：摘除 T（臂随删），再按新前驱逐边补臂（值 = T 的原臂）
+            s.RemovePredecessorAt(tIdx);
+            foreach (var p in preds)
+            {
+                s.Predecessors.Add(p);
+                for (int k = 0; k < s.Phis.Count; k++)
+                {
+                    var phi = s.Phis[k];
+                    phi.ExtraArgs ??= new List<SsaValue>();
+                    var arm = arms[k];
+                    if (arm == null)
+                        continue;   // T 摘除前臂缺失（防御）：占位自引用由 FillPhiArms 语义兜底
+                    phi.ExtraArgs.Add(arm);
+                    arm.Uses++;
+                }
+            }
+
+            func.Blocks.RemoveAt(i);
+            changed = true;
+            if (Environment.GetEnvironmentVariable("ECX_PASS_TRACE") == "1")
+                Console.Error.WriteLine($"[tramp] 折叠空中转块 -> b{s.Id}（fn={func.Symbol.Name}）");
+        }
+        return changed;
+    }
+
     // ============ 不可达块删除 ============
 
     internal static bool RemoveUnreachableBlocks(SsaFunction func)

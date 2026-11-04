@@ -203,14 +203,14 @@ public class ModuleInterfaceTests
         {
             var iface = a.Interface;
             a.Interface = null;
-            var restored = EcmFormat.Read(EcmFormat.Write(a));
+            var restored = EcsContainer.ReadModule(EcsContainer.WriteModule(a));
             a.Interface = iface;
             Assert.That(restored.Interface, Is.Null, "未挂接口的产物读回应为 null");
             Assert.That(restored.Name, Is.EqualTo(a.Name));
         }
 
         // 接口区随 .ecm 往返（统一链路产物本就携带接口）
-        var restored2 = artifacts.Select(a => EcmFormat.Read(EcmFormat.Write(a))).ToList();
+        var restored2 = artifacts.Select(a => EcsContainer.ReadModule(EcsContainer.WriteModule(a))).ToList();
         for (int i = 0; i < artifacts.Count; i++)
         {
             Assert.That(restored2[i].Interface, Is.Not.Null, "接口区应写盘");
@@ -237,7 +237,6 @@ public class ModuleInterfaceTests
         ENDFUNC
         """;
     const string MainSource = """
-        IMPORT "utils.ecs"
         $r = twice(21)
         PRINT $r
         """;
@@ -302,7 +301,6 @@ public class ModuleInterfaceTests
     {
         // 参数个数不匹配 → 两条后端产生同一诊断文本（解析决策等价）
         var badMainSource = """
-            IMPORT "utils.ecs"
             $r = twice(1, 2)
             """;
         var dir = Path.Combine(Path.GetTempPath(), "ecs-mod-" + Guid.NewGuid().ToString("N")[..8]);

@@ -13,7 +13,25 @@ public record TextLocation
 
     public string FileName => Text.FileName;
     public int StartLine => Text.GetLineIndex(Span.Start);
-    // public int StartCharacter => Span.Start - Text.Lines[StartLine].Start;
     public int EndLine => Text.GetLineIndex(Span.End);
-    // public int EndCharacter => Span.End - Text.Lines[EndLine].Start;
+
+    /// <summary>起始列（0 基；LSP/JSON 诊断定位用，M1 补齐）。</summary>
+    public int StartCharacter
+    {
+        get
+        {
+            var line = Text.Lines[StartLine];
+            return Math.Max(0, Span.Start - line.Start);
+        }
+    }
+
+    /// <summary>结束列（0 基，不含）。</summary>
+    public int EndCharacter
+    {
+        get
+        {
+            var line = Text.Lines[EndLine];
+            return Math.Max(0, Span.End - line.Start);
+        }
+    }
 }

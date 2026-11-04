@@ -6,7 +6,7 @@ namespace EasyCon.Script.Runtime;
 /// 简单的 IStringHandleStore 实现：用于单元测试和不需要 RuntimeHeap 的场景。
 /// 提供 intern 能力但不做内存回收（Free 为空操作）。
 /// </summary>
-public sealed class SimpleStringStore : IStringHandleStore
+internal sealed class SimpleStringStore : IStringHandleStore
 {
     private readonly List<string> _strings = new() { "" }; // index 0 = null sentinel
     private readonly Dictionary<string, int> _intern = new(StringComparer.Ordinal);

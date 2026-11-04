@@ -1,8 +1,10 @@
 /*
- * ecs_main.c — ecs-vm CLI harness（docs/VmSemanticContract.md §四）。
+ * ecs_main.c — ecs-vm CLI 参考宿主。
  * 单片机参考宿主：L2 平台 syscall 的语义参考实现 + L1 域操作回调 + L3 无（按需接入）。
  *
- *   ecs-vm run image.ecx [--trace] [--print] [-- arg0 arg1...]
+ *   ecs-vm run image.ecx [--io] [--trace]
+ *     --io：经 ecs_io 读取器加载（模拟 EEPROM/NVS 等位置的字节码来源）
+ *     缺省 = RAM 缓冲直载（可 XIP）；[--print] [--strict-caps] [-- arg0 arg1...]
  *     stdout：脚本 PRINT 输出（UTF-16 → UTF-8；--print 通道开）
  *     stderr：--trace 时逐条域事件 TSV（格式与 C# EcxHost.EnableRecording 一致，供三方对拍）
  *     退出码：ECS_* 结果码；错误时 stderr 打印 func/pc 现场
@@ -16,6 +18,7 @@
  * 特征位：feats = ECS_FEAT_FILE（桩覆盖文件族 syscall 的"静默/默认值"行为）。
  */
 #include "ecs_vm.h"
+#include <inttypes.h>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -83,7 +86,7 @@ static void h_stick_click(void *ud, uint8_t side, int32_t x, int32_t y, int32_t 
 
 static void ret_str_ascii(ecs_value *ret, const char *s)
 {
-    uint16_t buf[512];
+    uint16_t buf[512] = {0};
     int32_t n = 0;
     for (; s && s[n] != 0 && n < 511; n++)
         buf[n] = (uint16_t)(unsigned char)s[n];
@@ -100,8 +103,9 @@ static int h_syscall(void *ud, int32_t id, ecs_value *args, int32_t nargs, ecs_v
     {
         case ECS_SYSCALL_FWRITE:
         {
-            /* S-14：句柄 1=stdout 行断协议；0=no-op 返 len；2=print(newline)；>2=文件族 → -1 */
-            int64_t handle = args[0].i64;
+            /* S-14：句柄 1=stdout 行断协议；0=no-op 返 len；2=print(newline)；>2=文件族 → -1
+             *（句柄为 PTR 类型 → 经 arg_wide 解箱；编译器也可能发 INT 句柄，两态同收） */
+            int32_t handle = (int32_t)ecs_vm_arg_wide(g_vm, args[0]);
             const uint16_t *u = NULL;
             int32_t len = ecs_vm_arg_str(g_vm, args[1], &u);
             if (handle == 1)
@@ -164,9 +168,9 @@ static int h_syscall(void *ud, int32_t id, ecs_value *args, int32_t nargs, ecs_v
         case ECS_SYSCALL_BEEP:
             return 0;   /* no-op（静默忽略） */
         case ECS_SYSCALL_AMIIBO:
-            if (args[0].i32 <= 9)   /* S-13：n>9 静默忽略 */
+            if (args[0].i32 >= 0 && args[0].i32 <= 19)   /* S-13：槽位 0–19，越界静默 */
                 trace_event("AMIIBO %d", (int)args[0].i32);
-            return 0;
+            return 0;   /* 无接收槽：任何宿主都不写寄存器 */
         case ECS_SYSCALL_OCR_CONF:
         case ECS_SYSCALL_FOPEN:
         case ECS_SYSCALL_FCLOSE:
@@ -185,24 +189,80 @@ static int sigint_seen = 0;
 
 static int vm_cancel_requested(void) { return sigint_seen; }
 
+/* 错误码符号名（ZeroAllocVm.md §5：池耗尽等须以可归因的符号名呈现） */
+static const char *err_name(int rc)
+{
+    switch (rc)
+    {
+        case ECS_ERR_IMAGE: return "IMAGE";
+        case ECS_ERR_OPCODE: return "OPCODE";
+        case ECS_ERR_SLOT: return "SLOT";
+        case ECS_ERR_TYPE: return "TYPE";
+        case ECS_ERR_INDEX: return "INDEX";
+        case ECS_ERR_DIVZERO: return "DIVZERO";
+        case ECS_ERR_DEPTH: return "DEPTH";
+        case ECS_ERR_NOSUCHNATIVE: return "NOSUCHNATIVE";
+        case ECS_ERR_HOST: return "HOST";
+        case ECS_ERR_OOM: return "OOM";
+        case ECS_ERR_IL: return "IL";
+        case ECS_ERR_FEAT: return "FEAT";
+        case ECS_ERR_SECTION: return "SECTION";
+        case ECS_ERR_UNSUPPORTED: return "UNSUPPORTED";
+        case ECS_ERR_CRC: return "CRC";
+        case ECS_ERR_POOL: return "POOL";
+        case ECS_WAITING: return "WAITING";
+        default: return "?";
+    }
+}
+
+/* ---- 实例容量度量（容量门禁 / docs/VmBudget.md 预算自检；不执行镜像） ---- */
+static int print_meminfo(void)
+{
+    ecs_vm_meminfo mi;
+    ecs_vm_query_meminfo(&mi);
+    printf("instance=%" PRIu64 " host=%" PRIu64 " arena=%" PRIu64 " frame_seg=%" PRIu64
+           " obj_seg=%" PRIu64 " obj_block=%u obj_block_count=%u value=%u\n",
+           (uint64_t)mi.instance_bytes, (uint64_t)mi.host_bytes, (uint64_t)mi.arena_bytes,
+           (uint64_t)mi.frame_seg_bytes, (uint64_t)mi.obj_seg_bytes,
+           mi.obj_block_bytes, mi.obj_block_count, mi.value_bytes);
+    return 0;
+}
+
+/* ecs_io 适配：stdio 随机访问读（seek + read）——EEPROM/flash/NVS 来源按同型适配 */
+static uint32_t file_io_read(void *ud, uint32_t offset, uint8_t *out, uint32_t len)
+{
+    FILE *f = (FILE *)ud;
+    if (fseek(f, (long)offset, SEEK_SET) != 0)
+        return 0;
+    return (uint32_t)fread(out, 1, (size_t)len, f);
+}
+
 int main(int argc, char **argv)
 {
+    if (argc == 2 && strcmp(argv[1], "--mem") == 0)
+        return print_meminfo();
     if (argc < 3 || strcmp(argv[1], "run") != 0)
     {
-        fprintf(stderr, "用法: ecs-vm run image.ecx [--trace] [--print] [-- arg0...]\n");
+        fprintf(stderr, "用法: ecs-vm run image.ecx [--io] [--trace] [--print] [--strict-caps] [-- arg0...]\n");
         return 2;
     }
     const char *imagePath = argv[2];
+    int useIo = 0;
     const char *scriptArgs[64];
     int nargs = 0;
     g_trace = 0;
     int pcPrint = 0;   /* PC 验证模式：启用 PRINT 输出通道（单片机构建缺省关，静默返 len） */
+    int strictCaps = 0;   /* S-21 strict_caps（缺省 0 = 缺省值降级） */
     for (int i = 3; i < argc; i++)
     {
         if (strcmp(argv[i], "--trace") == 0)
             g_trace = 1;
         else if (strcmp(argv[i], "--print") == 0)
             pcPrint = 1;
+        else if (strcmp(argv[i], "--io") == 0)
+            useIo = 1;
+        else if (strcmp(argv[i], "--strict-caps") == 0)
+            strictCaps = 1;   /* S-21 严格档：feats 加载期校验 + miss 响亮（迁移保底/诊断） */
         else if (strcmp(argv[i], "--") == 0)
         {
             for (int j = i + 1; j < argc && nargs < 64; j++)
@@ -228,12 +288,12 @@ int main(int argc, char **argv)
         free(image);
         return 2;
     }
-    fclose(f);
 
     /* 参考宿主装配：L1 域操作回调（wait/key/stick + trace）+ L2 syscall 桩 + feats。 */
     ecs_host host;
     memset(&host, 0, sizeof(host));
     host.feats = ECS_FEAT_FILE;     /* 桩覆盖文件族 syscall 的"静默/默认值"行为 */
+    host.strict_caps = strictCaps;  /* S-21：能力缺失走缺省值表；--strict-caps 恢复响亮 */
     host.args = scriptArgs;
     host.nargs = nargs;
     host.wait_ms = h_wait;
@@ -250,7 +310,22 @@ int main(int argc, char **argv)
 
     ecs_vm *vm = ecs_vm_new(&host);
     g_vm = vm;
-    int rc = ecs_vm_load(vm, image, (size_t)len);
+    int rc;
+    if (useIo)
+    {
+        /* 经 ecs_io 读取器加载（随机访问 read 回调；宿主以 stdio seek 实现——
+         * EEPROM/内部 flash/NVS 等来源按同型 read 适配） */
+        ecs_io io;
+        io.ud = f;
+        io.size = (uint32_t)len;
+        io.read = file_io_read;
+        rc = ecs_vm_load_io(vm, &io);
+    }
+    else
+    {
+        rc = ecs_vm_load(vm, image, (size_t)len);
+    }
+    fclose(f);
     if (rc != ECS_OK)
     {
         fprintf(stderr, "镜像校验失败: ECS_ERR=%d\n", rc);
@@ -263,12 +338,12 @@ int main(int argc, char **argv)
     do
     {
         rc = ecs_vm_run(vm);
-    } while (rc == ECS_YIELD && !vm_cancel_requested());
-    if (rc != ECS_OK && rc != ECS_YIELD && rc != ECS_CANCELLED)
+    } while ((rc == ECS_YIELD || rc == ECS_WAITING) && !vm_cancel_requested());
+    if (rc != ECS_OK && rc != ECS_YIELD && rc != ECS_CANCELLED && rc != ECS_WAITING)
     {
         int32_t ef, pc;
         ecs_vm_error_location(vm, &ef, &pc);
-        fprintf(stderr, "执行错误: ECS_ERR=%d func=%d pc=%d\n", rc, ef, pc);
+        fprintf(stderr, "执行错误: ECS_ERR=%d(%s) func=%d pc=%d\n", rc, err_name(rc), ef, pc);
     }
 
     ecs_vm_free(vm);

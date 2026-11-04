@@ -5,7 +5,7 @@ using EasyCon.Tests.Support;
 namespace EasyCon.Tests.Bytecode;
 
 /// <summary>
-/// 双实现对拍语料（docs/VmSemanticContract.md §五 验证体系）：
+/// 双实现对拍语料：
 /// corpus/ 下每用例 = &lt;名&gt;.ecs + &lt;名&gt;.expected（期望输出行，逐行）+ 可选 &lt;名&gt;.events（域事件）。
 ///
 /// 流程：跑「CompileSource → EcxImage → EcxInterpreter」断言输出/事件与期望一致；
@@ -66,7 +66,7 @@ public class CorpusCrossValidationTests
         if (_vmBinary == null)
             Assert.Ignore("无 cc 编译器，仅完成解释器侧语料验证（C VM 侧跳过）");
 
-        var (exitCode, stdout, stderr) = CvmRunner.Run(_vmBinary, EcxWriter.Write(result.Image!), tag, _workDir);
+        var (exitCode, stdout, stderr) = CvmRunner.Run(_vmBinary, EcsContainer.WriteImage(result.Image!), tag, _workDir);
         Assert.That(exitCode, Is.EqualTo(0), $"[{tag}] C VM 退出码：{exitCode}；stderr={stderr}");
         Assert.That(CvmRunner.SplitLines(stdout), Is.EqualTo(expectedLines),
             $"[{tag}] C VM 与期望输出不一致（双端不一致时先判定哪端错，修实现而非改期望）");

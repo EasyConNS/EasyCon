@@ -23,7 +23,6 @@ indent_style = space
 tab_width = 4
 
 # 新行首选项
-end_of_line = crlf
 insert_final_newline = false
 
 #### .NET 编码约定 ####
@@ -253,7 +252,6 @@ dotnet_naming_style.begins_with_underline.capitalization = camel_case
 csharp_style_prefer_primary_constructors = true:suggestion
 
 [*.{cs,vb}]
-end_of_line = crlf
 dotnet_style_qualification_for_field = false:silent
 dotnet_style_qualification_for_property = false:silent
 dotnet_style_qualification_for_method = false:silent

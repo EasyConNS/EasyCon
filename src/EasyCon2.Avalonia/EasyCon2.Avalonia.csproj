@@ -6,10 +6,22 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- 从 Core 搬入的 axaml 依赖 x:DataType 编译绑定；App 承接后由本属性维持同级检查 -->
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="EasyCon2.Avalonia.UiTests" />
+    <!-- 吸收 EasyCon2.Avalonia.Core 后由本项目直接对外暴露 internal -->
+    <InternalsVisibleTo Include="EasyCon2.Avalonia.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <AvaloniaResource Include="Resources\Images\**" />
+    <AvaloniaResource Include="Resources\Icons.json" />
+    <AvaloniaResource Include="VPad\Resources\*.png" />
+    <AvaloniaResource Include="QQ\Resources\Guide\**" />
+    <EmbeddedResource Include="Resources\Scripts\*.xshd" />
   </ItemGroup>
 
   <ItemGroup>
@@ -22,14 +34,20 @@
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="Svg.Controls.Skia.Avalonia" />
     <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
     <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="AvaloniaUI.DiagnosticsSupport" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <!-- 吸收 EasyCon2.Avalonia.Core 后承接的包 -->
+    <PackageReference Include="OmniSharp.Extensions.LanguageClient" />
+    <PackageReference Include="ModelContextProtocol.Core" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\EasyCon.Core\EasyCon.Core.csproj" />
-    <ProjectReference Include="..\EasyCon2.Avalonia.Core\EasyCon2.Avalonia.Core.csproj" />
+    <ProjectReference Include="..\EasyCon.Lsp\EasyCon.Lsp.csproj" />
     <ProjectReference Include="..\EasyCon.SDLInput\EasyCon.SDLInput.csproj" />
   </ItemGroup>
 

@@ -10,7 +10,9 @@ using System.Collections.Immutable;
 namespace EasyCon.Tests;
 
 /// <summary>
-/// 测试库脚本自动加载、隔离绑定、解析限制
+/// 测试 lib 导入语义（docs/ModuleImportRules.md：R1 同目录互见、
+/// R2 导入基准 = 导入文件所在目录、R3 main 隐式导入 lib/——用例不再显式 import lib、
+/// R4 跨目录必须显式导入）、隔离绑定、解析限制。
 /// </summary>
 [TestFixture]
 public class LibTests
@@ -48,6 +50,15 @@ public class LibTests
         return path;
     }
 
+    private string WriteOuter(string fileName, string code)
+    {
+        // lib/ 之外、main 同目录之外的目录（R4：跨目录必须显式导入）
+        var path = Path.Combine(_tempDir, "other", fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, code);
+        return path;
+    }
+
     private static Value EvalResult(CompileResult compileResult)
     {
         if (compileResult.Image == null)
@@ -73,25 +84,28 @@ public class LibTests
         return (EvalResult(result), true, []);
     }
 
-    #region 自动加载
+    #region 自动导入（R3：main 隐式导入 lib/）
 
     [Test]
-    public void AutoLoad_LibFileLoadedAutomatically()
+    public void Module_OuterDir_NotVisible()
     {
-        WriteLib("math.ecs", @"
+        // R4：lib/ 之外且未显式导入的模块不可见（lib/ 经 R3 自动导入，外部目录验证 R4）
+        WriteOuter("math.ecs", @"
 FUNC double($x) : int
     RETURN $x * 2
 ENDFUNC
 ");
         var mainPath = WriteMain("$r = double(21)");
-        var (compilation, success, errors) = CompileFile(mainPath);
+        var (_, success, errors) = CompileFile(mainPath);
 
-        Assert.That(success, Is.True, string.Join("; ", errors));
+        Assert.That(success, Is.False, "未导入的外部目录模块应不可见");
+        Assert.That(errors, Has.Some.Contains("找不到"));
     }
 
     [Test]
     public void AutoLoad_MultipleLibFiles()
     {
+        // R3：main 隐式导入 lib/ 全部模块——无需 IMPORT 即可调用
         WriteLib("a.ecs", @"
 FUNC add($a, $b) : int
     RETURN $a + $b
@@ -130,7 +144,7 @@ ENDFUNC
 
     #endregion
 
-    #region 库模块顶层语句（模块语义：v1 lib 白名单退役，顶层语句合法化为 &lt;init:module&gt;）
+    #region 库模块顶层语句（模块语义：lib 顶层语句合法化为 &lt;init:module&gt;）
 
     [Test]
     public void LibParse_ConstantDef_Succeeds()
@@ -165,7 +179,7 @@ ENDFUNC
         var (result, success, errors) = CompileFile(mainPath);
 
         Assert.That(success, Is.True, string.Join("; ", errors));
-        var init = result.Artifacts.Single(a => a.Name == "init");
+        var init = result.Artifacts.Single(a => a.Name == "lib/init");
         Assert.That(init.HasInit, Is.True, "顶层语句应置 HasInit（&lt;init:module&gt;）");
     }
 
@@ -192,8 +206,7 @@ FUNC leak : int
     RETURN $mainVar
 ENDFUNC
 ");
-        var mainPath = WriteMain(@"
-$mainVar = 42
+        var mainPath = WriteMain(@"$mainVar = 42
 $r = leak()
 ");
         var (_, success, errors) = CompileFile(mainPath);
@@ -210,8 +223,7 @@ FUNC leak : int
     RETURN _MAIN_CONST
 ENDFUNC
 ");
-        var mainPath = WriteMain(@"
-_MAIN_CONST = 99
+        var mainPath = WriteMain(@"_MAIN_CONST = 99
 $r = leak()
 ");
         var (_, success, errors) = CompileFile(mainPath);
@@ -267,14 +279,13 @@ ENDFUNC
     [Test]
     public void LibScope_MultipleLibFiles_CrossRef()
     {
-        // 模块语义：跨模块调用需显式 IMPORT（b IMPORT a；lib 内 import 解析到自身 lib/ 子目录）
-        WriteLib("lib/a.ecs", @"
+        // 导入规则 R1：同目录互见——lib 内模块互调无需 IMPORT（b 直接调用 a 的 double）
+        WriteLib("a.ecs", @"
 FUNC double($x) : int
     RETURN $x * 2
 ENDFUNC
 ");
         WriteLib("b.ecs", @"
-IMPORT ""a.ecs""
 FUNC quad($x) : int
     RETURN double(double($x))
 ENDFUNC
@@ -381,8 +392,7 @@ FUNC getLibData() : int
     RETURN _data
 ENDFUNC
 ");
-        var mainPath = WriteMain(@"
-FUNC mainFunc() : int
+        var mainPath = WriteMain(@"FUNC mainFunc() : int
     $data = 1
     RETURN $data
 ENDFUNC
@@ -410,8 +420,7 @@ FUNC getCounter() : int
     RETURN $counter
 ENDFUNC
 ");
-        var mainPath = WriteMain(@"
-$r = increment()
+        var mainPath = WriteMain(@"$r = increment()
 $r = increment()
 $r = getCounter()
 RETURN $r");
@@ -493,17 +502,18 @@ ENDFUNC
 
     #endregion
 
-    #region import 语句加载 lib
+    #region import 语句显式导入（R4：跨目录必须显式导入）
 
     [Test]
     public void Import_LoadsLibFile()
     {
-        WriteLib("math.ecs", @"
+        // R4：显式导入外部目录模块（相对导入文件目录解析）
+        WriteOuter("math.ecs", @"
 FUNC triple($x) : int
     RETURN $x * 3
 ENDFUNC
 ");
-        var mainPath = WriteMain(@"IMPORT ""math.ecs""
+        var mainPath = WriteMain(@"IMPORT ""other/math.ecs""
 $r = triple(7)
 RETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
@@ -517,18 +527,18 @@ RETURN $r");
     [Test]
     public void Import_MultipleImports()
     {
-        WriteLib("a.ecs", @"
+        WriteOuter("a.ecs", @"
 FUNC add($a, $b) : int
     RETURN $a + $b
 ENDFUNC
 ");
-        WriteLib("b.ecs", @"
+        WriteOuter("b.ecs", @"
 FUNC mul($a, $b) : int
     RETURN $a * $b
 ENDFUNC
 ");
-        var mainPath = WriteMain(@"IMPORT ""a.ecs""
-IMPORT ""b.ecs""
+        var mainPath = WriteMain(@"IMPORT ""other/a.ecs""
+IMPORT ""other/b.ecs""
 $r = add(mul(3, 4), 5)
 RETURN $r");
         var (compilation, success, errors) = CompileFile(mainPath);
@@ -540,28 +550,25 @@ RETURN $r");
     }
 
     [Test]
-    public void Import_AndAutoLoad_Coexist()
+    public void Import_UnimportedLib_NotVisible()
     {
+        // R3+R4：lib/ 的 a 自动可见；外部目录的 b 未显式导入 → mul 不可见
         WriteLib("a.ecs", @"
 FUNC add($a, $b) : int
     RETURN $a + $b
 ENDFUNC
 ");
-        WriteLib("b.ecs", @"
+        WriteOuter("b.ecs", @"
 FUNC mul($a, $b) : int
     RETURN $a * $b
 ENDFUNC
 ");
-        // 只 import a.ecs，b.ecs 通过自动加载
-        var mainPath = WriteMain(@"IMPORT ""a.ecs""
-$r = add(mul(3, 4), 1)
+        var mainPath = WriteMain(@"$r = add(mul(3, 4), 1)
 RETURN $r");
-        var (compilation, success, errors) = CompileFile(mainPath);
+        var (_, success, errors) = CompileFile(mainPath);
 
-        Assert.That(success, Is.True, string.Join("; ", errors));
-
-        var result = EvalResult(compilation);
-        Assert.That(result.AsInt(), Is.EqualTo(13));
+        Assert.That(success, Is.False, "未导入的外部模块 mul 应不可见");
+        Assert.That(errors, Has.Some.Contains("找不到"));
     }
 
     #endregion

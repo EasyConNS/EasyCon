@@ -29,7 +29,7 @@ public sealed class ModulePool
 
 /// <summary>
 /// 模块编码上下文：函数 ID、全局槽、原生表、导入表均为**模块局部**
-/// （docs/EcmEcxFormat.md §4.1——链接期统一重写为镜像全局索引）。
+/// （链接期统一重写为镜像全局索引）。
 /// </summary>
 public sealed class ModuleEncodeContext
 {
@@ -38,7 +38,7 @@ public sealed class ModuleEncodeContext
     /// <summary>本模块函数 → 模块局部 fid（值相等键，A-07）。</summary>
     public required Dictionary<FunctionSymbol, int> LocalFuncIds;
     public required List<EcsImport> Imports;
-    public required Dictionary<(string Name, int NParams), int> ImportIds;
+    public required Dictionary<(string? OriginModule, string Name, int NParams), int> ImportIds;
     /// <summary>模块私有全局（首现序 = 模块局部槽）。</summary>
     public required List<EcsGlobal> Globals;
     public required Dictionary<GlobalVariableSymbol, int> GlobalSlots;
@@ -108,14 +108,18 @@ public sealed class ModuleEncodeContext
         return hash;
     }
 
-    public int ImportId(string name, int nparams)
+    public int ImportId(string name, int nparams) => ImportId(null, name, nparams);
+
+    public int ImportId(string? originModule, string name, int nparams)
     {
-        var key = (name, nparams);
+        var key = (originModule, name, nparams);
         if (!ImportIds.TryGetValue(key, out var id))
         {
             id = Imports.Count;
             ImportIds[key] = id;
-            Imports.Add(new EcsImport { Name = name, NParams = nparams });
+            // 导入名模块限定（"模块!函数"）：层级命名下跨模块同名导入在导入表中可区分；
+            // 链接器按限定名解析到目标模块导出。无来源（历史路径）保持裸名。
+            Imports.Add(new EcsImport { Name = originModule != null ? $"{originModule}!{name}" : name, NParams = nparams });
         }
         return id;
     }
@@ -162,7 +166,8 @@ public static partial class BytecodeEncoder
         readonly FunctionSymbol _symbol;
         readonly int _fid;
         readonly ModuleEncodeContext _ctx;
-        readonly List<uint> _code = new();
+        /// <summary>唯一指令流（解码形态；线格式只是序列化投影——SingleStreamFormat §2）。</summary>
+        readonly List<EcsInstruction> _code = new();
         readonly Dictionary<SsaValue, int> _slots = new();
         /// <summary>存活局部槽位重编号（旧帧槽 → 压缩槽；AssignSlots 步骤 0 构建，SymSlot 消费）。</summary>
         readonly Dictionary<int, int> _localSlotRemap = new();
@@ -173,7 +178,11 @@ public static partial class BytecodeEncoder
         readonly Dictionary<SsaValue, SsaValue[]> _instReleases = new();
         /// <summary>结算计划：块终结符 → 待结算值（返回值/分支条件/出边 φ 臂，含死 φ 臂）。</summary>
         readonly Dictionary<SsaBlock, SsaValue[]> _terminatorReleases = new();
-        /// <summary>行号表构建缓冲（稀疏：仅行变化处记录，发射点由 EmitInst 驱动）。</summary>
+        /// <summary>循环不变量常量外提：preheader 块 → 外提常量（HoistLoopInvariantConsts 构建）。</summary>
+        readonly Dictionary<SsaBlock, List<SsaValue>> _hoistedConsts = new();
+        /// <summary>已外提常量全集（专属槽，不池化、不逐块重物化）。</summary>
+        readonly HashSet<SsaValue> _hoisted = new();
+        /// <summary>行号表构建缓冲（稀疏：仅行变化处记录，发射点由 EmitInst 驱动；单位 = 指令下标）。</summary>
         readonly List<int> _linePcs = new();
         readonly List<int> _lineLines = new();
         int _currentEmitLine;
@@ -181,12 +190,28 @@ public static partial class BytecodeEncoder
         readonly List<Fixup> _fixups = new();
         readonly List<int> _labels = new();
         readonly List<int> _poolFree = new();
+        /// <summary>空闲池槽的归还块（非常量池化值）：归还块支配取用块才可复用——
+        /// 归还块执行 ⟹ 其末次读取先于取用块的写入。发射序 ≠ CFG 序时（循环体内
+        /// 块重排/回边），发射序上更晚的取用者可能先于末次读取执行，无守卫即污染
+        /// （LoopCarriedLocalRegressionTests：$c 的槽被常量 10 复用，$prev := $c
+        /// 边副本读到 $val*10）。</summary>
+        readonly Dictionary<int, SsaBlock> _freeSlotRelease = new();
+        /// <summary>取用守卫用的前向支配树（EmitBlocks 期惰性计算一次）。</summary>
+        Dominators? _dom;
+        /// <summary>当前发射块（EmitBlocks 循环置位；PoolAlloc 归还守卫按其判定）。</summary>
+        SsaBlock _emittingBlock = null!;
+        /// <summary>非常量池化值的剩余读取计数（= 全函数静态读取数；末次读取结算归零归还槽位，
+        /// 参考线性扫描寄存器分配的活动区间末端回收；归还守卫见 _freeSlotRelease）。</summary>
+        readonly Dictionary<SsaValue, int> _releaseLeft = new();
+        /// <summary>独占槽位全集（φ 结果/ForStep 目标/循环携带值/编码器保留临时）：
+        /// 永不入池，池化归还侧 DEBUG 断言不与之相交。</summary>
+        readonly HashSet<int> _exclusiveSlots = new();
         int _next;
         int _poolNext;
         int _scratch = -1;
         int _stagingBase;
-        int _maxArity;
-        int _receiveSlot;
+        int _stagingCount;
+        int _allocBase;
         int _neqTemp = -1;   // Neq = Eq+Not 的共享中间槽（发射原子，不嵌套）
         int _tplGuard = -1;  // 常量模板构建暂存槽（守卫标志/模板数组/当前分块；发射原子，不嵌套）
         int _tplArr = -1;
@@ -207,7 +232,22 @@ public static partial class BytecodeEncoder
 
         // ---- 槽位与发射工具 ----
 
-        int Slot(SsaValue v) => _slots[v];
+        /// <summary>取值槽位。池化非常量值按需分配：定义发射（EmitBlocks）或首次读取触碰
+        /// （先到先得）——发射序 ≠ 支配序时（CSE 改写 phi 臂/循环结构），读取点可能先于
+        /// 定义点出现，按需分配保证任何触碰点都有槽；归还仍只发生在末次静态读取结算，
+        /// 分配时机不影响活动区间回收收益。</summary>
+        int Slot(SsaValue v)
+        {
+            if (_slots.TryGetValue(v, out var s))
+                return s;
+            if (_pooled.Contains(v) && !v.IsConstant)
+            {
+                s = PoolAlloc();
+                _slots[v] = s;
+                return s;
+            }
+            throw Fail($"槽位未分配（非池化值定义发射前被读取）: v{v.Id} {v.Op} def=块{v.Block?.Id}");
+        }
 
         int SymSlot(LocalVariableSymbol s)
         {
@@ -218,16 +258,16 @@ public static partial class BytecodeEncoder
             return mapped;
         }
 
-        void Emit(uint word) => _code.Add(word);
+        void Emit(in EcsInstruction ins) => _code.Add(ins);
 
-        static uint Word(EcsOpcode op, int a, int b, int c)
-            => (uint)op | (uint)(a & 0xFF) << 8 | (uint)(b & 0xFF) << 16 | (uint)(c & 0xFF) << 24;
-
+        // 格式感知发射：仍以 EcsFormat 表自检「操作码与发射形态匹配」（漏登 fail-fast 原样保留），
+        // 只是写出的目标从打包字变成解码形态结构体（SingleStreamFormat §2）。
         void EmitIabc(EcsOpcode op, int a, int b, int c)
         {
             if (EcsFormat.Get(op) != EcsInsFormat.Iabc)
                 throw Fail($"{op} 登记格式为 {EcsFormat.Get(op)}，不能按 Iabc 发射（与 EcsFormat 表不一致）");
-            Emit(Word(op, a, b, c));
+            CheckIabcOperands(op, a, b, c);
+            Emit(new EcsInstruction(op, a, b, c));
         }
 
         void EmitAbx(EcsOpcode op, int a, int bx)
@@ -235,8 +275,8 @@ public static partial class BytecodeEncoder
             if (EcsFormat.Get(op) != EcsInsFormat.ABx)
                 throw Fail($"{op} 登记格式为 {EcsFormat.Get(op)}，不能按 ABx 发射（与 EcsFormat 表不一致）");
             if (bx < 0 || bx > 0xFFFF)
-                throw Fail($"{op} 的 Bx 越界: {bx}");
-            Emit(Word(op, a, bx & 0xFF, (bx >> 8) & 0xFF));
+                throw Fail($"{op} 的 Bx 越界: {bx}");   // 常量池/类型表 16 位上限是语义约束（pinned 句柄编码前提）
+            Emit(new EcsInstruction(op, a, bx));
         }
 
         void EmitAsBx(EcsOpcode op, int a, int sbx)
@@ -244,30 +284,46 @@ public static partial class BytecodeEncoder
             if (EcsFormat.Get(op) != EcsInsFormat.AsBx)
                 throw Fail($"{op} 登记格式为 {EcsFormat.Get(op)}，不能按 AsBx 发射（与 EcsFormat 表不一致）");
             if (sbx < short.MinValue || sbx > short.MaxValue)
-                throw Fail($"{op} 的 sBx 越界: {sbx}");
-            Emit(Word(op, a, sbx & 0xFF, (sbx >> 8) & 0xFF));
+                throw Fail($"{op} 的 sBx 越界: {sbx}（v3 定长 AsBx=s16）");
+            Emit(new EcsInstruction(op, a, sbx));
         }
 
-        // EXT 后随字是数据（唯一权威集合见 EcsFormat 表）：发射即登记，扫描侧经 ExtWords 步进。
+        // EXT 数据字是指令的一部分（解码形态字段），不再是独立后随字；发射即登记（HasExt 由 EcsFormat 表驱动）。
         void EmitExt(EcsOpcode op, int a, int b, int c, uint ext)
         {
             if (EcsFormat.ExtWords(op) != 1)
-                throw Fail($"{op} 非 EXT 指令，不能携带后随数据字（与 EcsFormat 表不一致）");
-            Emit(Word(op, a, b, c));
-            Emit(ext);
+                throw Fail($"{op} 非数据字指令，不能携带数据字（与 EcsFormat 表不一致）");
+            CheckIabcOperands(op, a, b, c);
+            Emit(new EcsInstruction(op, a, b, c, ext));
         }
+
+        /// <summary>Iabc 头部操作数字节域守卫（v3 定长）：槽位 u8 ≤254（255 = 无接收哨兵）；
+        /// StickSet/StickP 的 B/C 是摇杆坐标（满 u8 0..255），不按槽位收紧。</summary>
+        static void CheckIabcOperands(EcsOpcode op, int a, int b, int c)
+        {
+            if (a is < 0 or > 254) ThrowOp(op, $"A 槽位越界: {a}");
+            bool coord = op is EcsOpcode.StickSet or EcsOpcode.StickP;
+            if (b < 0 || b > (coord ? 255 : 255)) ThrowOp(op, $"B 越界: {b}");
+            if (c < -1 || c > (coord ? 255 : 254)) ThrowOp(op, $"C 越界: {c}");
+        }
+
+        static void ThrowOp(EcsOpcode op, string what)
+            => throw new BytecodeException(new[] { new BytecodeDiagnostic($"{op} {what}（v3 定长编码）", null, 0) });
 
         BytecodeException Fail(string message)
             => new(new[] { new BytecodeDiagnostic(message, _symbol.Name, _code.Count) });
 
         // ---- 标签与跳转修复 ----
 
-        const int FixJmpBlock = 0;   // IsJ s24 → 目标块
-        const int FixJptBlock = 1;   // AsBx s16 → 目标块
+        const int FixJmpBlock = 0;   // → 目标块
+        const int FixJptBlock = 1;
         const int FixJpfBlock = 2;
-        const int FixJmpLabel = 3;   // IsJ s24 → 标签
-        const int FixJptLabel = 4;   // AsBx s16 → 标签
+        const int FixJmpLabel = 3;   // → 标签
+        const int FixJptLabel = 4;
         const int FixJpfLabel = 5;
+        const int FixForStepBlock = 6;   // ForStep：C = 回边目标（TrueSuccessor）偏移
+        const int FixCmpJBlock = 7;      // CmpJ：跳转目标块
+        const int FixCmpJLabel = 8;      // CmpJ：跳转目标标签（skip 形态）
 
         int NewLabel()
         {
@@ -277,10 +333,39 @@ public static partial class BytecodeEncoder
 
         void MarkLabel(int label) => _labels[label] = _code.Count;
 
-        void EmitJmpToBlock(SsaBlock target) { _fixups.Add(new Fixup(_code.Count, FixJmpBlock, target)); Emit(Word(EcsOpcode.Jmp, 0, 0, 0)); }
-        void EmitJptToBlock(int cond, SsaBlock target) { _fixups.Add(new Fixup(_code.Count, FixJptBlock, target)); Emit(Word(EcsOpcode.Jpt, cond, 0, 0)); }
-        void EmitJpfToBlock(int cond, SsaBlock target) { _fixups.Add(new Fixup(_code.Count, FixJpfBlock, target)); Emit(Word(EcsOpcode.Jpf, cond, 0, 0)); }
-        void EmitJmpToLabel(int label) { _fixups.Add(new Fixup(_code.Count, FixJmpLabel, label)); Emit(Word(EcsOpcode.Jmp, 0, 0, 0)); }
+        void EmitJmpToBlock(SsaBlock target) => EmitJump(EcsOpcode.Jmp, 0, FixJmpBlock, target);
+
+        /// <summary>ForStep：A=当前值槽、B=上限槽、C=目标槽（写入 tmp=i+1）、Jump=出口（end）偏移；
+        /// tmp &gt; limit → 跳出口（$i 保持 ==upper）；否则落入后继（arm 副本 + 回边）。</summary>
+        void EmitFixForStep(int srcSlot, int limitSlot, int dstSlot, SsaBlock exitBlock)
+        {
+            _fixups.Add(new Fixup(_code.Count, FixForStepBlock, exitBlock));
+            Emit(new EcsInstruction(EcsOpcode.ForStep, srcSlot, limitSlot, dstSlot));
+        }
+
+        /// <summary>CmpJ（P2′）：A/B = 比较槽，C = kind，Jump = 成立时偏移（Patch 回填）。</summary>
+        void EmitCmpJToBlock(SsaValue cmp, int kind, SsaBlock target)
+        {
+            _fixups.Add(new Fixup(_code.Count, FixCmpJBlock, target));
+            Emit(new EcsInstruction(EcsOpcode.CmpJ, Slot(cmp.Arg0!), Slot(cmp.Arg1!), kind));
+        }
+
+        void EmitCmpJToLabel(SsaValue cmp, int kind, int label)
+        {
+            _fixups.Add(new Fixup(_code.Count, FixCmpJLabel, label));
+            Emit(new EcsInstruction(EcsOpcode.CmpJ, Slot(cmp.Arg0!), Slot(cmp.Arg1!), kind));
+        }
+
+        void EmitJptToBlock(int cond, SsaBlock target) => EmitJump(EcsOpcode.Jpt, cond, FixJptBlock, target);
+        void EmitJpfToBlock(int cond, SsaBlock target) => EmitJump(EcsOpcode.Jpf, cond, FixJpfBlock, target);
+        void EmitJmpToLabel(int label) => EmitJump(EcsOpcode.Jmp, 0, FixJmpLabel, label);
+
+        void EmitJump(EcsOpcode op, int cond, int kind, object target)
+        {
+            _fixups.Add(new Fixup(_code.Count, kind, target));
+            // 偏移占位 0，Patch 统一回填（内存单位 = 相对指令下标；字节换算在 InstructionCodec.Project）
+            Emit(new EcsInstruction(op, cond, 0, 0, 0, 0));
+        }
 
         // ---- 主流程 ----
 
@@ -290,16 +375,19 @@ public static partial class BytecodeEncoder
             EmitBlocks();
             Patch();
 
-            if (_poolNext > 255)
-                throw Fail($"帧槽位超出 255 上限: {_poolNext}");
+            if (_poolNext > EcsRegisters.MaxRegisters)
+                throw Fail($"寄存器溢出：函数 '{_symbol.Name}' 的寄存器需求 {_poolNext} 超过帧上限 {EcsRegisters.MaxRegisters}（拆分函数或简化深表达式）");
+
             Result = new EcsFunction
             {
                 Name = _symbol.Name,
                 Module = _module,
                 NParams = _symbol.Parameters.Length,
+                // 帧长 = 寄存器高水位（每函数栈窗口）：调用时按此开窗，
+                // 内联器 fresh 块基址与资源档案同源
                 NSlots = _poolNext,
                 HasReturn = !_symbol.ReturnType.Equals(ScriptType.Void),
-                Code = _code,
+                Instructions = _code,
             };
             var lineTable = new List<int>(_linePcs.Count * 2);
             for (int i = 0; i < _linePcs.Count; i++)
@@ -310,7 +398,7 @@ public static partial class BytecodeEncoder
             Result.LineTable = lineTable;
         }
 
-        /// <summary>记录发射行号（稀疏表：仅行变化时追加 (pc, line)；0 行未知则继承上一登记）。</summary>
+        /// <summary>记录发射行号（稀疏表：仅行变化时追加 (指令下标, line)；0 行未知则继承上一登记）。</summary>
         void SetEmitLine(SsaValue? v)
         {
             var line = v?.Line ?? 0;
@@ -323,12 +411,28 @@ public static partial class BytecodeEncoder
 
         // ---- 块发射 ----
 
+        /// <summary>块发射序（= _fn.Blocks 表序）：尾跳转消除的「下一块」判定依据。</summary>
+        readonly Dictionary<SsaBlock, int> _blockOrder = new();
+
         void EmitBlocks()
         {
+            for (int i = 0; i < _fn.Blocks.Count; i++)
+                _blockOrder[_fn.Blocks[i]] = i;
             foreach (var block in _fn.Blocks)
             {
+                _emittingBlock = block;
                 _blockStart[block] = _code.Count;
                 var info = Info(block);
+
+                // 循环不变量外提常量：preheader 块首物化一次（专属槽已在 AssignSlots 定槽；
+                // 支配性保证运行期先于循环内任何读取）
+                if (_hoistedConsts.TryGetValue(block, out var hoisted))
+                {
+                    if (Environment.GetEnvironmentVariable("ECX_HOIST_TRACE") == "1")
+                        Console.Error.WriteLine($"[hoist-emit-run] b{block.Id} 发射 {hoisted.Count} 条 (fn={_fn.Symbol.Name})");
+                    foreach (var c in hoisted)
+                        EmitLoadConst(c);
+                }
 
                 // 块首惰性物化本块引用的常量（含 phi 臂读取）——每块独立池槽
                 foreach (var c in info.Consts)
@@ -341,11 +445,14 @@ public static partial class BytecodeEncoder
                 {
                     if (!IsDirectlyEmitted(inst.Op))
                         continue;   // 终结符/标记由 EmitTerminator 处理；常量占位由块首按需物化
+                    if (_fusedCmp.Contains(inst))
+                        continue;   // P2′：比较已融合进终结符 CmpJ，不落槽发射
                     // 回放登记期推导的结算计划：先结算操作数末次读取（槽位可被结果复用），再为块内结果取槽
                     if (_instReleases.TryGetValue(inst, out var releases))
                         foreach (var v in releases)
                             ReleaseDying(block, v);
-                    if (_pooled.Contains(inst))
+                    // 池化结果取槽；读取点先行按需分配过的（发射序 ≠ 支配序）沿用已有槽
+                    if (_pooled.Contains(inst) && !_slots.ContainsKey(inst))
                         _slots[inst] = PoolAlloc();
                     EmitInst(inst);
                 }
@@ -354,8 +461,17 @@ public static partial class BytecodeEncoder
 #if DEBUG
             foreach (var kv in _useInfo)
                 foreach (var uc in kv.Value.UseCount)
-                    if (uc.Value != 0 && _pooled.Contains(uc.Key))
-                        Console.Error.WriteLine($"[slots] 未结算: 块{kv.Key.Id} v{uc.Key.Id} {uc.Key.Op} remain={uc.Value} pooled={_pooled.Contains(uc.Key)}");
+                {
+                    if (uc.Key.IsConstant)
+                    {
+                        // 常量：块内计数归零结算
+                        if (uc.Value != 0 && _pooled.Contains(uc.Key))
+                            Console.Error.WriteLine($"[slots] 未结算: 块{kv.Key.Id} v{uc.Key.Id} {uc.Key.Op} remain={uc.Value} pooled={_pooled.Contains(uc.Key)}");
+                    }
+                    // 非常量池化值：全函数剩余读取计数归零结算
+                    else if (_pooled.Contains(uc.Key) && _releaseLeft.TryGetValue(uc.Key, out var left) && left != 0)
+                        Console.Error.WriteLine($"[slots] 未结算: v{uc.Key.Id} {uc.Key.Op} remain={left}");
+                }
 #endif
         }
 
@@ -368,8 +484,31 @@ public static partial class BytecodeEncoder
                     ReleaseDying(block, v);
         }
 
+        /// <summary>目标块是否为当前块的下一发射块（P1a 尾跳转消除依据）：
+        /// 直落进下一块的发射输出 = 逐条执行它的块首副本/指令，语义即跳转本身。</summary>
+        bool NextIsBlock(SsaBlock block, SsaBlock target)
+            => _blockOrder.TryGetValue(target, out var o) && _blockOrder[block] + 1 == o;
+
         void EmitTerminatorShape(SsaBlock block)
         {
+            // ForStep（FOR 快速路径尾块）：终结符即指令本身——A/B 取条件操作数槽，C 由 fixup 回填回边偏移；
+            // 不等分支：i==upper 落入下一布局块（FalseSuccessor=end，创建序相邻）
+            if (block.BranchCondition is { Op: SsaOp.ForStep } forStep)
+            {
+                // ForStep src, limit, dst, exit：tmp=src+1 写入 dst；tmp>limit → 跳 end（$i 保持 ==upper）；
+                // 否则落入 body 的 arm 副本（携带新值）+ 回边 Jmp。
+                // end 的 arm 副本（旧值 == upper）须在 ForStep 前发射：出口路径的最后一次拷贝即正确值
+                var t = block.TrueSuccessor!;
+                var f = block.FalseSuccessor!;
+                if (f.Phis.Count > 0 && f.Predecessors.Contains(block))
+                    EmitEdgeCopies(f, block);
+                EmitFixForStep(Slot(forStep.Arg0!), Slot(forStep.Arg1!), Slot(forStep), f);
+                if (t.Phis.Count > 0 && t.Predecessors.Contains(block))
+                    EmitEdgeCopies(t, block);
+                EmitJmpToBlock(t);
+                return;
+            }
+
             if (block.IsReturn)
             {
                 SsaValue? retVal = null;
@@ -384,7 +523,10 @@ public static partial class BytecodeEncoder
 
             if (block.BranchCondition != null)
             {
-                var cond = Slot(block.BranchCondition);
+                var condVal = block.BranchCondition;
+                bool fused = _fusedCmp.Contains(condVal);
+                int kind = fused ? CmpJKind(condVal.Op)!.Value : -1;
+                int cond = fused ? -1 : Slot(condVal);   // 融合比较不落槽，Slot 查表必炸
                 var t = block.TrueSuccessor!;
                 var f = block.FalseSuccessor!;
                 bool tPhi = t.Phis.Count > 0 && t.Predecessors.Contains(block);
@@ -393,40 +535,64 @@ public static partial class BytecodeEncoder
                 if (t == f)
                 {
                     if (tPhi) EmitEdgeCopies(t, block);   // 防御：只发一份（A-03）
-                    EmitJmpToBlock(t);
+                    if (!NextIsBlock(block, t))           // 尾跳转消除：目标即下一发射块 → 直落
+                        EmitJmpToBlock(t);
                 }
                 else if (!tPhi && !fPhi)
                 {
-                    EmitJptToBlock(cond, t);
-                    EmitJpfToBlock(cond, f);
+                    // 单跳转形态（P1a）：某后继为下一发射块时，直落承担该臂，只发另一臂的条件跳转
+                    if (NextIsBlock(block, t) && !NextIsBlock(block, f))
+                    {
+                        if (fused) EmitCmpJToBlock(condVal, InvertCmpJKind(kind), f);   // 不成立才跳 f
+                        else EmitJpfToBlock(cond, f);
+                    }
+                    else if (NextIsBlock(block, f) && !NextIsBlock(block, t))
+                    {
+                        if (fused) EmitCmpJToBlock(condVal, kind, t);
+                        else EmitJptToBlock(cond, t);
+                    }
+                    else
+                    {
+                        if (fused) EmitCmpJToBlock(condVal, kind, t);
+                        else EmitJptToBlock(cond, t);
+                        if (fused) EmitCmpJToBlock(condVal, InvertCmpJKind(kind), f);
+                        else EmitJpfToBlock(cond, f);
+                    }
                 }
                 else if (tPhi && !fPhi)
                 {
                     int skip = NewLabel();
-                    EmitFixJpf(cond, skip);
+                    if (fused) EmitCmpJToLabel(condVal, InvertCmpJKind(kind), skip);
+                    else EmitFixJpf(cond, skip);
                     EmitEdgeCopies(t, block);
-                    EmitJmpToBlock(t);
+                    EmitJmpToBlock(t);   // mid 跳转不可消除：直落会掉进 skip 后的 f 臂
                     MarkLabel(skip);
-                    EmitJmpToBlock(f);
+                    if (!NextIsBlock(block, f))
+                        EmitJmpToBlock(f);
                 }
                 else if (!tPhi && fPhi)
                 {
                     int skip = NewLabel();
-                    EmitFixJpt(cond, skip);
+                    if (fused) EmitCmpJToLabel(condVal, kind, skip);
+                    else EmitFixJpt(cond, skip);
                     EmitEdgeCopies(f, block);
-                    EmitJmpToBlock(f);
+                    EmitJmpToBlock(f);   // mid 跳转不可消除：同上
                     MarkLabel(skip);
-                    EmitJmpToBlock(t);
+                    if (!NextIsBlock(block, t))
+                        EmitJmpToBlock(t);
                 }
                 else
                 {
                     int skip = NewLabel();
-                    EmitFixJpf(cond, skip);
+                    if (fused) EmitCmpJToLabel(condVal, InvertCmpJKind(kind), skip);
+                    else EmitFixJpf(cond, skip);
                     EmitEdgeCopies(t, block);
-                    EmitJmpToBlock(t);
+                    if (!NextIsBlock(block, t))
+                        EmitJmpToBlock(t);
                     MarkLabel(skip);
                     EmitEdgeCopies(f, block);
-                    EmitJmpToBlock(f);
+                    if (!NextIsBlock(block, f))
+                        EmitJmpToBlock(f);
                 }
                 return;
             }
@@ -436,7 +602,8 @@ public static partial class BytecodeEncoder
                 var j = block.JumpTarget;
                 if (j.Phis.Count > 0 && j.Predecessors.Contains(block))
                     EmitEdgeCopies(j, block);
-                EmitJmpToBlock(j);
+                if (!NextIsBlock(block, j))   // 尾跳转消除
+                    EmitJmpToBlock(j);
                 return;
             }
 
@@ -444,8 +611,8 @@ public static partial class BytecodeEncoder
         }
 
         // 条件跳转到标签：Kind 必须用 Label 变体（Patch 按 Kind 区分块/标签转型）
-        void EmitFixJpf(int cond, int label) { _fixups.Add(new Fixup(_code.Count, FixJpfLabel, label)); Emit(Word(EcsOpcode.Jpf, cond, 0, 0)); }
-        void EmitFixJpt(int cond, int label) { _fixups.Add(new Fixup(_code.Count, FixJptLabel, label)); Emit(Word(EcsOpcode.Jpt, cond, 0, 0)); }
+        void EmitFixJpf(int cond, int label) => EmitJump(EcsOpcode.Jpf, cond, FixJpfLabel, label);
+        void EmitFixJpt(int cond, int label) => EmitJump(EcsOpcode.Jpt, cond, FixJptLabel, label);
 
         /// <summary>出边 φ 副本发射（Sessa 并行拷贝见 EmitParallelCopy）。
         /// 臂读取的结算不在本方法——统一由终结符结算计划回放（含死 φ 臂），
@@ -510,41 +677,27 @@ public static partial class BytecodeEncoder
             {
                 int target = fixup.Kind switch
                 {
-                    FixJmpBlock or FixJptBlock or FixJpfBlock => _blockStart[(SsaBlock)fixup.Target],
+                    FixJmpBlock or FixJptBlock or FixJpfBlock or FixForStepBlock or FixCmpJBlock => _blockStart[(SsaBlock)fixup.Target],
                     _ => _labels[(int)fixup.Target],
                 };
-                int offset = target - (fixup.WordIdx + 1);
-                uint word = _code[fixup.WordIdx];
+                int offset = target - (fixup.InsIdx + 1);
+                var word = _code[fixup.InsIdx];
 
-                switch (fixup.Kind)
-                {
-                    case FixJmpBlock or FixJmpLabel:
-                        {
-                            if (offset < -8388608 || offset > 8388607)
-                                throw Fail("Jmp 偏移超出 s24（函数过大）");
-                            _code[fixup.WordIdx] = (word & 0xFF) | (uint)(offset & 0xFFFFFF) << 8;
-                            break;
-                        }
-                    case FixJptBlock or FixJpfBlock or FixJptLabel or FixJpfLabel:
-                        {
-                            if (offset < short.MinValue || offset > short.MaxValue)
-                                throw Fail("条件跳转偏移超出 s16（函数过大，A-04）");
-                            _code[fixup.WordIdx] = (word & 0xFFFF) | (uint)(offset & 0xFFFF) << 16;
-                            break;
-                        }
-                }
+                _code[fixup.InsIdx] = fixup.Kind == FixForStepBlock
+                    ? word with { Jump = offset }
+                    : word with { Jump = offset };
             }
         }
 
         sealed class Fixup
         {
-            public readonly int WordIdx;
+            public readonly int InsIdx;
             public readonly int Kind;
             public readonly object Target;
 
-            public Fixup(int wordIdx, int kind, object target)
+            public Fixup(int insIdx, int kind, object target)
             {
-                WordIdx = wordIdx; Kind = kind; Target = target;
+                InsIdx = insIdx; Kind = kind; Target = target;
             }
         }
 

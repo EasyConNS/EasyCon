@@ -12,20 +12,22 @@ namespace EasyCon.Tests.Bytecode;
 [TestFixture]
 public class InstructionFormatTests
 {
-    static readonly EcsOpcode[] Vm2ExtOps =
+    /// <summary>v3 带 4B 数据字的指令（8B）：EXT 数据语义 8 条 + ForStep/CmpJ 跳转字 + WaitI/KeyI 时长字。</summary>
+    static readonly EcsOpcode[] Vm2WordOps =
     [
         EcsOpcode.Call, EcsOpcode.CallN, EcsOpcode.NewArrV, EcsOpcode.Slice,
         EcsOpcode.GetFI, EcsOpcode.PutFI, EcsOpcode.StickP, EcsOpcode.StickPv,
+        EcsOpcode.ForStep, EcsOpcode.CmpJ, EcsOpcode.WaitI, EcsOpcode.KeyI,
     ];
 
     [Test]
     public void ExtOps_ExactlyMatchVm2Spec()
     {
-        var withExt = new List<EcsOpcode>();
+        var withWord = new List<EcsOpcode>();
         foreach (var op in Enum.GetValues<EcsOpcode>())
             if (EcsFormat.ExtWords(op) > 0)
-                withExt.Add(op);
-        Assert.That(withExt, Is.EquivalentTo(Vm2ExtOps));
+                withWord.Add(op);
+        Assert.That(withWord, Is.EquivalentTo(Vm2WordOps));
     }
 
     [Test]
@@ -33,7 +35,7 @@ public class InstructionFormatTests
     {
         foreach (var op in Enum.GetValues<EcsOpcode>())
         {
-            int expected = EcsFormat.Get(op) == EcsInsFormat.Ext ? 2 : 1;
+            int expected = EcsFormat.Get(op) is EcsInsFormat.Ext or EcsInsFormat.IabcJ ? 2 : 1;
             Assert.That(EcsFormat.WordCount(op), Is.EqualTo(expected), $"{op} 总字数");
             Assert.That(EcsFormat.ExtWords(op), Is.EqualTo(expected - 1), $"{op} EXT 数据字数");
         }
@@ -52,6 +54,8 @@ public class InstructionFormatTests
             [EcsOpcode.PutFI] = EcsExtKind.FieldElemSlot,
             [EcsOpcode.StickP] = EcsExtKind.StickDuration,
             [EcsOpcode.StickPv] = EcsExtKind.StickXY,
+            [EcsOpcode.WaitI] = EcsExtKind.WaitDuration,
+            [EcsOpcode.KeyI] = EcsExtKind.KeyDuration,
         };
         foreach (var op in Enum.GetValues<EcsOpcode>())
         {
@@ -69,10 +73,16 @@ public class InstructionFormatTests
         var abx = new[]
         {
             EcsOpcode.LoadK, EcsOpcode.LoadG, EcsOpcode.StoreG, EcsOpcode.NewArrE,
-            EcsOpcode.NewSt, EcsOpcode.WaitI, EcsOpcode.KeyI, EcsOpcode.Img,
+            EcsOpcode.NewSt, EcsOpcode.Img,
         };
         foreach (var op in abx)
             Assert.That(EcsFormat.Get(op), Is.EqualTo(EcsInsFormat.ABx), $"{op}");
+
+        // v3：WaitI/KeyI 时长进数据字（Ext），ForStep/CmpJ 第 4 操作数进数据字（IabcJ）
+        Assert.That(EcsFormat.Get(EcsOpcode.WaitI), Is.EqualTo(EcsInsFormat.Ext));
+        Assert.That(EcsFormat.Get(EcsOpcode.KeyI), Is.EqualTo(EcsInsFormat.Ext));
+        Assert.That(EcsFormat.Get(EcsOpcode.ForStep), Is.EqualTo(EcsInsFormat.IabcJ));
+        Assert.That(EcsFormat.Get(EcsOpcode.CmpJ), Is.EqualTo(EcsInsFormat.IabcJ));
 
         Assert.That(EcsFormat.Get(EcsOpcode.LoadI), Is.EqualTo(EcsInsFormat.AsBx));
         Assert.That(EcsFormat.Get(EcsOpcode.Jpt), Is.EqualTo(EcsInsFormat.AsBx));

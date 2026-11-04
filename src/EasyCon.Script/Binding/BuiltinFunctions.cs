@@ -15,10 +15,19 @@ public static class BuiltinFunctions
     public static readonly FunctionSymbol Amiibo = new("AMIIBO", [new("index", ScriptType.Int)], ScriptType.Void);
     public static readonly FunctionSymbol Beep = new("BEEP", [new("freq", ScriptType.Int), new("duration", ScriptType.Int)], ScriptType.Void);
     public static readonly FunctionSymbol Env = new("ENV", [new("name", ScriptType.String)], ScriptType.String);
+    // --- 实用工具（std 实现，热路径打洞加速：std 定 API/语义，宿主只做加速器） ---
     public static readonly FunctionSymbol StrEncode = new("ENCODE",
         [new("array", ScriptType.ArrayOf(ScriptType.Byte)), new("type", ScriptType.String, hasDefault: true, defaultValue: "utf8")],
         ScriptType.String);
     public static readonly FunctionSymbol Jq = new("JQ",
+        [new("json", ScriptType.String), new("query", ScriptType.String)],
+        ScriptType.String);
+    /// <summary>ENCODE 打洞：UTF-8/UTF-16 多字节解码语义与性能由宿主保证（std 无 CHR 原语不可自实现）。</summary>
+    public static readonly FunctionSymbol EncodeHole = new("__ENCODE__",
+        [new("array", ScriptType.ArrayOf(ScriptType.Byte)), new("type", ScriptType.String)],
+        ScriptType.String);
+    /// <summary>JQ 打洞：JSON 解析加速核；查询语法演化走 std JQ 层。</summary>
+    public static readonly FunctionSymbol JqHole = new("__JQ__",
         [new("json", ScriptType.String), new("query", ScriptType.String)],
         ScriptType.String);
 
@@ -29,7 +38,7 @@ public static class BuiltinFunctions
     public static readonly FunctionSymbol FClose = new("FCLOSE", [new("handle", ScriptType.Ptr)], ScriptType.Void);
     public static readonly FunctionSymbol FEof = new("FEOF", [new("handle", ScriptType.Ptr)], ScriptType.Bool);
 
-    // --- 文件 IO（高级便捷） ---
+    // --- 文件 IO（高级便捷：std 组合实现 READFILE/WRITEFILE/APPENDFILE，见 StdLib） ---
     public static readonly FunctionSymbol ReadFile = new("READFILE", [new("path", ScriptType.String)], ScriptType.String);
     public static readonly FunctionSymbol WriteFile = new("WRITEFILE", [new("path", ScriptType.String), new("data", ScriptType.String)], ScriptType.Void);
     public static readonly FunctionSymbol AppendFile = new("APPENDFILE", [new("path", ScriptType.String), new("data", ScriptType.String)], ScriptType.Void);
@@ -56,27 +65,96 @@ public static class BuiltinFunctions
     // --- OCR 置信度查询（普通 callable，注册到 root scope）---
     public static readonly FunctionSymbol OcrConf = new("OCR_CONF", [], ScriptType.Int);
 
-    // --- ONNX 推理实验函数（L3 名表，宿主能力 IInference；Vision 特征位，P5）。
-    //     纯标量协议：原生边界（EcxNativeContext）不携带数组，输出经 NET_OUT 逐元素读取。
-    public static readonly FunctionSymbol NetLoad = new("NET_LOAD", [new("path", ScriptType.String)], ScriptType.Int);
-    public static readonly FunctionSymbol NetRun = new("NET_RUN",
-        [new("net", ScriptType.Int), new("input", ScriptType.Any)], ScriptType.Int);
+    public static readonly FunctionSymbol AudioLoad = new("AUDIO_LOAD", [new("labelName", ScriptType.String)], ScriptType.Void);
+    public static readonly FunctionSymbol AudioScore = new("AUDIO_SCORE", [new("labelName", ScriptType.String)], ScriptType.Int);
+    public static readonly FunctionSymbol AudioUnload = new("AUDIO_UNLOAD", [new("labelName", ScriptType.String)], ScriptType.Void);
+
+    // --- ONNX 推理函数（L3 名表，宿主能力 IInference；Vision 特征位）。
+    //     纯标量协议：原生边界（EcxNativeContext）不携带数组，大数组驻留宿主，输出经 NET_OUT 逐元素读取。
+    public static readonly FunctionSymbol NetLoad = new("NET_LOAD", [new("path", ScriptType.String)], ScriptType.Ptr);
     public static readonly FunctionSymbol NetOut = new("NET_OUT", [new("index", ScriptType.Int)], ScriptType.Double);
+
+    // --- NET 句柄族：大数组驻留宿主侧，脚本只见句柄（原生边界纯标量协议不变）。
+    //     __NET_IMAGE__ 为洞（入参 base64 图像，由 StdLib 包装出采集/显式两种形态）；
+    //     __NET_IMAGE_FILE__ 为洞（入参本地文件路径，由 StdLib 包装 NET_IMAGE_FILE）。
+    public static readonly FunctionSymbol NetImageHole = new("__NET_IMAGE__",
+        [new("image", ScriptType.String), new("width", ScriptType.Int), new("height", ScriptType.Int), new("mode", ScriptType.String)],
+        ScriptType.Ptr);
+    public static readonly FunctionSymbol NetImageFileHole = new("__NET_IMAGE_FILE__",
+        [new("path", ScriptType.String), new("width", ScriptType.Int), new("height", ScriptType.Int), new("mode", ScriptType.String)],
+        ScriptType.Ptr);
+    public static readonly FunctionSymbol NetRunH = new("NET_RUNH",
+        [new("net", ScriptType.Ptr), new("tensor", ScriptType.Ptr)], ScriptType.Int);
+    public static readonly FunctionSymbol NetScale = new("NET_SCALE",
+        [new("tensor", ScriptType.Ptr), new("scale", ScriptType.Double), new("offset", ScriptType.Double)], ScriptType.Ptr);
+    public static readonly FunctionSymbol NetFree = new("NET_FREE", [new("handle", ScriptType.Ptr)], ScriptType.Int);
+    public static readonly FunctionSymbol NetUnload = new("NET_UNLOAD", [new("net", ScriptType.Ptr)], ScriptType.Int);
+    public static readonly FunctionSymbol NetArgMax = new("NET_ARGMAX", [new("row", ScriptType.Int)], ScriptType.Int);
+    public static readonly FunctionSymbol NetRows = new("NET_ROWS", [], ScriptType.Int);
+    /// <summary>逐通道归一化：(x - mean[c]) / std[c]，通道号由宿主按张量形状推断。
+    /// /255 量程折叠留给 NET_SCALE 链式组合——每步都是通用原语，预处理策略留在脚本层。</summary>
+    public static readonly FunctionSymbol NetNorm = new("NET_NORM",
+        [new("tensor", ScriptType.Ptr), new("mean", ScriptType.ArrayOf(ScriptType.Double)), new("std", ScriptType.ArrayOf(ScriptType.Double))],
+        ScriptType.Ptr);
+    /// <summary>标签表：分类结果下标 → 类别名（纯字符串处理，不挂 Vision 特征位）。</summary>
+    public static readonly FunctionSymbol NetLabels = new("NET_LABELS", [new("path", ScriptType.String)], ScriptType.Int);
+    public static readonly FunctionSymbol NetLabel = new("NET_LABEL", [new("index", ScriptType.Int)], ScriptType.String);
+
+    // --- YOLO26 端到端检测（输出协议 [1,300,6] = x1,y1,x2,y2,conf,cls，letterbox 空间；
+    //     argmax 已由模型内部完成）。配方在 std YOLO_DETECT；访问器读最近解码缓存。
+    /// <summary>YOLO 解码洞：按置信度过滤 + letterbox→屏幕逆映射 + 内容区裁剪
+    /// （Ultralytics predict 同约定；几何参数由 std 配方传入，内容区尺寸取自最近
+    /// "letter" 模式 __NET_IMAGE__ 线程槽），缓存命中列表。输出缺失或形状非 [·,·,6] 返回 -1。</summary>
+    public static readonly FunctionSymbol YoloDecodeHole = new("__YOLO_DECODE__",
+        [new("thresh", ScriptType.Double), new("scale", ScriptType.Double), new("padX", ScriptType.Double),
+         new("padY", ScriptType.Double), new("roiX", ScriptType.Int), new("roiY", ScriptType.Int)],
+        ScriptType.Int);
+    public static readonly FunctionSymbol YoloCount = new("YOLO_COUNT", [], ScriptType.Int);
+    public static readonly FunctionSymbol YoloCls = new("YOLO_CLS", [new("index", ScriptType.Int)], ScriptType.Int);
+    public static readonly FunctionSymbol YoloScore = new("YOLO_SCORE", [new("index", ScriptType.Int)], ScriptType.Double);
+    public static readonly FunctionSymbol YoloX1 = new("YOLO_X1", [new("index", ScriptType.Int)], ScriptType.Int);
+    public static readonly FunctionSymbol YoloY1 = new("YOLO_Y1", [new("index", ScriptType.Int)], ScriptType.Int);
+    public static readonly FunctionSymbol YoloX2 = new("YOLO_X2", [new("index", ScriptType.Int)], ScriptType.Int);
+    public static readonly FunctionSymbol YoloY2 = new("YOLO_Y2", [new("index", ScriptType.Int)], ScriptType.Int);
+
+    // --- PP-OCR det 文本找框（det 全图一次 → 概率图 → 连通域 → 框；配方 std PP_DET_FIND）。
+    /// <summary>det 找框洞：阈值二值化 + 连通域外轮廓，逆映射 screen = det/scale + roi 后
+    /// ±2px unclip，阅读序（y 优先 x）缓存。宿主不做形状假设——概率图几何 (mapW×mapH)
+    /// 由 std 配方传入；数据不足（输出与几何不符）返回 -1。</summary>
+    public static readonly FunctionSymbol DetBoxesHole = new("__DET_BOXES__",
+        [new("thresh", ScriptType.Double), new("scale", ScriptType.Double),
+         new("roiX", ScriptType.Int), new("roiY", ScriptType.Int),
+         new("mapW", ScriptType.Int), new("mapH", ScriptType.Int)],
+        ScriptType.Int);
+    public static readonly FunctionSymbol DetCount = new("DET_COUNT", [], ScriptType.Int);
+    public static readonly FunctionSymbol DetX = new("DET_X", [new("index", ScriptType.Int)], ScriptType.Int);
+    public static readonly FunctionSymbol DetY = new("DET_Y", [new("index", ScriptType.Int)], ScriptType.Int);
+    public static readonly FunctionSymbol DetW = new("DET_W", [new("index", ScriptType.Int)], ScriptType.Int);
+    public static readonly FunctionSymbol DetH = new("DET_H", [new("index", ScriptType.Int)], ScriptType.Int);
+
 
     // --- 采集卡打洞函数（lib-only scope 可见，不放入 root scope）---
 
     public static readonly FunctionSymbol CaptureHole = new("__CAPTURE__",
         [new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int)],
         ScriptType.String);
-    public static readonly FunctionSymbol OcrHole = new("__OCR__",
+    /// <summary>Tesseract OCR 洞（脚本 OCR 能力面对接的唯一引擎；ppocr 走 NET 族 + std 配方）。</summary>
+    public static readonly FunctionSymbol TesseractHole = new("__TESSERACT__",
         [new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int), new("lang", ScriptType.String)],
         ScriptType.String);
     public static readonly FunctionSymbol RoiHole = new("__ROI__",
         [new("image", ScriptType.String), new("x", ScriptType.Int), new("y", ScriptType.Int), new("width", ScriptType.Int), new("height", ScriptType.Int)],
         ScriptType.String);
-    public static readonly FunctionSymbol OcrInitHole = new("__OCR_INIT__",
+    /// <summary>Tesseract 初始化洞（tessdata 目录语义随签名，Tesseract 专属）。</summary>
+    public static readonly FunctionSymbol TesseractInitHole = new("__TESSERACT_INIT__",
         [new("lang", ScriptType.String), new("dataPath", ScriptType.String), new("engineMode", ScriptType.String), new("psmode", ScriptType.String)],
         ScriptType.Bool);
+    /// <summary>CTC 贪心折叠洞：读最近一次 NET_RUNH 输出 [1,T,C]，逐帧 argmax 后按
+    /// blank 重置 + 连续去重 + charset 窗口过滤折叠为字符串。通用原语（不感知 ppocr），
+    /// 配方语义（ppocr 字典下标/数字子集）由 std CTC_FOLD 传入。</summary>
+    public static readonly FunctionSymbol CtcFoldHole = new("__CTC_FOLD__",
+        [new("blank", ScriptType.Int), new("charset", ScriptType.String), new("base", ScriptType.Int)],
+        ScriptType.String);
 
     // --- 路由分类（内置函数实现的单一事实源，docs/VM2.md §7） ---
 
@@ -120,13 +198,14 @@ public static class BuiltinFunctions
         new(Length, BuiltinRoute.Intrinsic, McuAvailable: true),
         new(StrConvert, BuiltinRoute.Intrinsic, McuAvailable: true),
         new(IntConvert, BuiltinRoute.Intrinsic, McuAvailable: true),
-        new(CaptureHole, BuiltinRoute.Intrinsic),
-        new(OcrHole, BuiltinRoute.Intrinsic),
-        new(RoiHole, BuiltinRoute.Intrinsic),
-        new(OcrInitHole, BuiltinRoute.Intrinsic),
+        new(CaptureHole, BuiltinRoute.NativeName),
+        new(TesseractHole, BuiltinRoute.NativeName),
+        new(RoiHole, BuiltinRoute.NativeName),
+        new(TesseractInitHole, BuiltinRoute.NativeName),
+        new(CtcFoldHole, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
         // L2 平台 syscall（McuAvailable = ecs_main.c h_syscall 实测语义：
-        // FWRITE 行断协议 / FREAD 空串 / ALERT-BEEP-AMIIBO no-op / ARG-ENV 可用 /
-        // APP-TIME 恒默认 / OCR_CONF 与文件族其余未实现 → ERR）
+        // FWRITE 行断协议 / FREAD 空串 / ALERT-BEEP-AMIIBO no-op / ARG-ENV 可用 / APP-TIME 恒默认；
+        // 未实现的 OCR_CONF/文件族其余 → S-21 缺省值表降级，strict_caps 恢复 ERR）
         new(Alert, BuiltinRoute.Syscall, McuAvailable: true),
         new(Arg, BuiltinRoute.Syscall, McuAvailable: true),
         new(Env, BuiltinRoute.Syscall, McuAvailable: true),
@@ -138,18 +217,47 @@ public static class BuiltinFunctions
         new(FWrite, BuiltinRoute.Syscall, EcsImageFeatures.File, McuAvailable: true),
         new(FClose, BuiltinRoute.Syscall, EcsImageFeatures.File),
         new(FEof, BuiltinRoute.Syscall, EcsImageFeatures.File),
-        new(ReadFile, BuiltinRoute.Syscall, EcsImageFeatures.File),
-        new(WriteFile, BuiltinRoute.Syscall, EcsImageFeatures.File),
-        new(AppendFile, BuiltinRoute.Syscall, EcsImageFeatures.File),
         new(FileExists, BuiltinRoute.Syscall, EcsImageFeatures.File),
-        // L3 名表原生（MCU native=NULL → 不可用）
-        new(StrEncode, BuiltinRoute.NativeName),
-        new(Jq, BuiltinRoute.NativeName),
+        // L3 名表原生（准入：能力洞 + std 加速洞；MCU native=NULL → 不可用）
+        new(EncodeHole, BuiltinRoute.NativeName),
+        new(JqHole, BuiltinRoute.NativeName),
+        new(AudioLoad, BuiltinRoute.NativeName, EcsImageFeatures.Audio),
+        new(AudioScore, BuiltinRoute.NativeName, EcsImageFeatures.Audio),
+        new(AudioUnload, BuiltinRoute.NativeName, EcsImageFeatures.Audio),
         new(NetLoad, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
-        new(NetRun, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
         new(NetOut, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
-        // stdlib 源码（PRINT→FWRITE）
+        new(NetImageHole, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(NetRunH, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(NetScale, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(NetFree, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(NetUnload, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(NetArgMax, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(NetRows, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(NetNorm, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(NetImageFileHole, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(NetLabels, BuiltinRoute.NativeName),
+        new(NetLabel, BuiltinRoute.NativeName),
+        new(YoloDecodeHole, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(YoloCount, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(YoloCls, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(YoloScore, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(YoloX1, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(YoloY1, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(YoloX2, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(YoloY2, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(DetBoxesHole, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(DetCount, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(DetX, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(DetY, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(DetW, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        new(DetH, BuiltinRoute.NativeName, EcsImageFeatures.Vision),
+        // stdlib 源码（PRINT→FWRITE；实用工具 std 实现——JQ/ENCODE 打洞、文件便捷件组合）
         new(Print, BuiltinRoute.StdlibSource, McuAvailable: true),
+        new(StrEncode, BuiltinRoute.StdlibSource),
+        new(Jq, BuiltinRoute.StdlibSource),
+        new(ReadFile, BuiltinRoute.StdlibSource, EcsImageFeatures.File),
+        new(WriteFile, BuiltinRoute.StdlibSource, EcsImageFeatures.File),
+        new(AppendFile, BuiltinRoute.StdlibSource, EcsImageFeatures.File),
     ];
 
     /// <summary>符号 → 路由（由清单派生，binder/encoder 消费）。</summary>
@@ -165,22 +273,27 @@ public static class BuiltinFunctions
 
     // --- 采集卡能力追踪 ---
 
-    private static readonly HashSet<FunctionSymbol> CaptureRequiringFunctions = [CaptureHole, OcrHole, RoiHole, OcrInitHole];
+    private static readonly HashSet<FunctionSymbol> CaptureRequiringFunctions = [CaptureHole, TesseractHole, RoiHole, TesseractInitHole];
     public const string CapturePlaceholder = "__capture__";
     public static bool RequiresCapture(FunctionSymbol fn) => CaptureRequiringFunctions.Contains(fn);
 
     // --- 注册到 root scope 的函数列表 ---
 
     private static readonly FunctionSymbol[] All =
-        [Wait, Alert, Rand, Amiibo, Beep, Env, Append, Length, StrEncode, StrConvert, IntConvert, Jq, Arg, OcrConf,
-         FOpen, FRead, FWrite, FClose, FEof, ReadFile, WriteFile, AppendFile, FileExists, NetLoad, NetRun, NetOut];
+        [Wait, Alert, Rand, Amiibo, Beep, Env, Append, Length, StrConvert, IntConvert, Arg, OcrConf,
+         FOpen, FRead, FWrite, FClose, FEof, FileExists, NetLoad, NetOut,
+         NetRunH, NetScale, NetFree, NetUnload, NetArgMax, NetRows,
+         NetNorm, NetLabels, NetLabel,
+         YoloCount, YoloCls, YoloScore, YoloX1, YoloY1, YoloX2, YoloY2,
+         DetCount, DetX, DetY, DetW, DetH, AudioLoad, AudioScore, AudioUnload];
 
     internal static IReadOnlyList<FunctionSymbol> GetAll() => All;
 
     public static bool IsBuiltin(FunctionSymbol fn) => All.Contains(fn);
 
-    // --- 采集卡洞函数列表（注册到 lib-only scope + callable）---
+    // --- lib-only 洞函数列表（注册到 lib-only scope + callable；对用户脚本不可见）---
 
-    private static readonly FunctionSymbol[] CaptureHoles = [CaptureHole, OcrHole, RoiHole, OcrInitHole];
-    internal static IReadOnlyList<FunctionSymbol> GetCaptureHoles() => CaptureHoles;
+    private static readonly FunctionSymbol[] LibOnlyHoles =
+        [CaptureHole, TesseractHole, RoiHole, TesseractInitHole, NetImageHole, NetImageFileHole, CtcFoldHole, YoloDecodeHole, DetBoxesHole, EncodeHole, JqHole];
+    internal static IReadOnlyList<FunctionSymbol> GetLibOnlyHoles() => LibOnlyHoles;
 }

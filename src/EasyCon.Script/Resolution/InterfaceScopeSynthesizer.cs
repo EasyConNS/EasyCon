@@ -33,7 +33,7 @@ internal static class InterfaceScopeSynthesizer
 
         // lib 模块可见采集卡洞函数（对齐 v1 libOnlyScope）；main 模块与 v1 一致不注入
         if (includeCaptureHoles)
-            foreach (var hole in Binding.BuiltinFunctions.GetCaptureHoles())
+            foreach (var hole in Binding.BuiltinFunctions.GetLibOnlyHoles())
                 globalScope.TryDeclareFunction(hole);
 
         // ---- 结构体：两遍注册（字段类型可引用其他接口结构体），布局消费端重算 ----
@@ -107,12 +107,25 @@ internal static class InterfaceScopeSynthesizer
         // ---- 函数：非 alias → GlobalScope；alias → 独立 ModuleScope ----
         var moduleScopes = ImmutableDictionary.CreateBuilder<string, BoundScope>(StringComparer.OrdinalIgnoreCase);
         var externalFunctions = new HashSet<FunctionSymbol>();
+        var localFunctions = mainTree.Root.Members
+            .Select(member => member switch
+            {
+                FuncDeclBlock function => (Name: function.Declare.Name.ToUpperInvariant(), Count: function.Declare.Paramters.Length),
+                ExternFuncStmt external => (Name: external.Name.ToUpperInvariant(), Count: external.Parameters.Length),
+                _ => (Name: "", Count: -1),
+            })
+            .Where(function => function.Count >= 0)
+            .ToHashSet();
         foreach (var (iface, alias) in imports)
         {
             var target = alias is null ? globalScope : new BoundScope(globalScope);
             foreach (var f in iface.Functions)
             {
-                var symbol = DeclareExport(target, f, diagnostics);
+                // 本模块自己的同名/同参数数声明优先；把 peer 的重复导出塞进同一
+                // GlobalScope 会让 Binder 把本地函数误当成冲突。AS 导入仍保留独立作用域。
+                if (alias is null && localFunctions.Contains((f.Name.ToUpperInvariant(), f.Params.Count)))
+                    continue;
+                var symbol = DeclareExport(target, f, diagnostics, iface.Name);
                 if (symbol is not null)
                     externalFunctions.Add(symbol);
             }
@@ -130,7 +143,8 @@ internal static class InterfaceScopeSynthesizer
             externalFunctions);
     }
 
-    static FunctionSymbol? DeclareExport(BoundScope scope, ExportedFunction f, DiagnosticBag diagnostics)
+    static FunctionSymbol? DeclareExport(BoundScope scope, ExportedFunction f, DiagnosticBag diagnostics,
+        string sourceModule)
     {
         var parameters = ImmutableArray.CreateBuilder<ParamSymbol>();
         foreach (var p in f.Params)
@@ -151,7 +165,8 @@ internal static class InterfaceScopeSynthesizer
             ? new FunctionSymbol(f.Name, parameters.ToImmutable(), returnType,
                 libraryName: f.ExternLibrary ?? "internal",
                 externalName: f.ExternalName)
-            : new FunctionSymbol(f.Name, parameters.ToImmutable(), returnType);
+            : new FunctionSymbol(f.Name, parameters.ToImmutable(), returnType,
+                originModule: sourceModule);
         symbol.LocalSlotCount = parameters.Count;
         // Declaration 保持 null：EnsureFunctionBodyBound 跳过绑体（Binder.cs:252 既有机制）
 

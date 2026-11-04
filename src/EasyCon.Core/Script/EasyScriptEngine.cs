@@ -16,6 +16,12 @@ public sealed class EasyScriptEngine : IScriptEngine
         return new Session(Compilation.CompileSource(code, options.Compile), options);
     }
 
+    public IScriptSession FromSource(string code, string fileName, ScriptHostOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return new Session(Compilation.CompileSource(code, fileName, options.Compile), options);
+    }
+
     public IScriptSession LoadFile(string path, ScriptHostOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);

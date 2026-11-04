@@ -96,7 +96,7 @@ public class FuzzCrossValidationTests
         if (_vmBinary == null)
             Assert.Ignore($"[seed {seed}] 无 cc 编译器，仅完成解释器侧验证（C VM 侧跳过）");
 
-        var (exitCode, stdout, stderr) = CvmRunner.Run(_vmBinary, EcxWriter.Write(result.Image!), $"fuzz{seed}", _workDir);
+        var (exitCode, stdout, stderr) = CvmRunner.Run(_vmBinary, EcsContainer.WriteImage(result.Image!), $"fuzz{seed}", _workDir);
         Assert.That(exitCode, Is.EqualTo(0),
             $"[seed {seed}] C VM 退出码 {exitCode}；stderr={stderr}\n{source}");
         Assert.That(CvmRunner.SplitLines(stdout), Is.EqualTo(host.Lines),

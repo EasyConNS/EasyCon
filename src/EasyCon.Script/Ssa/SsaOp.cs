@@ -42,11 +42,14 @@ public enum SsaOp : byte
     EqUInt64, NeqUInt64, LtUInt64, LeqUInt64, GtUInt64, GeqUInt64,
     // ---- 比较（bool/string/ptr/byte） ----
     EqBool, NeqBool, EqString, NeqString,
-    EqPtr, NeqPtr,
+    EqPtr, LtPtr, LeqPtr, GtPtr, GeqPtr, NeqPtr,
     EqByte, NeqByte, LtByte, LeqByte, GtByte, GeqByte,
 
     // ---- 逻辑 ----
     LogicNot,
+
+    // ---- 一元取负（对应字节码 NegI/NegD）----
+    NegInt, NegDouble,
 
     // ---- 类型转换 ----
     ConvBoolToInt, ConvByteToInt, ConvIntToUInt,
@@ -92,17 +95,16 @@ public enum SsaOp : byte
     Wait,           // Arg0=duration
     Rand,           // Arg0=max, 返回 [0, max) 随机整数
 
-    // ---- OCR 引擎初始化 ----
-    OcrInit,        // Arg0=lang, Arg1=dataPath, ExtraArgs=[engineMode, psmode], 结果=0/1(bool)
+    // ---- OCR 引擎初始化 ----,        // Arg0=lang, Arg1=dataPath, ExtraArgs=[engineMode, psmode], 结果=0/1(bool)
 
-    // ---- 采集卡打洞函数 ----
-    Capture,        // Arg0=x, ExtraArgs=[y, w, h]
-    Ocr,            // Arg0=x, Arg1=y, ExtraArgs=[w, h, lang]
-    Roi,            // Arg0=image, Arg1=x, ExtraArgs=[y, w, h]
+    // ---- 采集卡打洞函数 ----,        // Arg0=x, ExtraArgs=[y, w, h],            // Arg0=x, Arg1=y, ExtraArgs=[w, h, lang],            // Arg0=image, Arg1=x, ExtraArgs=[y, w, h]
 
     // ---- 运行时 ----
     RuntimeValue,   // AuxSymbol 存 name string（特殊用法）
     ImageLabel,     // AuxSymbol 存 label name
+
+    // ---- FOR 循环融合（ECS opcode ForStep 的 SSA 形态；只作 BranchCondition，不进 Instructions） ----
+    ForStep,        // Arg0=循环变量(槽内自增), Arg1=上限；==上限 → 跳出(FalseSuccessor)，否则 i+=1 落入循环体
 
     Nop,
 }

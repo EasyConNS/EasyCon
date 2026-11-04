@@ -1,0 +1,78 @@
+# ============================================================
+# 宝可梦盒子识别主脚本（火红/叶绿 PC 存储 BOX 选中项）
+# 输出：选中宝可梦 中文名 + 全国图鉴编号 + 等级
+#
+# 运行约定：在脚本项目目录下执行（模型/字典为项目相对路径）：
+#   cd examples/pokemon-box && easycon run main.ecs
+#
+# 采集帧固定 1920x1080。画面位置固定的界面不做找框，直接比例 ROI 三行：
+#   GBA 火红/叶绿盒子界面左侧信息面板位置固定，以 1264x860 基准坐标换算：
+#     名字行 (25,470,440,80)   别名行 (25,555,440,80)
+#     等级行 (170,640,220,78)  —— Lv 之后的纯数字区
+#
+# 模型：models/ppocr/PP-OCRv6_medium_rec.onnx（项目相对路径，不入库）
+# 字典：models/ppocr/ppocrv6_dict.txt
+# 模型代际常数（随资产指定，std 不钉常数）：
+#   _DIGITS_BASE = '0' 的 class 下标（PP-OCRv6 = 33；v5 旧资产 16163）
+#   _REC_H       = rec 输入行高（PP-OCRv6 = 48，输入固定 3x48xW；v5 旧资产按导出配置 32）
+# ============================================================
+
+_DIGITS_BASE = 33
+_REC_H = 48
+_BASEW = 1264
+_BASEH = 860
+$W = 1920
+$H = 1080
+
+# ---- 主流程 ----
+$rec = NET_LOAD("models/ppocr/PP-OCRv6_medium_rec.onnx")
+IF $rec <= 0
+    PRINT "NET_LOAD failed (check models/ppocr/)"
+    RETURN
+ENDIF
+
+# 同帧共享采集：整帧只采一次，各区域坐标相对该帧
+$frame = FRAME()
+$dict = "models/ppocr/ppocrv6_dict.txt"
+
+# 名字行 / 别名行：整字典解码（lib LOOKUP 查表）
+$x1 = 25 * $W / _BASEW
+$y1 = 470 * $H / _BASEH
+$w1 = 440 * $W / _BASEW
+$h1 = 80 * $H / _BASEH
+$t1 = PP_OCR_TEXT($rec, $frame, $x1, $y1, $w1, $h1, $dict, _REC_H)
+
+$x2 = 25 * $W / _BASEW
+$y2 = 555 * $H / _BASEH
+$w2 = 440 * $W / _BASEW
+$h2 = 80 * $H / _BASEH
+$t2 = PP_OCR_TEXT($rec, $frame, $x2, $y2, $w2, $h2, $dict, _REC_H)
+
+# 等级行：数字窗口解码（'0'-'9' 子集）
+$xl = 170 * $W / _BASEW
+$yl = 640 * $H / _BASEH
+$wl = 220 * $W / _BASEW
+$hl = 78 * $H / _BASEH
+$lv = PP_OCR_DIGITS($rec, $frame, _DIGITS_BASE, $xl, $yl, $wl, $hl, _REC_H)
+
+$dex = LOOKUP($t1)
+IF $dex == 0
+    $dex = LOOKUP($t2)
+ENDIF
+
+IF $dex > 0
+    $zh = DEX_NAME($dex)
+    PRINT "名称: " & $zh & " (No." & $dex & ")"
+    # 等级 ≤ 100：数字窗口混入伪影时按 3 位截断（%1000）
+    IF LEN($lv) > 3
+        $lv = STRING(INT($lv) % 1000)
+    ENDIF
+    IF LEN($lv) > 0
+        PRINT "等级: Lv" & $lv
+    ELSE
+        PRINT "等级: 未知"
+    ENDIF
+ENDIF
+
+NET_UNLOAD $rec
+PRINT "done"

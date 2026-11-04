@@ -47,7 +47,8 @@ internal sealed class NativeLoader
             try { return NativeLibrary.Load(name); }
             catch (Exception ex)
             {
-                throw new ScriptException($"无法加载库 \"{name}\": {ex.Message}", 0);
+                string detail = NativeLibraryLoadDetail(name, ex);
+                throw new ScriptException($"无法加载原生库 \"{name}\"。{detail} {ex.Message}", ex);
             }
         });
 
@@ -56,11 +57,26 @@ internal sealed class NativeLoader
             try { return NativeLibrary.GetExport(handle, symbol.ExternalName); }
             catch (Exception ex)
             {
-                throw new ScriptException($"在 \"{libName}\" 中未找到导出函数 \"{symbol.ExternalName}\": {ex.Message}", 0);
+                throw new ScriptException(
+                    $"在原生库 \"{libName}\" 中未找到导出函数 \"{symbol.ExternalName}\": {ex.Message}", ex);
             }
         });
 
         return CreateCallable(symbol, funcPtr);
+    }
+
+    private static string NativeLibraryLoadDetail(string libraryName, Exception exception)
+    {
+        bool pathLike = Path.IsPathFullyQualified(libraryName)
+            || libraryName.Contains('/')
+            || libraryName.Contains('\\');
+        if (pathLike && !File.Exists(libraryName))
+            return "声明路径对应的文件不存在。";
+        if (exception is BadImageFormatException)
+            return "文件格式或进程位数不兼容，也可能是其原生依赖项不兼容。";
+        if (exception is DllNotFoundException && pathLike)
+            return "目标文件存在，但系统加载器未能加载该文件或其原生依赖项。";
+        return "系统原生加载器返回失败。";
     }
 
     [RequiresDynamicCode("Calls System.Runtime.InteropServices.Marshal.GetDelegateForFunctionPointer(nint, Type)")]

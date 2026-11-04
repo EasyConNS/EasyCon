@@ -27,6 +27,9 @@ public sealed class OcrEngineCache : IDisposable
     /// <summary>最近一次 OCR 调用的置信度 (0~100)</summary>
     public int LastConfidence { get; set; }
 
+    /// <summary>最近一次 Init 失败的原因（成功初始化后清空）。排障锚点，勿吞。</summary>
+    public string? LastError { get; private set; }
+
     /// <summary>
     /// 默认 tessdata / 模型目录路径。
     /// 当 GetOrInit 触发自动初始化时使用此路径。
@@ -53,10 +56,14 @@ public sealed class OcrEngineCache : IDisposable
         {
             var engine = _factory.CreateRecognizer(lang, dataPath, engineMode, psmode);
             _engines[lang] = new CachedEntry(engine, dataPath, engineMode, psmode);
+            LastError = null;
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            // 保留原因供 GetOrInit 抛出明确异常：这里若静默返回 false，
+            // 调用方拿到的将是误导性的 KeyNotFoundException
+            LastError = ex.Message;
             return false;
         }
     }
@@ -75,12 +82,29 @@ public sealed class OcrEngineCache : IDisposable
     /// 获取或自动初始化识别器：缓存命中直接返回，未命中则用默认参数自动创建并缓存。
     /// 默认参数：DefaultDataPath、DEFAULT 引擎模式、SINGLE_LINE 页面分割。
     /// </summary>
+    /// <exception cref="InvalidOperationException">引擎初始化失败（原因见消息与 <see cref="LastError"/>）。</exception>
     public IOcrRecognizer GetOrInit(string lang)
     {
         if (_engines.TryGetValue(lang, out var cached))
             return cached.Engine;
+        return GetOrInit(lang, DefaultDataPath, "DEFAULT", "SINGLE_LINE");
+    }
 
-        Init(lang, DefaultDataPath, "DEFAULT", "SINGLE_LINE");
+    /// <summary>
+    /// 获取或按显式参数初始化识别器；参数与缓存一致时跳过重建。
+    /// </summary>
+    /// <exception cref="InvalidOperationException">引擎初始化失败（原因见消息与 <see cref="LastError"/>）。</exception>
+    public IOcrRecognizer GetOrInit(string lang, string dataPath, string engineMode, string psmode)
+    {
+        if (_engines.TryGetValue(lang, out var cached)
+            && cached.DataPath == dataPath
+            && cached.EngineMode == engineMode
+            && cached.Psmode == psmode)
+            return cached.Engine;
+
+        if (!Init(lang, dataPath, engineMode, psmode))
+            throw new InvalidOperationException(
+                $"OCR 引擎初始化失败 (lang={lang}, dataPath={dataPath}, engine={engineMode}, psm={psmode}): {LastError}");
         return _engines[lang].Engine;
     }
 

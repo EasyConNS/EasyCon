@@ -131,7 +131,7 @@ public class LineTableTests
             PRINT $r
             """);
 
-        var restored = result.Artifacts.Select(a => EcmFormat.Read(EcmFormat.Write(a))).ToList();
+        var restored = result.Artifacts.Select(a => EcsContainer.ReadModule(EcsContainer.WriteModule(a))).ToList();
         Assert.That(restored.Count, Is.EqualTo(result.Artifacts.Count), "模块数一致");
         for (int i = 0; i < restored.Count; i++)
         {

@@ -9,6 +9,7 @@ public static class AppPaths
 
     public static string ConfigFile => Path.Combine(ConfigDir, "config.json");
     public static string AlertConfig => Path.Combine(ConfigDir, "alert.json");
+    public static string QqNotificationConfig => Path.Combine(ConfigDir, "qq-notifications.json");
     public static string KeyMappingConfig => Path.Combine(ConfigDir, "keymapping.json");
     public static string ModelsConfig => Path.Combine(ConfigDir, "models.json");
     public static string McpConfig => Path.Combine(ConfigDir, "mcp.json");
@@ -23,14 +24,31 @@ public static class AppPaths
     private static string InitSubDir(string parent, string name)
     {
         var dir = Path.Combine(parent, name);
-        Directory.CreateDirectory(dir);
+        try
+        {
+            Directory.CreateDirectory(dir);
+        }
+        catch
+        {
+            // 目录创建失败时回退 %TEMP%，避免静态构造抛异常导致启动即崩
+            dir = Path.Combine(Path.GetTempPath(), _appName, name);
+            Directory.CreateDirectory(dir);
+        }
         return dir;
     }
 
     private static string InitDir(Environment.SpecialFolder folder)
     {
         var dir = Path.Combine(Environment.GetFolderPath(folder), _appName);
-        Directory.CreateDirectory(dir);
+        try
+        {
+            Directory.CreateDirectory(dir);
+        }
+        catch
+        {
+            dir = Path.Combine(Path.GetTempPath(), _appName);
+            Directory.CreateDirectory(dir);
+        }
         return dir;
     }
 }

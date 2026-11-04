@@ -24,20 +24,26 @@ public sealed class ECSearch
         ];
     }
 
+    /// <summary>
+    /// OCR 引擎统一经 <see cref="OcrEngineCache"/> 管理（与 Core 侧 EngineCacheOcrService
+    /// 同一条引擎生命周期路径）：按 lang+参数幂等初始化，失败时抛带原因的异常。
+    /// 识别器非线程安全，串行化访问。
+    /// </summary>
+    private static readonly OcrEngineCache OcrEngines = new(new TesseractEngineFactory());
+
     public static string FindOCR(string text, Mat srcBmp, out double matchDegree, string dataPath)
     {
         var imageBytes = srcBmp.ToBytes(".png");
-        var factory = new TesseractEngineFactory();
-        using var recognizer = factory.CreateRecognizer("chi_sim", dataPath, "DEFAULT", "SINGLE_LINE");
-        var result = recognizer.Recognize(imageBytes);
-        var resultTxt = result.Text.Trim();
-        Debug.WriteLine($"识别到的文本：{resultTxt}, 匹配度:{result.Confidence}");
-        Debug.WriteLine($"对比原始文本:{text}，对比对象：{resultTxt}");
-        // 计算编辑距离
-        matchDegree = MatchFacts.StringMatchSimple(resultTxt, text);
-        // 置信度*编辑距离为最终相似度
-        matchDegree *= result.Confidence;
-        return resultTxt;
+        lock (OcrEngines)
+        {
+            var recognizer = OcrEngines.GetOrInit("chi_sim", dataPath, "DEFAULT", "SINGLE_LINE");
+            var result = recognizer.Recognize(imageBytes);
+            var resultTxt = result.Text.Trim();
+
+            // 计算编辑距离；置信度*编辑距离为最终相似度
+            matchDegree = MatchFacts.StringMatchSimple(resultTxt, text) * result.Confidence;
+            return resultTxt;
+        }
     }
 
     public static Point FindPic(Mat big, Mat small, SearchMethod method, out double matchDegree)
@@ -82,7 +88,6 @@ public static class ILExtLeg
 
         try
         {
-            Console.Error.WriteLine($"[Search] ss size: {ss.Width}x{ss.Height}, channels={ss.Channels()}, type={ss.Type()}, roi=({self._round.X},{self._round.Y},{self._round.Width},{self._round.Height})");
             using var range = new Mat(ss, self._round);
 
             List<Point> result = new();
@@ -95,19 +100,22 @@ public static class ILExtLeg
             {
                 if (self.searchMethod == SearchMethod.MaskedSqDiffNormed)
                 {
-                    var targetRGBA = self.GetCachedTargetMatRGBA();
+                    using var targetRGBA = self.GetCachedTargetMatRGBA();
                     if (targetRGBA.Channels() != 4)
                         throw new Exception("Masked matching requires RGBA image");
                     Cv2.Split(targetRGBA, out var channels);
                     using var bgr = new Mat();
-                    Cv2.Merge([channels[0], channels[1], channels[2]], bgr);
+                    using var ch0 = channels[0];
+                    using var ch1 = channels[1];
+                    using var ch2 = channels[2];
                     using var mask = channels[3];
+                    Cv2.Merge([ch0, ch1, ch2], bgr);
                     var pt = MatchFacts.MatchTemplateMasked(range, bgr, mask, out md);
                     result = [new Point(pt.X, pt.Y)];
                 }
                 else
                 {
-                    var target = self.GetCachedTargetMat();
+                    using var target = self.GetCachedTargetMat();
                     result = [ECSearch.FindPic(range, target, self.searchMethod, out md)];
                 }
             }

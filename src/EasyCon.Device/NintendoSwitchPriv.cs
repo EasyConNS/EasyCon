@@ -14,6 +14,7 @@ public partial class NintendoSwitch
         lock (this)
         {
             _keystrokes.Clear();
+            _reset = false;
             _report.Button = report.Button;
             _report.HAT = report.HAT;
             _report.LX = report.LX;
@@ -32,18 +33,41 @@ public partial class NintendoSwitch
 
     void Loop(CancellationToken token)
     {
+        // 写循环没有任何上层兜底：一次未观察异常会让循环静默死亡，
+        // 表现为"按键永远发不出去"且用户无感知。捕获、上报并退出。
+        try
+        {
+            RunLoop(token);
+        }
+        catch (Exception ex)
+        {
+            Log?.Invoke($"设备发送循环异常退出: {ex.Message}");
+            StatusChanged?.Invoke(Status.Error);
+        }
+    }
+
+    private void RunLoop(CancellationToken token)
+    {
         int sleep = 0;
         while (!token.IsCancellationRequested)
         {
             if (_keystrokes.Count == 0)
-                _ewh.WaitOne();
+            {
+                // 可取消等待：重连/断开后旧循环不再阻塞在无限 WaitOne 上，
+                // 且 token 先于任何共享状态写入被检查（避免新旧 Loop 并发写报告）
+                if (WaitHandle.WaitAny(new WaitHandle[] { _ewh, token.WaitHandle }) == WaitHandle.WaitTimeout)
+                    continue;
+            }
             else
                 _ewh.WaitOne(sleep);
+            if (token.IsCancellationRequested)
+                return;
             if (DateTime.Now < _nextSendTime)
                 Thread.Sleep((int)(_nextSendTime - DateTime.Now).TotalMilliseconds);
             sleep = int.MaxValue;
             lock (this)
             {
+                if (token.IsCancellationRequested) return;
                 if (_reset)
                 {
                     _report.Reset();
@@ -78,7 +102,7 @@ public partial class NintendoSwitch
 
                 System.Diagnostics.Debug.WriteLine($"[Send {DateTime.Now:ss.fff}] {_report}");
 
-                WriteReport(_report.GetBytes());
+                WriteReport(_report);
                 _nextSendTime = DateTime.Now.AddMilliseconds(MINIMAL_INTERVAL);
                 _ewh.Reset();
             }

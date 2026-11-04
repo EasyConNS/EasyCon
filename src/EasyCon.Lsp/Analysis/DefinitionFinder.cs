@@ -5,7 +5,7 @@ namespace EasyCon.Lsp.Analysis;
 
 internal static class DefinitionFinder
 {
-    public static DocumentRange? FindDefinition(CompicationUnit? root, string? lineText, Position position)
+    public static DocumentRange? FindDefinition(CompilationUnit? root, string? lineText, Position position)
     {
         if (lineText == null || root == null) return null;
 
@@ -24,7 +24,7 @@ internal static class DefinitionFinder
         return FindStruct(root, word);
     }
 
-    private static DocumentRange? FindVariable(CompicationUnit root, string name)
+    private static DocumentRange? FindVariable(CompilationUnit root, string name)
     {
         foreach (var stmt in root.Members)
         {
@@ -79,7 +79,7 @@ internal static class DefinitionFinder
         return null;
     }
 
-    private static DocumentRange? FindConstant(CompicationUnit root, string name)
+    private static DocumentRange? FindConstant(CompilationUnit root, string name)
     {
         foreach (var stmt in root.Members)
         {
@@ -89,7 +89,7 @@ internal static class DefinitionFinder
         return null;
     }
 
-    private static DocumentRange? FindFunction(CompicationUnit root, string name)
+    private static DocumentRange? FindFunction(CompilationUnit root, string name)
     {
         foreach (var stmt in root.Members)
         {
@@ -104,7 +104,7 @@ internal static class DefinitionFinder
         return null;
     }
 
-    private static DocumentRange? FindStruct(CompicationUnit root, string name)
+    private static DocumentRange? FindStruct(CompilationUnit root, string name)
     {
         foreach (var stmt in root.Members)
         {

@@ -68,7 +68,7 @@ internal sealed class DocumentManager
         return sourceText.Lines[line].Text;
     }
 
-    public CompicationUnit? GetRoot(DocumentUri uri)
+    public CompilationUnit? GetRoot(DocumentUri uri)
     {
         return _documents.TryGetValue(uri.UnescapeUri, out var state) ? state.SyntaxTree?.Root : null;
     }

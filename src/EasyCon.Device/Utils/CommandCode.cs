@@ -1,6 +1,6 @@
 namespace EasyDevice;
 
-public static class EzDvCommand
+internal static class EzDvCommand
 {
     public const byte Ready = 0xA5;
     public const byte Debug = 0x80;
@@ -17,7 +17,7 @@ public static class EzDvCommand
     public const byte ChangeAmiiboIndex = 0x91;
 }
 
-public static class Reply
+internal static class Reply
 {
     public const byte Error = 0x0;
     public const byte Busy = 0xFE;

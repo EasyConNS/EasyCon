@@ -4,7 +4,7 @@
 
 EasyCon is a Nintendo Switch automation tool with virtual controller, image recognition (OpenCV via OpenCvSharp5), and a custom ECS scripting language. .NET 10.0, C# (LangVersion=preview).
 
-**Entry points**: `src/EasyCon2.Avalonia` (GUI), `src/EasyCon2.CLI` (CLI).
+**Entry points**: `src/EasyCon2.Avalonia` (GUI), `src/EasyCon2.CLI` (CLI, published as `ezcon`; `ezcon init` scaffolds the canonical script project layout).
 
 ## Build & test commands
 
@@ -33,33 +33,97 @@ dotnet format
 ci\windows-x64.bat
 ```
 
+```bash
+# Python 画布前端（frontend/，uv 管理：pyproject.toml + uv.lock，src/ 布局）
+# 离线自检（43 项）；加 --backend 追加真后端端到端检查（48 项）
+cd frontend && uv run easycon-flow --self-test
+cd frontend && uv run easycon-flow --self-test --backend http://127.0.0.1:19391
+# 无头 UI 冒烟（建窗/载图/跑图/试跑节点；需要后端在跑）
+QT_QPA_PLATFORM=offscreen uv run python -m easycon_flow.uitest --backend http://127.0.0.1:19391
+```
+
 **Solution file** is `EasyCon2.slnx` (XML-based MSBuild solution, .NET 10+). Not `.sln`.
 
 ## Solution structure
 
 | Directory | Role |
 |---|---|
-| `src/EasyCon.Core` | Core abstractions; capability model (`Capabilities/`: CapabilitySet + IPadInput/IConsoleIo/IFileSystem/ICaptureSource/IVisionService/IOcrService/IInference); script engine surface (`Script/`: IScriptEngine/IScriptSession) |
-| `src/EasyCon.Device` | Hardware device communication (serial) |
-| `src/EasyCon.Capture` | Screen/image capture |
-| `src/EasyCon.Script` | ECS script parser, compiler, runtime |
-| `src/EasyCon.Vm` | Native C VM (ecs-vm, C99) executing .ecx bytecode on MCU |
-| `src/EzTesseract` | OCR (Tesseract wrapper) |
-| `src/EasyCon.Lsp` | LSP language server for ECS scripts |
-| `src/EasyCon.Server` | HTTP/WebSocket server for remote control |
-| `src/EasyCon2.Avalonia` | Avalonia GUI (MVVM) |
-| `src/EasyCon2.Avalonia.Core` | Shared Avalonia viewmodels/logic |
-| `src/EasyCon2.UI.Common` | Shared UI resources, styles |
-| `src/EasyCon.WinInput` | Windows input simulation |
-| `src/EasyCon.SDLInput` | Cross-platform input via SDL3 |
-| `test/EasyCon.Tests` | Core/Script tests (NUnit) |
+| `src/EasyCon.Core` | **Composition root** + capability model (`Capabilities/`: CapabilitySet + IPadInput/IConsoleIo/IFileSystem/ICaptureSource/IVisionService/IOcrService/IInference/IEnvironment) + host assembler (`Hosting/`: ScriptHostAssembler/ScriptCompileProfiles) + script engine surface (`Script/`: IScriptEngine/IScriptSession) + execution bridge (`Runner/`: EcxVm) + config (`Config/`: ConfigManager) + node-graph orchestration (`Flow/`: FlowGraph/FlowNodeCatalog/FlowNodeRuntime/FlowExecutor/FlowServiceState/FlowServiceHttp/FlowServiceTools — spec in `docs/Flow.md`) + LLM client (`LLM/`) |
+| `src/EasyCon.Device` | Hardware device communication (serial); zero project references |
+| `src/EasyCon.Capture` | Screen/image capture; vision matching; OCR engine cache |
+| `src/EasyCon.Script` | ECS script parser, binder, SSA, bytecode compiler/linker, CLI-side interpreter; zero project references |
+| `src/EasyCon.Vm` | Native C VM (`native/ecs-vm`, C99) executing .ecx bytecode on MCU. **Not in `EasyCon2.slnx`** — built by `ci/build-vm.sh` and on the fly by `test/EasyCon.Tests/Support/CvmRunner.cs` |
+| `src/EzTesseract` | OCR (hand-written Tesseract/Leptonica bindings); zero project references |
+| `src/EasyCon.Lsp` | LSP language server for ECS scripts (reuses Script's syntax tree only) |
+| `src/EasyCon.SDLInput` | Cross-platform input via SDL3 (the only production input backend) |
+| `src/EasyCon2.Avalonia` | Avalonia GUI (MVVM), **feature-first layout** (`Shell/` `Monitor/` `FileTree/` `Connection/` `KeyMapping/` `AiAgent/` `Mcp/` `ModelsConfig/` `AlertConfig/` `TagEditor/` `Terminal/` `Editor/` + shared `Services/` `Models/` `Controls/` `Behaviors/` `Converters/`); absorbed former `EasyCon2.Avalonia.Core`; namespaces are `EasyCon2.Avalonia.<Feature>.*` |
+| `src/EasyCon2.UI.Common` | Legacy resx resources only (see "Layering" below — mostly vestigial) |
+| `test/EasyCon.Tests` | Core/Script tests (NUnit), includes C VM ↔ C# interpreter cross-validation |
 | `test/EasyCon.Lsp.Tests` | LSP tests |
-| `test/EasyCon.WinInput.Tests` | Windows input tests |
+| `test/EasyCon.SDLInput.Tests` | Input→HID mapping tests (fake device connection) |
+| `test/EasyCon2.Avalonia.Core.Tests` | Agent/MCP/LSP-client/script-service tests |
+| `test/EasyCon2.Avalonia.UiTests` | Headless Avalonia render tests |
+| `tools/OpenCvDnnDemo` | OpenCvSharp5 DNN experiment (in slnx under `/Demo/`) |
+| `frontend/` | **Python** node-graph canvas (PySide6 + NodeGraphQt) for `*.flow.json` orchestration — the only non-.NET code in the repo, added with explicit user approval and confined to this directory. Managed with **uv** (`pyproject.toml` + `uv.lock` + `.python-version`, `src/` layout, console script `easycon-flow`); nodes/types/params all come from the backend (`GET /api/nodes` ← `FlowNodeCatalog`), so no node logic lives here. See `frontend/README.md` and `docs/Flow.md` |
+
+## Layering and the composition root
+
+The layering does **not** match the "Core is the bottom layer" reading of its name. The real graph is:
+
+```
+EasyCon.Script   EasyCon.Device   EasyCon.Capture ──► EzTesseract     (leaf libraries, zero refs)
+      ▲               ▲                  ▲
+      └───────────────┴──────────────────┘
+                      │
+                EasyCon.Core            ← capability PORTS + COMPOSITION ROOT
+                      ▲
+      ┌───────────────┼──────────────────┐
+EasyCon.SDLInput   EasyCon.Lsp   EasyCon2.Avalonia
+EasyCon2.CLI ──► EasyCon.Core + EasyCon.Lsp
+```
+
+Rules to respect when changing code:
+
+- **`EasyCon.Core` is the composition root**, not a leaf: it references Script/Device/Capture and pulls
+  OpenCV/Tesseract through them. Do not add a project reference *to* Core from Script/Device/Capture/EzTesseract —
+  those four must stay zero-reference leaves.
+- **Never construct `CapabilitySet` outside `Hosting/ScriptHostAssembler`.** Hosts (GUI/CLI) supply only
+  "raw material" (`ScriptHostContext`: pad, frame/ROI/label delegates, console, args); the assembler owns
+  adapter wrapping, defaults (Environment/Files/OCR/DNN) and resource teardown (`CapabilityLease`).
+- **Never hand-write `CompileOptions` literals.** Use `ScriptCompileProfiles.Interactive`
+  (compile-on-the-fly, process cache only) or `ScriptCompileProfiles.Distributable`
+  (obj/ content-addressed cache; the image is MCU-distributable). All products share one
+  format (ECX1 flat + v3 fixed-width encoding); the 255-slot frame budget is shared by
+  params, outbound windows and live values. Device fit is a burn-time capacity precheck
+  concern, not a profile.
+- DI *container* is deliberately absent: composition is explicit constructor passing from
+  `App.axaml.cs` (GUI) and `Program.cs` (CLI).
+- **AI tool layer: runtime knows capabilities, not integrations.** Tool constructors may only depend on
+  Core vocabulary (capability ports like `IPadInput`/`ICaptureSource`/`IOcrService`, LLM infra types,
+  primitives, delegate providers) or a narrow GUI port (`IScriptEditorPort` etc.). The `IToolCallService`
+  facade is a GUI-internal composition view — never take it as a tool dependency. Editor-buffer tools stay
+  in the GUI *by vocabulary* (Core has no concept of "editor"), not merely by consumer count. This boundary
+  is enforced by `ToolPortBoundaryTests`.
+- **Tool contracts live in `IAiTool` metadata, not host flags or prose.** `RequiresVision`/`ReturnsImage`
+  gate vision-dependent tools; the orchestrator resolves model vision from `provider`+`modelId` itself.
+  Do not reintroduce host-supplied booleans (the old `visionSupported` param let GUI silently claim vision
+  for non-vision models). Capability absence (e.g. no Pad assembled) is what makes a tool read-only —
+  `EvalEcsTool` is the reference pattern.
+- **Deferred decision (script run control):** `IScriptRunPort` still starts scripts from editor content
+  (GUI session semantics). When CLI needs to run scripts, introduce an assemblable Core run-control port
+  (over `IScriptEngine`) and migrate `run_script`/`stop_script` onto it — do not duplicate the GUI path.
+- **Accepted wart (MCP transport in Core):** `McpServerHost` (stdio + loopback HTTP) lives in Core via
+  `ModelContextProtocol.Core` because both CLI and GUI host it. If it ever grows host-specific behavior,
+  split the transports into a host-shared project and keep only the tool-catalog export in Core.
+- One known wart: `EasyCon2.UI.Common` is a vestigial resx-only project.
 
 ## Code conventions (enforced by .editorconfig)
 
 - **Indent**: 4 spaces, no tabs
-- **Line endings**: CRLF
+- **Line endings**: not pinned — `.gitattributes` `* text=auto` keeps repo content normalized to LF;
+  checkout EOL follows each platform's git config (Windows → CRLF, Linux/macOS → LF).
+  `.editorconfig` sets no `end_of_line`, and `dotnet format` therefore doesn't check EOL.
+  The only requirement is that a single file stays internally consistent — mixed-EOL files fail format.
 - **No final newline** (`insert_final_newline = false`) — unusual, don't "fix" it
 - **Private fields**: `_camelCase` prefix
 - **Explicit types**: `csharp_style_var_* = false` — prefer explicit types over `var`
@@ -74,9 +138,10 @@ ci\windows-x64.bat
 
 ## MVVM architecture (Avalonia UI)
 
-The Avalonia GUI (`EasyCon2.Avalonia` / `EasyCon2.Avalonia.Core`) follows strict MVVM:
+The Avalonia GUI (`EasyCon2.Avalonia`) follows MVVM:
 
-- **ViewModel must NOT reference any Avalonia control types** (Window, Control, TextBox, etc.)
+- **ViewModel should NOT reference Avalonia control types** (Window, Control, TextBox, etc.). This was previously **compiler-enforced** by the separate `EasyCon2.Avalonia.Core` project (since merged into `EasyCon2.Avalonia` at user request), so the constraint is now convention-only — do not reintroduce Avalonia types into ViewModels.
+- **View resolution is explicit, not convention-based**: views are declared in axaml with `DataContext="{Binding ...}"`, or constructed by `WindowService`. The former `ViewLocator` (dead code) has been deleted — do not rely on `FooViewModel → FooView` name mapping. Namespaces follow folders: `EasyCon2.Avalonia.<Feature>`; axaml `using:` and `x:DataType` must match.
 - **View → ViewModel**: prefer bindings (`{Binding}`, `{x:Bind}`), avoid code-behind event subscriptions
 - **ViewModel → View**: use `[ObservableProperty]` (CommunityToolkit.Mvvm) or `AvaloniaProperty` with bindings
 - **Code-behind** is only for: platform APIs (file dialogs, drag-drop), layout (SizeChanged), visual tree init (FoldingManager, LSP). No business logic.
@@ -85,8 +150,29 @@ The Avalonia GUI (`EasyCon2.Avalonia` / `EasyCon2.Avalonia.Core`) follows strict
 ## Testing
 
 - **Framework**: NUnit (NOT xUnit or MSTest)
-- Test projects: `EasyCon.Tests`, `EasyCon.Lsp.Tests`, `EasyCon.WinInput.Tests`, `EasyCon2.Avalonia.Core.Tests`
+- Test projects: `EasyCon.Tests`, `EasyCon.Lsp.Tests`, `EasyCon.SDLInput.Tests`, `EasyCon2.Avalonia.Core.Tests`, `EasyCon2.Avalonia.UiTests`
 - Use `[Test]` attribute, not `[Fact]`
+
+### Fake device connection (no-hardware device tests)
+
+Device logic (queue, throttle, report building, serialization) can be exercised without an MCU by injecting a fake connection:
+
+- `EasyCon.Device` exposes the seam: `IConnection` is `public`, and `NintendoSwitch.CreateConnection(connStr, baudrate)` is `protected virtual` (its default returns `TTLSerialClient`). The production enqueue/dequeue path is unchanged.
+- A second seam `NintendoSwitch.CreatePokeldnConnection(connStr)` (default returns `PokeldnSerialClient`) backs the third fallback stage of `TryConnect` (115200 → 9600 → pokeldn 921600). Override it the same way to test the fallback order without hardware; see `PokeldnSerialClientTests`.
+- Subclass `NintendoSwitch` in a test project and override `CreateConnection` to return a fake whose `Write(params byte[])` records the payload — that payload is exactly the HID packet sent to the MCU (`SwitchReport.GetBytes()`). Assert on this **dequeue output**, not on internal state.
+- The fake must raise `StatusChanged(Status.Connected)` inside `Connect()` so `TryConnect` succeeds and the background device write loop starts.
+- The write loop is asynchronous (30 ms `MINIMAL_INTERVAL`); wait for recorded bytes with a timeout instead of asserting immediately.
+- `SdlEventLoop` and `SdlKeyboardInputBinder` can be constructed and driven via `HandleKeyEvent` **without loading native SDL**; native SDL is only touched by `SdlEventLoop.Start()`, so never call it in tests.
+- Reference implementation: `test/EasyCon.SDLInput.Tests` (`FakeConnection`, `TestSwitch`, `KeyboardMappingHidTests`). Reuse this pattern for any test that needs device logic without hardware.
+
+### Headless UI tests (Avalonia.Headless)
+
+`test/EasyCon2.Avalonia.UiTests` renders real controls off-screen (no window server) to assert layout and to produce PNGs for visual review:
+
+- Initialize once per fixture with `TestAppBuilder.BuildAvaloniaApp().SetupWithoutStarting()`, then add `FluentTheme` plus `Resources/Styles/EasyConWorkbenchTheme.axaml` to `Application.Current.Styles`.
+- Build the window, set `DataContext`, call `Show()`, then `CaptureRenderedFrame()` to force a render pass and capture it.
+- **Never call `WriteableBitmap.Save` to write a screenshot.** It goes through `Avalonia.Skia.Helpers.ImageSavingHelper` → the SkiaSharp native PNG encoder, which **crashes the test host natively and intermittently** in this headless setup (`Fatal error` at `sk_pngencoder_encode`). The symptom is a run that silently executes fewer tests and exits non-zero, so `ci\test.bat` (and therefore `ci.yml`) turns red at random. Use the `SaveFrame` helper in `KeyMappingWindowRenderTests` instead: it encodes with SkiaSharp directly (`SKImage.FromPixels` + `Encode`), the same path the stable `SvgRenderSmokeTests` uses. Root cause is not yet identified (managed and native SkiaSharp are both 4.148.0, matching `Avalonia.Skia` 12.0.4 — not a version mismatch).
+- Screenshot tests carry `[Explicit]` + `[Category("Manual")]` so they never run in CI. Run them on demand with `dotnet test test\EasyCon2.Avalonia.UiTests -c Release --filter "TestCategory=Manual"`; the PNGs land in `%TEMP%\opencode\svgqa\`.
 
 ## CI pipeline
 
@@ -94,6 +180,9 @@ The Avalonia GUI (`EasyCon2.Avalonia` / `EasyCon2.Avalonia.Core`) follows strict
 - **Auto Fix Format** workflow auto-commits formatting fixes on PRs to main/dev
 - Main branch: Release build + test + publish artifact
 - Dev branch: Debug build + test only
+- **Release** (`release.yml`): push a `v*` / `[0-9]*` tag (or run manually) → Windows x64 + macOS arm64
+  build with full tests → both zips attached to a GitHub Release via `gh release create --generate-notes`.
+  `workflow_dispatch` builds and uploads artifacts without publishing. Reuses `ci\windows-x64.bat` / `ci/macos-app.sh`.
 - PR format commits use `[skip ci]` to avoid recursive triggers
 
 ## Native code (OpenCV)
@@ -102,9 +191,25 @@ OpenCV bindings come from the `OpenCvSharp5` NuGet packages (OpenCV 5.0); native
 
 ## Documentation
 
+**Current-state specs (kept in sync with code — trust these):**
+
+- `docs/Pipeline.md` — unified compilation pipeline and single-source-of-truth landing points
+- `docs/ModuleImportRules.md` — module visibility/import rules R1–R5/R7, automatic-edge convergence, compile order
+- `docs/ModuleSystem.md` — interface-based independent compilation + content-addressed cache
+- `docs/VM2.md` — bytecode/instruction-set spec (the live VM): ECX1 flat image encoding (§3.1),
+  frame/register model (§3.3), calling convention (§3.4), and the S-01..S-21 dual-end
+  (C# interpreter ↔ C VM) semantic contract inline (S-20 pinned constants / S-21
+  capability-default degradation implemented)
 - `docs/Script.md` — ECS scripting language reference
 - `docs/Functions.md` — script function handbook (script-author-facing, CN)
-- `docs/Framework.md` — system architecture
-- `docs/VM1.md` / `docs/VM2.md` — virtual machine instruction sets
+- `docs/DrawingBoard.md` — Splatoon drawing board user guide (CN) + maintainer notes on `src/EasyCon2.Avalonia/DrawingBoard/`
+- `docs/McuBytecodeDelivery.md` — plan of record for compiling and flashing MCU bytecode
+- `docs/Flow.md` — node-graph orchestration spec: `*.flow.json` format, node catalog/semantics,
+  execution model (watchdog/timing/stop/slow sensing), HTTP + MCP API, Python canvas, known gaps
+
+**Historical / partially stale (verify against code before relying on them):**
+
+- `docs/Framework.md` — layering overview; has been corrected for the composition-root reality, but still the softest doc
+- `ARCHITECTURE_REVIEW_REPORT.md` — 2026-09-26 audit (94 findings). Most P0/P1 items were landed in
+  `ac7e16c`; read it as a **historical checklist**, not a current defect list.
 - `docs/GETTING_STARTED.md` — user setup guide
-- `src/EasyCon2.Avalonia/DOCUMENTATION_INDEX.md` — UI docs index

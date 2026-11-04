@@ -1,0 +1,16 @@
+$s = "ab"
+$d = "a" & "b"
+$eq = $s == $d
+PRINT $eq
+$has = "b" in $s
+PRINT $has
+$n = LEN($s)
+PRINT $n
+$i = $s[1]
+PRINT $i
+$arr = ["x", "y"]
+$c = $arr[1] & $s
+PRINT $c
+$g = "z"
+$same = $g == "z"
+PRINT $same

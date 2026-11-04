@@ -8,7 +8,7 @@ public sealed class SkillTriggerContext
     /// <summary>本轮最新的用户消息文本（小写化由评估器处理）。</summary>
     public string UserMessage { get; init; } = "";
 
-    /// <summary>对话历史中已调用过的所有工具名（去重）。</summary>
+    /// <summary>最近工具活动窗口内调用过的工具名（去重）。</summary>
     public IReadOnlyCollection<string> RecentTools { get; init; } = Array.Empty<string>();
 
     /// <summary>当前 ReAct 轮次（0 表示首轮）。</summary>
@@ -28,8 +28,11 @@ public sealed class SkillTriggerContext
         int round = 0,
         int recentUserCount = 3)
     {
+        // 工具触发只看最近窗口：技能随工具停用而降温，不得随全史永久闩锁
+        const int toolActivityWindow = 6;
         var recentTools = history
             .Where(m => m.Role == "assistant" && m.ToolCalls is { Count: > 0 })
+            .TakeLast(toolActivityWindow)
             .SelectMany(m => m.ToolCalls!)
             .Select(tc => tc.Function.Name)
             .Distinct(StringComparer.Ordinal)

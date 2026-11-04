@@ -1,9 +1,9 @@
 using Avalonia.Controls;
-using Avalonia.Media;
+using EasyCon.Core.Config;
 using EasyCon.Core.Input;
+using EasyCon.Core.Maa;
 using EasyCon.SDLInput;
-using EasyCon2.Avalonia.Core.Services;
-using EasyCon2.Avalonia.Core.VPad;
+using EasyCon2.Avalonia.Services;
 using EasyDevice;
 using SDL;
 
@@ -13,9 +13,8 @@ public sealed class ControllerService : IControllerService
 {
     private readonly SdlEventLoop _eventLoop;
     private readonly SdlGamepadDetector _detector;
-    private readonly NintendoSwitch _gamepad;
-    private readonly VPadService _vpadService;
-    private readonly ControllerAdapter _adapter;
+    private readonly IControllerSession _gamepad;
+    private readonly IVirtualPadService _vpadService;
     private bool _isConnected;
     private SdlKeyboardInputBinder? _keyboardBinder;
     private SdlGamepadInputBinder? _gamepadBinder;
@@ -26,50 +25,58 @@ public sealed class ControllerService : IControllerService
 
     public void SetOwnerWindow(Window owner) => _vpadService.SetOwner(owner);
 
-    public ControllerService(NintendoSwitch gamepad, IScriptService scriptService)
+    /// <summary>
+    /// <paramref name="vpadService"/> 由组合根构造后注入（其 ControllerAdapter 依赖
+    /// IScriptService，装配留在 App 侧），本类不再反向引用 VPad 实现。
+    /// </summary>
+    public ControllerService(IControllerSession gamepad, IVirtualPadService vpadService)
     {
         _gamepad = gamepad;
-        _adapter = new ControllerAdapter(scriptService);
         _eventLoop = new SdlEventLoop();
         _detector = new SdlGamepadDetector();
-        _vpadService = new VPadService(gamepad, _adapter);
+        _vpadService = vpadService;
 
         _eventLoop.GamepadDeviceEvent += ev => _detector.HandleDeviceEvent(ev);
         _detector.GamepadConnected += (_, _) => AvailableSourcesChanged?.Invoke();
         _detector.GamepadDisconnected += (_) => AvailableSourcesChanged?.Invoke();
         _vpadService.OverlayKeyEvent += OnOverlayKeyEvent;
         _vpadService.Exited += OnVpadExited;
+        ConfigManager.KeyMappingChanged += OnKeyMappingChanged;
 
         _eventLoop.Start();
         _detector.OpenExisting();
     }
 
-    public string[] GetAvailableSources()
+    /// <summary>键盘控制源的稳定 id（下拉显示名仍是"键盘"）。</summary>
+    public const string KeyboardSourceId = "keyboard";
+    private const string _gamepadIdPrefix = "gamepad:";
+
+    public IReadOnlyList<ControlSourceInfo> GetAvailableSources()
     {
-        var sources = new List<string> { "键盘" };
+        var sources = new List<ControlSourceInfo> { new("键盘", KeyboardSourceId) };
         foreach (var (id, name) in _detector.ConnectedGamepads)
-            sources.Add($"手柄: {name} ({id})");
-        return sources.ToArray();
+            sources.Add(new ControlSourceInfo($"手柄: {name}", $"{_gamepadIdPrefix}{id}"));
+        return sources;
     }
 
-    public bool TryConnect(string sourceName)
+    public bool TryConnect(string sourceId)
     {
+        // 先清理上一连接的 binder 与事件订阅：任何路径重复进入 TryConnect
+        // （连接进行中二次点击、切换控制源）都不会泄漏旧 binder 或重复订阅
+        CleanupBinder();
+
         IInputBinder binder;
 
-        if (sourceName == "键盘")
+        if (sourceId == KeyboardSourceId)
         {
             _keyboardBinder = new SdlKeyboardInputBinder(_eventLoop, _gamepad);
-            var mapping = SdlKeyMappingDefaults.Create();
+            KeyMappingConfig mapping = KeyMappingStore.Instance.Current;
             _keyboardBinder.UpdateKeyMapping(mapping);
             binder = _keyboardBinder;
         }
-        else if (sourceName.StartsWith("手柄: "))
+        else if (sourceId.StartsWith(_gamepadIdPrefix, StringComparison.Ordinal))
         {
-            var parenStart = sourceName.LastIndexOf('(');
-            var parenEnd = sourceName.LastIndexOf(')');
-            if (parenStart < 0 || parenEnd < 0) return false;
-            var idStr = sourceName.Substring(parenStart + 1, parenEnd - parenStart - 1);
-            if (!int.TryParse(idStr, out var gpId)) return false;
+            if (!int.TryParse(sourceId[_gamepadIdPrefix.Length..], out var gpId)) return false;
             if (!_detector.HasGamepad(gpId)) return false;
 
             _gamepadBinder = new SdlGamepadInputBinder(_eventLoop, _detector, _gamepad, gpId);
@@ -131,9 +138,16 @@ public sealed class ControllerService : IControllerService
 
     public void Dispose()
     {
+        ConfigManager.KeyMappingChanged -= OnKeyMappingChanged;
         Disconnect();
         _eventLoop.Stop();
         _detector.Dispose();
+    }
+
+    private void OnKeyMappingChanged()
+    {
+        if (_keyboardBinder != null)
+            _keyboardBinder.UpdateKeyMapping(KeyMappingStore.Instance.Current);
     }
 
     private void OnOverlayKeyEvent(int scancode, bool down)
@@ -149,11 +163,5 @@ public sealed class ControllerService : IControllerService
     private void OnGamepadButtonEvent(SDL_GamepadButtonEvent ev)
     {
         _gamepadBinder?.Poll();
-    }
-
-    private sealed class ControllerAdapter(IScriptService scriptService) : IControllerAdapter
-    {
-        public bool IsRunning() => scriptService.IsRunning;
-        public Color CurrentLight => Colors.White;
     }
 }

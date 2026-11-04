@@ -244,6 +244,13 @@ sealed partial class SsaBuilder
     {
         if (_inDeadSink) return;
 
+        // ForStep 快速路径（尾部融合，15 条 → 3 条/轮）：局部变量且 body 不重写循环变量
+        if (forStmt.Variable is LocalVariableSymbol localVar && !BodyWritesVariable(forStmt.Body, localVar))
+        {
+            EmitForFastPath(forStmt, localVar);
+            return;
+        }
+
         var headerBlock = CreateBlock();
         var endBlock = CreateBlock();
 
@@ -377,6 +384,97 @@ sealed partial class SsaBuilder
         }
 
         SwitchToBlock(endBlock);
+    }
+
+    /// <summary>
+    /// FOR 快速路径（尾部 ForStep 融合）：布局 P → body(循环头, phi) → tail(ForStep) → end。
+    /// ForStep 语义：i==upper → 落入 end（保持 i==upper 出循环）；否则 i+=1 跳回 body。
+    /// phi 自引用臂（tail 侧 = phi 本身）+ ForStep 原地写 phi 槽 → 回边零副本。
+    /// CONTINUE → tail（先递增再进 body，语义正确）；BREAK → end。
+    /// </summary>
+    private void EmitForFastPath(BoundForStatement forStmt, LocalVariableSymbol variable)
+    {
+        var bodyBlock = CreateBlock();    // 循环头：i 的 phi + 用户代码
+        var tailBlock = CreateBlock();    // ForStep
+        var endBlock = CreateBlock();
+        _labelBlocks[forStmt.BreakLabel] = endBlock;
+        _labelBlocks[forStmt.ContinueLabel] = tailBlock;
+
+        // 初始化 + 上限（进循环前求值一次）
+        var initVal = EmitExpression(forStmt.LowerBound!);
+        var store = NewValue(SsaOp.StoreLocal, ScriptType.Void, initVal, aux: variable);
+        AddInst(store);
+        _vars.WriteVariable(variable, initVal, _currentBlock);
+        var upperVal = EmitExpression(forStmt.UpperBound!);
+
+        // 入口守卫：a > upper → 零迭代
+        var guard = NewValue(SsaOp.GtInt, ScriptType.Bool, initVal, upperVal);
+        AddInst(guard);
+        _currentBlock.BranchCondition = guard;
+        guard.Uses++;
+        _currentBlock.TrueSuccessor = endBlock;
+        _currentBlock.FalseSuccessor = bodyBlock;
+        endBlock.AddPredecessor(_currentBlock);
+        bodyBlock.AddPredecessor(_currentBlock);
+
+        // body：循环头。不立即封闭——回边来自 tail，读取处的占位 phi 在 SealBlock 时回填
+        SwitchToBlock(bodyBlock, fromConditionalBranch: true);
+        EmitStatements(forStmt.Body.Statements);
+
+        if (NeedsTerminator(_currentBlock) && !_inDeadSink)
+        {
+            _currentBlock.JumpTarget = tailBlock;
+            tailBlock.AddPredecessor(_currentBlock);
+
+            // tail：ForStep = 真实指令（SSA 可见定义 → phi 臂非自引用，不被平凡替换）：
+            // tmp = i + 1; dst = tmp; tmp > upper → 跳 end（保持 $i == upper 出循环）；否则落入 arm 副本 + 回边 Jmp
+            SwitchToBlock(tailBlock);
+            _vars.SealBlock(tailBlock);
+            var varVal = _vars.ReadVariable(variable, ScriptType.Int, tailBlock);
+            var step = NewValue(SsaOp.ForStep, ScriptType.Int, varVal, upperVal);
+            AddInst(step);
+            _vars.WriteVariable(variable, step, tailBlock);
+            _currentBlock.BranchCondition = step;
+            step.Uses++;
+            _currentBlock.TrueSuccessor = bodyBlock;    // i<upper：落入 arm 副本 + 回边 Jmp
+            _currentBlock.FalseSuccessor = endBlock;    // i==upper：跳 end（Jump 字段，布局相邻）
+            bodyBlock.AddPredecessor(_currentBlock);
+            endBlock.AddPredecessor(_currentBlock);
+
+            _vars.SealBlock(bodyBlock);
+            _vars.SealBlock(endBlock);
+            SwitchToBlock(endBlock);
+            return;
+        }
+
+        // body 以显式终结符（BREAK 等）结束：无回边，直接封闭
+        _vars.SealBlock(bodyBlock);
+        _vars.SealBlock(endBlock);
+        SwitchToBlock(endBlock);
+    }
+
+    /// <summary>循环体内是否重写循环变量（重写 → 退回通用 lowering：ForStep 的原地写只对 phi 槽安全）。</summary>
+    private static bool BodyWritesVariable(BoundStmt stmt, VariableSymbol variable)
+    {
+        switch (stmt)
+        {
+            case BoundBlockStatement b:
+                return b.Statements.Any(s => BodyWritesVariable(s, variable));
+            case BoundVariableDeclaration vd:
+                return vd.Variable == variable;
+            case BoundIfStatement i:
+                return BodyWritesVariable(i.Body, variable)
+                    || i.ElseIfs.Any(e => BodyWritesVariable(e.Body, variable))
+                    || (i.ElseBody != null && BodyWritesVariable(i.ElseBody, variable));
+            case BoundWhileStatement w:
+                return BodyWritesVariable(w.Body, variable);
+            case BoundUntilStatement u:
+                return BodyWritesVariable(u.Body, variable);
+            case BoundForStatement f:
+                return f.Variable == variable || BodyWritesVariable(f.Body, variable);
+            default:
+                return false;
+        }
     }
 
     private void EmitUntil(BoundUntilStatement untilStmt)

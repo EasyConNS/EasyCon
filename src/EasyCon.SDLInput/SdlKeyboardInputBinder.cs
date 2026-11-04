@@ -1,5 +1,6 @@
 using EasyCon.Core.Config;
 using EasyCon.Core.Input;
+using EasyCon.Core.Maa;
 using EasyDevice;
 using SDL;
 
@@ -8,15 +9,15 @@ namespace EasyCon.SDLInput;
 public sealed class SdlKeyboardInputBinder : IInputBinder, IDisposable
 {
     private readonly SdlEventLoop _eventLoop;
-    private readonly NintendoSwitch _switch;
+    private readonly IControllerSession _switch;
     private bool _enabled;
     private bool _started;
     private Func<bool>? _escapeKeydown;
     private Func<bool>? _escapeKeyup;
 
-    private readonly Dictionary<int, Action<NintendoSwitch, bool>> _keyMap = [];
+    private Dictionary<int, Action<IControllerSession, bool>> _keyMap = [];
 
-    public SdlKeyboardInputBinder(SdlEventLoop eventLoop, NintendoSwitch @switch)
+    public SdlKeyboardInputBinder(SdlEventLoop eventLoop, IControllerSession @switch)
     {
         _eventLoop = eventLoop;
         _switch = @switch;
@@ -44,13 +45,13 @@ public sealed class SdlKeyboardInputBinder : IInputBinder, IDisposable
 
     public void UpdateKeyMapping(KeyMappingConfig mapping)
     {
-        _keyMap.Clear();
+        Dictionary<int, Action<IControllerSession, bool>> map = new();
 
         void AddButton(int scancode, SwitchButton button)
         {
             if (scancode == 0) return;
             var key = ECKeyUtil.Button(button);
-            _keyMap[scancode] = (sw, down) =>
+            map[scancode] = (sw, down) =>
             {
                 if (down) sw.Down(key); else sw.Up(key);
             };
@@ -60,7 +61,7 @@ public sealed class SdlKeyboardInputBinder : IInputBinder, IDisposable
         {
             if (scancode == 0) return;
             var key = ECKeyUtil.HAT(hat);
-            _keyMap[scancode] = (sw, down) =>
+            map[scancode] = (sw, down) =>
             {
                 if (down) sw.Down(key); else sw.Up(key);
             };
@@ -69,7 +70,7 @@ public sealed class SdlKeyboardInputBinder : IInputBinder, IDisposable
         void AddDirection(int scancode, DirectionKey dkey, bool isLeft)
         {
             if (scancode == 0) return;
-            _keyMap[scancode] = (sw, down) =>
+            map[scancode] = (sw, down) =>
             {
                 if (isLeft)
                 {
@@ -85,7 +86,7 @@ public sealed class SdlKeyboardInputBinder : IInputBinder, IDisposable
         void AddHatDirection(int scancode, DirectionKey dkey)
         {
             if (scancode == 0) return;
-            _keyMap[scancode] = (sw, down) =>
+            map[scancode] = (sw, down) =>
             {
                 sw.HatDirection(dkey, down);
             };
@@ -124,6 +125,9 @@ public sealed class SdlKeyboardInputBinder : IInputBinder, IDisposable
         AddDirection(mapping.RSDown, DirectionKey.Down, false);
         AddDirection(mapping.RSLeft, DirectionKey.Left, false);
         AddDirection(mapping.RSRight, DirectionKey.Right, false);
+
+        // 原子替换整张表：SDL 事件线程可能正在 HandleKeyEvent 中读取，避免原地 Clear/写入造成竞态。
+        _keyMap = map;
     }
 
     public void RegisterEscapeKey(Func<bool> keydown, Func<bool> keyup)
@@ -147,7 +151,9 @@ public sealed class SdlKeyboardInputBinder : IInputBinder, IDisposable
 
         if (_keyMap.TryGetValue(scancode, out var action))
         {
-            action(_switch, down);
+            if (!_switch.CanAcceptManualInput) return;
+            try { action(_switch, down); }
+            catch (ControllerOperationException ex) when (ex.ErrorCode is "Busy" or "InputDisconnected") { }
         }
     }
 

@@ -6,9 +6,8 @@ namespace EasyCon.Core.Capabilities;
 
 /// <summary>
 /// PaddleOCR det+rec ONNX 后端 <see cref="IOcrService"/>（OpenCvSharp.Dnn 推理，D1 决策）。
-/// 模型为外部资产不入库，命名沿用 <see cref="OnnxEngineFactory"/>：
-/// 检测 PP-OCRv5_mobile_det.onnx；识别 &lt;lang&gt;_rec.onnx（缺省回落 PP-OCRv5_mobile_rec.onnx），
-/// 字符集 &lt;lang&gt;_dict.txt（缺省回落 ppocr_keys_v5.txt）。
+/// 模型为外部资产不入库；代码不绑定模型代际，命名沿用 <see cref="OnnxEngineFactory"/> 部署约定：
+/// 检测 det.onnx；识别 &lt;lang&gt;_rec.onnx；字符集 &lt;lang&gt;_dict.txt（模型与字典同代配对由部署保证）。
 /// </summary>
 public sealed class PaddleOnnxOcr : EngineCacheOcrService
 {
