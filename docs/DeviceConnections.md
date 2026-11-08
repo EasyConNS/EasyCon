@@ -12,7 +12,9 @@
 `ECDevice.GetPortNames()` 只枚举真实串口，自动连接也只扫描这些端口。桥接地址由用户配置，
 GUI 在设备列表中保留该选择；「刷新」不会把它标记成丢失的串口。服务是否可用在连接时确认。
 
-默认串口顺序为原生 EasyCon 协议 115200、9600，再尝试 pokeldn-pad 协议 921600。
+默认串口顺序为原生 EasyCon 协议 115200、9600，再尝试 pokeldn-pad 协议 921600，
+最后尝试 PABotBase2 协议 921600、115200。Pico W 的 PABotBase2 固件直接选 USB 串口，
+接线、配对和支持范围见 [PABotBase2 适配说明](PABotBase2.md)。
 默认桥接适配器实现 `pokeldn.pad.service` 的 JSON 行协议。`tcp://` 只表示传输地址，
 不意味着任意 TCP / 蓝牙服务均可互通；采用其他消息格式的服务需要注册相应的协议适配器。
 蓝牙扫描、权限、配对和链路维护由桥接服务负责。
@@ -90,6 +92,7 @@ NintendoSwitch CreateController(
 
 `ConnectionProviderTests` 覆盖延迟探测、失败释放、注册自定义协议、串口与桥接隔离和地址校验。
 `PokeldnServiceTests` 通过真实本机 TCP 与模拟服务核对请求/响应。
+`PABotBase2*Tests` 通过模拟固件覆盖可靠串流、CRC、重传、顺序/偏移回绕、手柄编码与停止释放。
 Core / GUI 测试覆盖别名锁、配置读写、CLI 覆盖及显式桥接选择。
 这些测试不依赖实物，也不替代板子和 NS 的验收；两种 ESP32 的接线、固件与实测边界见
 [pokeldn 适配说明](Pokeldn.md)。
