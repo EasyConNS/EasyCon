@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="System.IO.Ports" />
     <InternalsVisibleTo Include="EasyCon.Device.Tests" />
+    <None Update="Connection/PABotBase2/NOTICE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -1,4 +1,5 @@
 using EasyDevice.Connection;
+using EasyDevice.Connection.PABotBase2;
 using EasyDevice.Connection.Pokeldn;
 
 namespace EasyDevice;
@@ -22,7 +23,9 @@ public partial class NintendoSwitch
         [
             new SerialProtocol(115200, CreateConnection),
             new SerialProtocol(9600, CreateConnection),
-            new SerialProtocol(PokeldnSerialClient.DefaultBaudRate, (port, _) => CreatePokeldnConnection(port))
+            new SerialProtocol(PokeldnSerialClient.DefaultBaudRate, (port, _) => CreatePokeldnConnection(port)),
+            new SerialProtocol(PABotBase2SerialClient.DefaultBaudRate, (port, baud) => new PABotBase2SerialClient(port, baud)),
+            new SerialProtocol(115200, (port, baud) => new PABotBase2SerialClient(port, baud))
         ]),
         new BridgeConnectionProvider(
         [
