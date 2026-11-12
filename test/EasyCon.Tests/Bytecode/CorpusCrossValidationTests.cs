@@ -1,3 +1,4 @@
+using EasyCon.Core.Hosting;
 using EasyCon.Script;
 using EasyCon.Script.Bytecode;
 using EasyCon.Tests.Support;
@@ -51,13 +52,15 @@ public class CorpusCrossValidationTests
         var eventsPath = Path.Combine(CorpusAssert.CorpusDir(), tag + ".events");
         var expectedEvents = File.Exists(eventsPath) ? File.ReadAllLines(eventsPath) : [];
 
-        // ① 统一编译链路 → EcxInterpreter
+        // ① 分别编译 PC 执行计划与 Portable 镜像，比较真正的两个目标。
         var result = Compilation.CompileSource(File.ReadAllText(ecsPath), new CompileOptions { UseDiskCache = false });
         Assert.That(result.Diagnostics.Where(d => d.IsError).ToList(), Is.Empty,
             $"[{tag}] 编译失败：" + string.Join("\n", result.Diagnostics));
 
+        CompileResult pc = Compilation.CompileSource(File.ReadAllText(ecsPath), ScriptCompileProfiles.Interactive());
+        Assert.That(pc.Diagnostics.Where(d => d.IsError), Is.Empty, $"[{tag}] PC 编译失败：" + string.Join("\n", pc.Diagnostics));
         var host = EcsTestHost.CreateRecording();
-        var code = EcxInterpreter.Run(result.Image!, host);
+        var code = PcInterpreter.Run(pc.Image!, host, out _);
         Assert.That(code, Is.EqualTo(EcxInterpreter.OK), $"[{tag}] 解释器执行失败：{code}");
         Assert.That(host.Lines, Is.EqualTo(expectedLines), $"[{tag}] 输出行与期望不一致");
         Assert.That(EcsTestHost.AllEvents(host), Is.EqualTo(expectedEvents), $"[{tag}] 事件与期望不一致");

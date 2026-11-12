@@ -21,7 +21,10 @@ public class ArgumentWindowTests
 
     internal static CompileResult Compile(string source, bool optimize = true)
     {
-        CompileResult result = Compilation.CompileSource(source, ScriptCompileProfiles.Interactive(optimize: optimize));
+        CompileOptions options = ScriptCompileProfiles.Distributable();
+        options.Optimize = optimize;
+        options.UseDiskCache = false;
+        CompileResult result = Compilation.CompileSource(source, options);
         Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty, string.Join("\n", result.Diagnostics));
         Assert.That(result.Image, Is.Not.Null);
         return result;
@@ -194,7 +197,9 @@ public class ArgumentWindowTests
         string forwarded = string.Join(", ", Enumerable.Range(0, 128).Select(i => $"$p{i}"));
         string source = $"FUNC relay({Parameters(128)}):INT\nRETURN relay({forwarded})\nENDFUNC\n" +
             $"RETURN relay({Arguments(128)})\n";
-        CompileResult result = Compilation.CompileSource(source, ScriptCompileProfiles.Interactive(optimize: false));
+        CompileOptions options = ScriptCompileProfiles.Distributable();
+        options.Optimize = false;
+        CompileResult result = Compilation.CompileSource(source, options);
         Assert.That(result.Diagnostics.Any(d => d.Message.Contains("寄存器溢出", StringComparison.Ordinal)), Is.True);
         Assert.That(result.Diagnostics.Any(d => d.Code == DiagnosticCodes.ParamWindowOverflow), Is.False);
         Assert.That(result.Image, Is.Null);

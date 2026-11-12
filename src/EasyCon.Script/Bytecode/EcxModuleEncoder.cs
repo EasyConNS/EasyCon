@@ -29,7 +29,7 @@ internal static class EcxModuleEncoder
 
         IReadOnlySet<FunctionSymbol>? externalFunctions,
 
-        bool hasInit, bool isMain)
+        bool hasInit, bool isMain, ScriptTarget target = ScriptTarget.Portable)
 
     {
 
@@ -66,6 +66,8 @@ internal static class EcxModuleEncoder
             Pool = new ModulePool(),
 
             ExternalFunctions = externalFunctions,
+
+            Target = target,
 
         };
 

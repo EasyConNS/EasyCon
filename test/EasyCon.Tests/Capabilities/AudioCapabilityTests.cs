@@ -209,7 +209,7 @@ public class AudioCapabilityTests
         string? binary = CvmRunner.EnsureBuilt(_directory);
         if (binary == null)
             Assert.Ignore("No C compiler available.");
-        CompileResult script = Compile("A\n" + call);
+        CompileResult script = Compilation.CompileSource("A\n" + call, ScriptCompileProfiles.Distributable());
         (int exit, string output, string error) = CvmRunner.Run(binary!, EcsContainer.WriteImage(script.Image!), "audio", _directory);
         Assert.That(exit, Is.EqualTo(14), error);
         Assert.That(output, Is.Empty);

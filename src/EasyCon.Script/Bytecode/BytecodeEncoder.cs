@@ -33,6 +33,7 @@ public sealed class ModulePool
 /// </summary>
 public sealed class ModuleEncodeContext
 {
+    public ScriptTarget Target;
     public required SsaProgram Program;
     public required string ModuleName;
     /// <summary>本模块函数 → 模块局部 fid（值相等键，A-07）。</summary>
@@ -297,14 +298,16 @@ public static partial class BytecodeEncoder
             Emit(new EcsInstruction(op, a, b, c, ext));
         }
 
-        /// <summary>Iabc 头部操作数字节域守卫（v3 定长）：槽位 u8 ≤254（255 = 无接收哨兵）；
-        /// StickSet/StickP 的 B/C 是摇杆坐标（满 u8 0..255），不按槽位收紧。</summary>
-        static void CheckIabcOperands(EcsOpcode op, int a, int b, int c)
+        /// <summary>Portable 槽位受 v3 编码约束；Desktop 保留整数槽位编号。
+        /// StickSet/StickP 的 B/C 恒为摇杆坐标（u8 0..255），不因 PC 扩展而放宽。</summary>
+        void CheckIabcOperands(EcsOpcode op, int a, int b, int c)
         {
-            if (a is < 0 or > 254) ThrowOp(op, $"A 槽位越界: {a}");
+            int lastSlot = RegisterLimit - 1;
+            if (a < 0 || a > lastSlot) ThrowOp(op, $"A 槽位越界: {a}");
             bool coord = op is EcsOpcode.StickSet or EcsOpcode.StickP;
-            if (b < 0 || b > (coord ? 255 : 255)) ThrowOp(op, $"B 越界: {b}");
-            if (c < -1 || c > (coord ? 255 : 254)) ThrowOp(op, $"C 越界: {c}");
+            int bLimit = coord || _ctx.Target == ScriptTarget.Portable ? 255 : lastSlot;
+            if (b < 0 || b > bLimit) ThrowOp(op, $"B 越界: {b}");
+            if (c < -1 || c > (coord ? 255 : lastSlot)) ThrowOp(op, $"C 越界: {c}");
         }
 
         static void ThrowOp(EcsOpcode op, string what)
@@ -369,14 +372,16 @@ public static partial class BytecodeEncoder
 
         // ---- 主流程 ----
 
+        int RegisterLimit => _ctx.Target == ScriptTarget.Desktop ? int.MaxValue : EcsRegisters.MaxRegisters;
+
         public void Run()
         {
             AssignSlots();
             EmitBlocks();
             Patch();
 
-            if (_poolNext > EcsRegisters.MaxRegisters)
-                throw Fail($"寄存器溢出：函数 '{_symbol.Name}' 的寄存器需求 {_poolNext} 超过帧上限 {EcsRegisters.MaxRegisters}（拆分函数或简化深表达式）");
+            if (_poolNext > RegisterLimit)
+                throw Fail($"寄存器溢出：函数 '{_symbol.Name}' 的寄存器需求 {_poolNext} 超过帧上限 {RegisterLimit}（拆分函数或简化深表达式）");
 
             Result = new EcsFunction
             {

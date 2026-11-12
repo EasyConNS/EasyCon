@@ -39,7 +39,7 @@ public sealed class CompileResult
     public bool KeyAction { get; }
     public bool NeedIL { get; }
     public CompilationTiming? Timing { get; }
-    /// <summary>链接后的可执行镜像（统一链路产物：桌面 EcxInterpreter 与 MCU .ecx 共用；失败为 null）。</summary>
+    /// <summary>链接后的内存计划；Desktop 仅供 PC 执行，Portable 可写 ECX；失败为 null。</summary>
     public EcxImage? Image { get; }
     /// <summary>链接序模块产物（std → vision → 依赖拓扑序 → main）。</summary>
     public List<ModuleArtifact> Artifacts { get; }
@@ -77,9 +77,18 @@ public sealed class CompileResult
     }
 }
 
+/// <summary>PC 内存执行与可分发 ECX 是不同目标；默认保持原来的 ECX 编码约束。</summary>
+public enum ScriptTarget
+{
+    Portable,
+    Desktop,
+}
+
 /// <summary>统一编译链路入口选项（Compilation.CompileSource/CompileFile）。</summary>
 public sealed class CompileOptions
 {
+    /// <summary>Desktop 允许扩展寄存器操作数，仅能在 PC 执行，不能序列化为 ECX。</summary>
+    public ScriptTarget Target { get; set; }
     /// <summary>外部变量名集合（识图标签等）。</summary>
     public ImmutableHashSet<string>? ExtVars { get; set; }
     /// <summary>启用 obj/ 磁盘缓存（默认 true：compile/MCU 分发路径收益；现编宿主可置 false，
@@ -112,7 +121,8 @@ public sealed class CompileOptions
         // （无旧版缓存、仅开发测试；旧履历 M4–M7 删除）。M2：参数/出站窗口按函数需求分配。
         // M5：声音接口改为 AUDIO_LOAD/AUDIO_SCORE/AUDIO_UNLOAD。M6：AUDIO_SCORE 返回 INT。
         // M7：合入 SSA 全局提升修复，使旧音频分支的编译缓存失效。
-        return $"O={(Optimize ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}|M=7";
+        // M8：PC 扩展执行目标与可分发 ECX 分离，失败缓存也必须按目标隔离。
+        return $"O={(Optimize ? '1' : '0')}|T={Target}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}|M=8";
     }
 }
 

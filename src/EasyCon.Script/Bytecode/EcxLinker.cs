@@ -17,10 +17,13 @@ internal static class EcxPipeline
 {
     // ============ 阶段二：链接模块产物 → EcxImage ============
 
-    public static EcxImage Link(IReadOnlyList<ModuleArtifact> artifacts, bool keyAction, bool needIL)
+    public static EcxImage Link(IReadOnlyList<ModuleArtifact> artifacts, bool keyAction, bool needIL,
+        ScriptTarget target = ScriptTarget.Portable)
     {
         if (artifacts.Count == 0)
             throw new BytecodeException(new[] { new BytecodeDiagnostic("没有可链接的模块", null, 0) });
+        if (target == ScriptTarget.Portable && artifacts.Any(a => a.RequiresPcExecution))
+            throw new BytecodeException(new[] { new BytecodeDiagnostic("PC 扩展帧不能链接为可分发 ECX；请使用 Portable 目标重新编译", null, 0) });
 
         const uint ImportFlag = 0x80000000u;
 
@@ -222,6 +225,7 @@ internal static class EcxPipeline
 
         var image = new EcxImage
         {
+            Target = target,
             Consts = imageConsts,
             Structs = globalStructs,
             Globals = imageGlobals,

@@ -91,11 +91,12 @@ Rules to respect when changing code:
   "raw material" (`ScriptHostContext`: pad, frame/ROI/label delegates, console, args); the assembler owns
   adapter wrapping, defaults (Environment/Files/OCR/DNN) and resource teardown (`CapabilityLease`).
 - **Never hand-write `CompileOptions` literals.** Use `ScriptCompileProfiles.Interactive`
-  (compile-on-the-fly, process cache only) or `ScriptCompileProfiles.Distributable`
-  (obj/ content-addressed cache; the image is MCU-distributable). All products share one
-  format (ECX1 flat + v3 fixed-width encoding); the 255-slot frame budget is shared by
-  params, outbound windows and live values. Device fit is a burn-time capacity precheck
-  concern, not a profile.
+  (Desktop target, PC-only in-memory instructions; encodable modules may use process cache)
+  or `ScriptCompileProfiles.Distributable` (Portable target, obj/ content-addressed cache,
+  MCU-distributable ECX1 + v3 encoding). Desktop uses `PcInterpreter` and full integer register
+  operands; its image cannot be serialized. Portable keeps the shared 255-slot budget for
+  parameters, outbound windows and live values. Never widen the MCU codec/C VM to accommodate
+  PC scripts. Target belongs in the product/cache fingerprint, including failed compiles.
 - DI *container* is deliberately absent: composition is explicit constructor passing from
   `App.axaml.cs` (GUI) and `Program.cs` (CLI).
 - **AI tool layer: runtime knows capabilities, not integrations.** Tool constructors may only depend on

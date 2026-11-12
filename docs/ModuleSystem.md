@@ -75,7 +75,7 @@ interface_hash = SHA-256(CompilerVersion
 ## 5. 缓存系统（`Modules/ModuleCache.cs`）
 
 - **cacheKey** = SHA256(源码 ⊕ 文件模块的规范化源路径上下文 ⊕ Σ直接依赖接口哈希 ⊕ 编译器版本 ⊕ `CompileOptions.ProductFingerprint()`)。
-  影响产物的选项集中在 ProductFingerprint（Optimize / LegacySyntax / ExtVars）；其余选项不进键。
+  影响产物的选项集中在 ProductFingerprint（Optimize / Target / ExtVars / syscall ABI / 产物代数）；其余选项不进键。
   源路径上下文用于保证 `EXTERN ... FROM "相对路径"` 始终按声明 `.ecs` 所在目录解析；内嵌 `std/vision` 与内存伪文件名使用空上下文，仍可跨项目共享。
   `.eci` 预声明接口缓存也包含相同路径上下文，避免复用其他项目目录解析出的原生库绝对路径。
   文件名 = `<模块名>-<key 前 8 位>.ecm`，不同版本并存免锁竞争。
@@ -84,6 +84,9 @@ interface_hash = SHA-256(CompilerVersion
 - **错误缓存**：编译失败诊断持久化为 `.err` sidecar，同键命中即原样重报快速失败（ErrorHits 计数）；
   修复后源码变 → 新键自然失效。重放诊断统一经 `DiagnosticBag.FromMessage` 构造。
 - **进程缓存**：仅 `UseDiskCache=false` 现编路径，存 EcmFormat 字节、命中反序列化出新实例（杜绝别名共享）。
+- **PC 扩展目标**：`Target=Desktop` 不建立/读取磁盘缓存，即使调用方设置 UseDiskCache；
+  可编码的小模块仍使用带 Desktop 指纹的进程缓存，超过 255 槽的模块不序列化、不进入 ECM。
+  Portable 的成功/失败缓存都不能命中 Desktop；`WriteModule` 和 Portable 链接入口拒绝扩展帧。
 - **GC**：运行末扫描 obj/，删除引用闭包之外且 mtime 超龄（默认 30 天，可配）的 .ecm/.err。
 
 ## 6. FFI 原生库路径
