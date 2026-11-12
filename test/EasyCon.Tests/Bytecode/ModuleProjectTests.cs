@@ -375,7 +375,7 @@ public class ModuleProjectTests
         Assert.Multiple(() =>
         {
             Assert.That(cycle.IsError, Is.True);
-            Assert.That(cycle.FileName, Is.EqualTo(Path.Combine(_dir, secondPath)));
+            Assert.That(cycle.FileName, Is.EqualTo(Path.GetFullPath(Path.Combine(_dir, secondPath))));
             Assert.That(cycle.Location.StartLine, Is.EqualTo(1));
             Assert.That(cycle.Location.Span.Length, Is.GreaterThan(0));
             Assert.That(project.Artifacts, Is.Empty, "Cycle detection must precede module compilation");
