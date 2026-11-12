@@ -314,8 +314,7 @@ public class ScriptHostAssemblerTests
 }
 
 /// <summary>
-/// 编译档位锁定（档位塌缩后，SingleStreamFormat §2 R-5）：产物同形态，
-/// 剩余两档只是缓存策略（与产物内容无关，不进缓存键）。
+/// 编译档位锁定：PC 执行与可分发 ECX 的目标及缓存键必须隔离。
 /// </summary>
 [TestFixture]
 public class ScriptCompileProfilesTests
@@ -328,6 +327,7 @@ public class ScriptCompileProfilesTests
         Assert.Multiple(() =>
         {
             Assert.That(options.UseDiskCache, Is.False, "现编档不落盘（run/编辑器高频重编）");
+            Assert.That(options.Target, Is.EqualTo(ScriptTarget.Desktop));
             Assert.That(options.UseProcessCache, Is.True, "进程缓存兜底");
             Assert.That(options.Optimize, Is.False);
             Assert.That(options.ExtVars, Is.EquivalentTo(new[] { "lbl" }));
@@ -342,17 +342,18 @@ public class ScriptCompileProfilesTests
         Assert.Multiple(() =>
         {
             Assert.That(options.UseDiskCache, Is.True, "obj/ 内容寻址缓存服务分发产物");
+            Assert.That(options.Target, Is.EqualTo(ScriptTarget.Portable));
             Assert.That(options.Optimize, Is.True);
             Assert.That(options.ExtVars, Is.Null);
         });
     }
 
     [Test]
-    public void Profiles_ShareProductFingerprint()
+    public void Profiles_IsolateProductFingerprint()
     {
-        // 档位塌缩：两档产物同形态（差异仅在缓存策略，而缓存策略不进键）→ 共享缓存条目
+        // 同源码的 MCU 溢出诊断不能命中 PC 编译缓存。
         Assert.That(
             ScriptCompileProfiles.Interactive([]).ProductFingerprint(),
-            Is.EqualTo(ScriptCompileProfiles.Distributable([]).ProductFingerprint()));
+            Is.Not.EqualTo(ScriptCompileProfiles.Distributable([]).ProductFingerprint()));
     }
 }

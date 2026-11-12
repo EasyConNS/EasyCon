@@ -100,7 +100,7 @@ public static class ProjectCompiler
         CompileOptions options, ModuleProjectResult result)
     {
         ModuleCache? cache = null;
-        if (options.UseDiskCache && objDir.Length > 0)
+        if (options.Target == ScriptTarget.Portable && options.UseDiskCache && objDir.Length > 0)
             cache = new ModuleCache(objDir);
 
         // 主树语法错误：编译前短路（不建图、不触碰缓存统计）
@@ -163,7 +163,7 @@ public static class ProjectCompiler
         {
             result.Image = EcxPipeline.Link(result.Artifacts,
                 result.Artifacts.Any(a => a.KeyAction),
-                result.Artifacts.Any(a => a.NeedIL));
+                result.Artifacts.Any(a => a.NeedIL), options.Target);
             result.Success = true;
         }
         catch (BytecodeException ex)

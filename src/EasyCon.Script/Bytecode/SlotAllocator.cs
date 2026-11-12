@@ -380,8 +380,8 @@ public static partial class BytecodeEncoder
                     _stagingCount = Math.Max(_stagingCount, count);
                 }
             _allocBase = _stagingBase + _stagingCount;
-            if (_allocBase > EcsRegisters.MaxRegisters)
-                throw Fail($"寄存器溢出：函数 '{_symbol.Name}' 的参数窗和出站窗口需求 {_allocBase} 超过帧上限 {EcsRegisters.MaxRegisters}");
+            if (_allocBase > RegisterLimit)
+                throw Fail($"寄存器溢出：函数 '{_symbol.Name}' 的参数窗和出站窗口需求 {_allocBase} 超过帧上限 {RegisterLimit}");
 
             // 0. 存活局部重编号（编码期槽位回收）：局部读值全走 SSA（构建期 mem2reg），
             // StoreLocal 仅参数 store 发射（EmitInst；TRE 回边写参数帧槽，entry 循环头重读）。
@@ -742,8 +742,8 @@ public static partial class BytecodeEncoder
                 return s;
             }
             var fresh = _poolNext++;
-            if (fresh >= EcsRegisters.MaxRegisters)
-                throw Fail($"寄存器溢出：函数 '{_symbol.Name}' 的寄存器需求超过帧上限 {EcsRegisters.MaxRegisters}（拆分函数或简化深表达式）");
+            if (fresh >= RegisterLimit)
+                throw Fail($"寄存器溢出：函数 '{_symbol.Name}' 的寄存器需求超过帧上限 {RegisterLimit}（拆分函数或简化深表达式）");
             return fresh;
         }
 

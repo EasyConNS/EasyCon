@@ -215,7 +215,7 @@ internal sealed class ModuleCompilePipeline
                 return false;
             }
             _cache?.Store(artifact, cacheKey);
-            if (_cache == null && _options.UseProcessCache)
+            if (_cache == null && _options.UseProcessCache && !artifact.RequiresPcExecution)
                 ProcessModuleCache.Store(artifact, cacheKey);
         }
         node.Artifact = artifact;
@@ -347,7 +347,7 @@ internal sealed class ModuleCompilePipeline
 
             bool hasInit = isMain || (node.Interface?.HasInit ?? false);
             var artifact = EcxModuleEncoder.CompileWholeProgramAsModule(ssa, node.Name, externalFunctions,
-                hasInit: hasInit, isMain: isMain);
+                hasInit: hasInit, isMain: isMain, target: _options.Target);
             artifact.Ssa = _options.KeepSsa ? ssa : null;
 
             // 接口区：声明收集层提取；依赖表 = 图边（含隐式 std/vision，§4.4）

@@ -1,7 +1,8 @@
 # VM2 — ECS 字节码虚拟机规范
 
-> **定位**：ECS 脚本的编译目标与双端执行规范——C# `EcxInterpreter`（桌面）与 C `ecs_vm`（单片机）
-> 消费同一 ECX 镜像。本文是**现状规范**：指令集、二进制格式、宿主 ABI、分层模型。
+> **定位**：ECS 脚本的编译目标与双端执行规范——PC `PcInterpreter` 执行 Desktop 内存计划，
+> C `ecs_vm`（单片机）执行 Portable ECX 镜像。`EcxInterpreter` 保留为兼容/模拟入口。
+> 本文是**现状规范**：指令集、二进制格式、宿主 ABI、分层模型。
 > 权威源：`EcsOpcode.cs` / `EcsFormat.cs`（C# 侧）与 `ecs_vm.h`（C 侧）逐项对齐；
 > 双端语义一致性由 corpus/FullChain/ABI 对拍测试锁定（`test/EasyCon.Tests/Bytecode/`）；编译链路见 `docs/Pipeline.md`；
 > 模块系统见 `docs/ModuleSystem.md`。冲突时以代码为准并修本文。
@@ -30,7 +31,9 @@
 | `src/EasyCon.Script/Bytecode/EcxLinker.cs` | 模块合并、死函数/死存储/死元素消除、特征掩码、入口合成 |
 | `src/EasyCon.Script/Bytecode/DeadStoreSweep.cs` | 链接期死存储清扫（反向活跃性，防线 3） |
 | `src/EasyCon.Script/Bytecode/EcxWriter.cs` | ECX 序列化（stripDebug 产 MCU 发布版） |
-| `src/EasyCon.Script/Bytecode/EcxInterpreter.cs` | C# 解释器 + `EcxHost`（桌面参考宿主） |
+| `src/EasyCon.Script/Bytecode/PcInterpreter.cs` | Desktop 专用内存指令执行入口 |
+| `src/EasyCon.Script/Bytecode/InstructionExecutor.cs` | 共用指令语义内核 + `EcxHost`（桌面参考宿主） |
+| `src/EasyCon.Script/Bytecode/EcxInterpreter.cs` | ECX 模拟与已有 API 的兼容入口 |
 | `src/EasyCon.Script/Modules/*` | 模块图/独立编译/接口缓存（`docs/ModuleSystem.md`） |
 | `src/EasyCon.Vm/native/ecs_vm.h|.c` | C 虚拟机公共 API + 实现（加载器/堆/解释器，纯调度） |
 | `src/EasyCon.Vm/native/ecs_main.c` | CLI harness = MCU 参考宿主（L2 参考桩 + L1 回调） |
@@ -133,7 +136,7 @@ ToStr ToInt`。
 > **单流化 + v3 定长（已实施）**：内存唯一表示为解码形态 `EcsInstruction`（完整 int32 操作数，
 > Jump = 相对指令下标）；文件的 **v3 定长指令流**（ECX1 `.text`）与内存按上表一一对应，
 > 投影/抬升由 `InstructionCodec` 单处换算（线格式跳转 = 相对**字节**偏移：目标 = 指令起始 +
-> 本指令字节数 + delta）。操作数位宽由格式锁定：槽位 u8 ≤254（寄存器 ≤255 帧长上限，无哨兵值——
+> 本指令字节数 + delta）。Portable 操作数位宽由格式锁定：槽位 u8 ≤254（寄存器 ≤255 帧长上限，无哨兵值——
 > Call/CallN 的 C 恒为接收寄存器号）；AsBx=s16；ABx=Bx16（≤65535，常量池 16 位索引是 pinned 句柄编码前提）；
 > IsJ=s24。越界一律**编译期响亮失败**。
 > 权威表：C# `EcsFormat.BuildTable`（漏登自检抛出）↔ C `ecs_op_words`（字数 1=4B/2=8B）。
@@ -142,9 +145,14 @@ ToStr ToInt`。
 恰好等于某个操作码，一切线性扫描必须按 `EcsFormat.WordCount` 步进跳过（历史 F4 缺陷铁律，
 v3 随定长布局回归）。
 
-容量上限（R-3）：槽位上限 254 已前移到**编译期**（v3 槽位 u8，与宿主档案 `ECS_MAX_SLOTS=255`
+容量上限（R-3）：Portable 槽位上限 254 已前移到**编译期**（v3 槽位 u8，与宿主档案 `ECS_MAX_SLOTS=255`
 对齐）；加载期校验保留（nslots ≤ 宿主档案）。Jpt/Jpf 偏移越界由编码器跳转反转模板消化，
 超 s16 由 `Project` 响亮失败。
+
+Desktop 不投影为 v3 字节流，`PcInterpreter` 通过共用的 `InstructionExecutor` 直接消费完整 int
+寄存器操作数，动态开窗，不继承 255 槽预算。该计划带 Desktop 目标标记，`WriteImage` 拒绝导出；
+扩展模块也不能写入 ECM。MCU 指令/格式版本、C VM ABI 和固件均不变。参数上限仍为 254；
+下文涉及 u8 槽位和 255 帧预算时描述的是 Portable 编译目标。
 
 ### 3.2 指令表
 

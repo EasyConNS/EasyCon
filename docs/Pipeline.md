@@ -1,7 +1,8 @@
 # 统一脚本编译链路
 
 > C# 侧单一编译链路：**源码 → Parser → ProjectCompiler（模块图 + lib/ 自动加载）→ 每模块独立编译 →
-> EcxImage**；桌面由 **EcxInterpreter** 执行 ECX 镜像，单片机由 **C VM** 执行同一二进制。
+> 链接后的完整操作数计划**。Desktop 由 **PcInterpreter** 执行内存计划；Portable 经原有
+> **ECX1/v3** 编码后由单片机 **C VM** 执行，不为 PC 扩展修改 MCU 格式。
 > 关联：`docs/ModuleSystem.md`（模块/缓存）、`docs/VM2.md`（双端语义，对拍测试锁定）、
 > 产物容器规格见 `EcsContainer`/链接器测试（`test/EasyCon.Tests/Bytecode/`）。
 
@@ -11,16 +12,24 @@
 源码 ─► Parser ─► ProjectCompiler（模块图 + lib/ 自动加载）
                      │  每模块：InterfaceScopeSynthesizer → Binder（模块单树绑定）→ SSA → 优化 → 编码
                      ▼
-              EcxPipeline.Link ─► EcxImage（ECX 二进制）
+              EcxPipeline.Link ─► EcxImage（带目标标记的内存表示）
                      ├─ 桌面：IScriptEngine（EasyScriptEngine）→ EcxVm 桥
                      │        （CapabilitySet 能力装配：输入/控制台/环境/文件/采集/视觉/OCR/推理）
-                     │        → EcxInterpreter
-                     └─ MCU ：EcxWriter → .ecx → C VM（ecs-vm）
+                     │        → PcInterpreter → InstructionExecutor
+                     └─ MCU ：Portable → EcsContainer → .ecx → C VM（ecs-vm）
 ```
 执行面（P6 收敛）：GUI/CLI 经 `IScriptEngine.FromSource/LoadFile` 得到 `IScriptSession`
 （`Info` = CompileResult 诊断/镜像/符号），`Run(token, capabilities)` 以**能力集**
 （`EasyCon.Core.Capabilities.CapabilitySet`，宿主 = 能力实例集合，null = 不可用）装配
 `EcxHost` 委托与评估桥——能力模型纯属 PC 装配层，VM 核不感知。
+
+`ScriptCompileProfiles.Interactive` 选择 Desktop：保留整数槽位编号、动态分配函数帧，
+不经过 `InstructionCodec.Project`。`Distributable` 选择 Portable，仍在分配阶段检查 255 槽预算。
+两种目标共用前端、模块链接、指令语义与取消/宿主契约；`InstructionExecutor` 由 PC 专用入口
+与兼容的 `EcxInterpreter` 入口复用，不维护两份算术和引用计数实现。
+`EcxImage.Target` 标记 Desktop 时，`EcsContainer.WriteImage` 一律拒绝导出，即使该脚本很小；
+GUI/CLI 导出必须从源码以 Distributable 重新编译。当前仍保留 254 参数及既有常量/表索引限制。
+这次只解耦函数寄存器容量，没有新增可分发的宽 ECX 格式，也没有实现 SSA 直接解释器。
 
 入口函数 `<main>` = 依赖模块 `<init:module>` 调用序列按拓扑序前插 `$eval` 本体，
 顶层 RETURN 经 r0 透传；`<init>` 承载各模块顶层语句与模块私有全局初始化。
@@ -61,7 +70,7 @@
 | 内置函数能力清单（路由 + 特征位 + MCU 桩可用标记） | `Binding/BuiltinFunctions.Manifest`（单一登记；`Routes`/`IsIntrinsic` 派生；链接器特征扫描消费 FeatureBit；总表见 VM2.md §7.0） |
 | syscall 编号/镜像特征位 | `Bytecode/EcsOpcode.cs`（`EcsSyscall`/`EcsImageFeatures`）+ C 侧 `ECS_SYSCALL_*`/`ECS_FEAT_*` |
 | 代码线性扫描 | `Bytecode/InstructionScanner.cs`（回调式，链接器各 pass 共享） |
-| RC 槽写 | C# `MoveToSlot/StoreFresh/OverwriteItem`（EcxInterpreter.cs）；C `move_to/store_fresh`（ecs_vm.c） |
+| RC 槽写 | C# `MoveToSlot/StoreFresh/OverwriteItem`（InstructionExecutor.cs）；C `move_to/store_fresh`（ecs_vm.c） |
 | 缓存键选项 | `CompileOptions.ProductFingerprint()`；产物自检 `ModuleArtifact.IntegrityCheck()` |
 | 模块诊断构造 | `DiagnosticBag.FromMessage` |
 | 测试基建 | `test/EasyCon.Tests/Support/`（CvmRunner/EcsTestHost/CorpusAssert） |
@@ -69,9 +78,9 @@
 ## 5. 后续项（未实施）
 
 - **GUI 一键产 `.ecx` 并烧录**：方案见 `docs/McuBytecodeDelivery.md`（唯一入口
-  `McuImageBuilder` + 预检 + 复用 `NintendoSwitch.Flash`；单流化后产物同形态，
-  GUI 会话镜像可直接序列化，CLI `compile` 已可用）。
-- ~~桌面路径缓存化~~（✅ 单流化档位塌缩后桌面路径已可用进程/磁盘缓存；GUI 默认仍现编）。
+  `McuImageBuilder` + 预检 + 复用 `NintendoSwitch.Flash`；从源码重新执行 Portable 编译，
+  不能直接序列化 Desktop 会话计划。CLI `compile` 与 GUI 导出使用 `EcxExportService`）。
+- 桌面进程缓存仅保留可编码的小模块；扩展帧模块每次重新编译，不写 ECM。
 - ~~运行错误位置映射~~（✅ ECM v4 起产物带行号表，桌面路径 `EcxVm` 已实现 pc→源行；
   行号调试块保留，MCU 发布镜像省略）。
 - EcxInterpreter 性能：常量串 pinned（✅ S-20 已落地）/ 帧池复用（C VM ✅ ZeroAlloc P2）/ 取消检查三分点

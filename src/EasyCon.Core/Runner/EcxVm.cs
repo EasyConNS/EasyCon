@@ -69,7 +69,12 @@ public static class EcxVm
                     ?? throw new InvalidOperationException("当前宿主未提供脚本音频能力 AUDIO_LOAD/AUDIO_SCORE/AUDIO_UNLOAD；请使用已连接游戏音频的桌面 GUI。");
                 audio = service.BeginRun(token);
             }
-            int code = EcxInterpreter.Run(image, host, out _, out var errorFunc, out var errorPc, out var result, token);
+            int errorFunc;
+            int errorPc;
+            Value result;
+            int code = image.Target == ScriptTarget.Desktop
+                ? PcInterpreter.Run(image, host, out _, out errorFunc, out errorPc, out result, token)
+                : EcxInterpreter.Run(image, host, out _, out errorFunc, out errorPc, out result, token);
             if (code == EcxInterpreter.OK)
             {
                 audio?.CheckHealth(token);

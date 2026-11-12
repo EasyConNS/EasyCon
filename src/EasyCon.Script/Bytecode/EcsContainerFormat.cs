@@ -27,6 +27,8 @@ public static class EcsContainer
     /// </summary>
     public static byte[] WriteImage(EcxImage image, bool stripDebug = false, bool withCrc = true)
     {
+        if (image.Target == ScriptTarget.Desktop)
+            throw new BytecodeException([new BytecodeDiagnostic("PC 扩展执行计划不能导出为 ECX；请使用 Portable 目标重新编译", null, 0)]);
         // .text 投影（函数 code_off 依赖字节布局）
         var codeOffsets = new uint[image.Functions.Count];
         var codeBuf = new List<byte>();
@@ -133,6 +135,8 @@ public static class EcsContainer
     /// </summary>
     public static byte[] WriteModule(ModuleArtifact module)
     {
+        if (module.RequiresPcExecution)
+            throw new BytecodeException([new BytecodeDiagnostic("PC 扩展帧不能写入 ECM 模块缓存", module.Name, 0)]);
         // .text 投影（函数 code_off 依赖字节布局）
         var codeOffsets = new uint[module.Functions.Count];
         var codeBuf = new List<byte>();

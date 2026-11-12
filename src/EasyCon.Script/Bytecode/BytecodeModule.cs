@@ -145,6 +145,8 @@ public sealed class EcsExport
 /// </summary>
 public sealed class ModuleArtifact
 {
+    /// <summary>包含只能由 PC 执行的扩展帧，禁止写入 ECM 缓存。</summary>
+    public bool RequiresPcExecution => Functions.Any(f => f.NSlots > EcsRegisters.MaxRegisters);
     /// <summary>缓存读出完整性自检（disk/process 两条 TryLoad 路径共享）：
     /// 接口区存在且接口哈希与内容自洽；损坏/被篡改 → false（调用方按未命中重编）。</summary>
     public bool IntegrityCheck()
@@ -177,10 +179,12 @@ public sealed class ModuleArtifact
 }
 
 /// <summary>
-/// 链接后可执行镜像（ECX 的内存表示），纯 C 虚拟机的唯一输入。
+/// 链接后可执行计划。Portable 可投影为 C VM 的 ECX；Desktop 仅供 PC 扩展执行。
 /// </summary>
 public sealed class EcxImage
 {
+    /// <summary>Desktop 是仅供 PC 执行的内存计划，不是可分发的 ECX 镜像。</summary>
+    public ScriptTarget Target { get; internal set; }
     public List<EcsConst> Consts = new();
     public List<EcsStructLayout> Structs = new();
     public List<EcsGlobal> Globals = new();
