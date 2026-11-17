@@ -210,8 +210,7 @@ public sealed class EcxHost
 }
 
 /// <summary>
-/// ECX 模拟解释器：字节码语义的 C# 参考实现——双端语义由 corpus/FullChain 对拍测试锁定。
-/// 在 C 虚拟机落地前承担"模拟验证"；C VM 完成后作为交叉对比的第二方。
+/// 直接执行内存中的 ECS 指令计划，也是 C VM 的语义参考实现。
 /// </summary>
 public sealed class EcxInterpreter
 {
@@ -596,7 +595,7 @@ public sealed class EcxInterpreter
 
     // ---- 主循环 ----
 
-    /// <summary>帧出租（每函数栈窗口）：帧长 = 函数寄存器高水位（NSlots ≤255），
+    /// <summary>帧出租（每函数栈窗口）：帧长取函数寄存器高水位，
     /// 池空新建；复用时槽位 Array.Clear 复位为 Void（StoreFresh「无旧值」直写契约），
     /// 容量不足则扩容（容量只增，峰值深度即池上限——池随弹帧回收）。</summary>
     Frame RentFrame(int nslots)

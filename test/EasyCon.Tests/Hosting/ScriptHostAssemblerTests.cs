@@ -314,8 +314,7 @@ public class ScriptHostAssemblerTests
 }
 
 /// <summary>
-/// 编译档位锁定（档位塌缩后，SingleStreamFormat §2 R-5）：产物同形态，
-/// 剩余两档只是缓存策略（与产物内容无关，不进缓存键）。
+/// 宿主编译选项与缓存策略。
 /// </summary>
 [TestFixture]
 public class ScriptCompileProfilesTests
@@ -335,24 +334,11 @@ public class ScriptCompileProfilesTests
     }
 
     [Test]
-    public void Distributable_EnablesDiskCache()
+    public void CacheLocation_DoesNotChangeProductFingerprint()
     {
-        CompileOptions options = ScriptCompileProfiles.Distributable();
-
-        Assert.Multiple(() =>
-        {
-            Assert.That(options.UseDiskCache, Is.True, "obj/ 内容寻址缓存服务分发产物");
-            Assert.That(options.Optimize, Is.True);
-            Assert.That(options.ExtVars, Is.Null);
-        });
-    }
-
-    [Test]
-    public void Profiles_ShareProductFingerprint()
-    {
-        // 档位塌缩：两档产物同形态（差异仅在缓存策略，而缓存策略不进键）→ 共享缓存条目
-        Assert.That(
-            ScriptCompileProfiles.Interactive([]).ProductFingerprint(),
-            Is.EqualTo(ScriptCompileProfiles.Distributable([]).ProductFingerprint()));
+        CompileOptions options = ScriptCompileProfiles.Interactive(["lbl"]);
+        string fingerprint = options.ProductFingerprint();
+        options.UseDiskCache = true;
+        Assert.That(options.ProductFingerprint(), Is.EqualTo(fingerprint));
     }
 }

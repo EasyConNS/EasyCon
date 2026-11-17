@@ -380,8 +380,6 @@ public static partial class BytecodeEncoder
                     _stagingCount = Math.Max(_stagingCount, count);
                 }
             _allocBase = _stagingBase + _stagingCount;
-            if (_allocBase > EcsRegisters.MaxRegisters)
-                throw Fail($"寄存器溢出：函数 '{_symbol.Name}' 的参数窗和出站窗口需求 {_allocBase} 超过帧上限 {EcsRegisters.MaxRegisters}");
 
             // 0. 存活局部重编号（编码期槽位回收）：局部读值全走 SSA（构建期 mem2reg），
             // StoreLocal 仅参数 store 发射（EmitInst；TRE 回边写参数帧槽，entry 循环头重读）。
@@ -603,7 +601,7 @@ public static partial class BytecodeEncoder
             _tplChunkSize = Math.Min(TemplateChunkSize, _stagingCount);
 
             // 池区自独占区之后生长（_next 已含全部独占槽；≥ _allocBase）；帧长（NSlots）=
-            // 发射结束后池区高水位（≤ MaxRegisters，Run 期校验）
+            // 发射结束后池区高水位。
             _poolNext = Math.Max(_next, _allocBase);
         }
 
@@ -741,10 +739,7 @@ public static partial class BytecodeEncoder
 #endif
                 return s;
             }
-            var fresh = _poolNext++;
-            if (fresh >= EcsRegisters.MaxRegisters)
-                throw Fail($"寄存器溢出：函数 '{_symbol.Name}' 的寄存器需求超过帧上限 {EcsRegisters.MaxRegisters}（拆分函数或简化深表达式）");
-            return fresh;
+            return _poolNext++;
         }
 
         /// <summary>读取点结算：池化值在末次静态读取发射后归还槽位。

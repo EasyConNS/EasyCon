@@ -90,12 +90,11 @@ Rules to respect when changing code:
 - **Never construct `CapabilitySet` outside `Hosting/ScriptHostAssembler`.** Hosts (GUI/CLI) supply only
   "raw material" (`ScriptHostContext`: pad, frame/ROI/label delegates, console, args); the assembler owns
   adapter wrapping, defaults (Environment/Files/OCR/DNN) and resource teardown (`CapabilityLease`).
-- **Never hand-write `CompileOptions` literals.** Use `ScriptCompileProfiles.Interactive`
-  (compile-on-the-fly, process cache only) or `ScriptCompileProfiles.Distributable`
-  (obj/ content-addressed cache; the image is MCU-distributable). All products share one
-  format (ECX1 flat + v3 fixed-width encoding); the 255-slot frame budget is shared by
-  params, outbound windows and live values. Device fit is a burn-time capacity precheck
-  concern, not a profile.
+- **Use `ScriptCompileProfiles.Interactive` for GUI and CLI compilation.** The compiler produces
+  one plan with full integer operands. The PC interpreter executes the plan directly.
+  `EcxExportService` checks the linked plan for desktop dependencies before encoding ECX1.
+  The export service enforces the MCU's 255-slot frame budget. Cache location is a compiler
+  option independent of execution and export.
 - DI *container* is deliberately absent: composition is explicit constructor passing from
   `App.axaml.cs` (GUI) and `Program.cs` (CLI).
 - **AI tool layer: runtime knows capabilities, not integrations.** Tool constructors may only depend on

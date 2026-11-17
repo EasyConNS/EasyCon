@@ -75,7 +75,7 @@ interface_hash = SHA-256(CompilerVersion
 ## 5. 缓存系统（`Modules/ModuleCache.cs`）
 
 - **cacheKey** = SHA256(源码 ⊕ 文件模块的规范化源路径上下文 ⊕ Σ直接依赖接口哈希 ⊕ 编译器版本 ⊕ `CompileOptions.ProductFingerprint()`)。
-  影响产物的选项集中在 ProductFingerprint（Optimize / LegacySyntax / ExtVars）；其余选项不进键。
+  影响产物的选项集中在 ProductFingerprint（Optimize / Target / ExtVars / syscall ABI / 产物代数）；其余选项不进键。
   源路径上下文用于保证 `EXTERN ... FROM "相对路径"` 始终按声明 `.ecs` 所在目录解析；内嵌 `std/vision` 与内存伪文件名使用空上下文，仍可跨项目共享。
   `.eci` 预声明接口缓存也包含相同路径上下文，避免复用其他项目目录解析出的原生库绝对路径。
   文件名 = `<模块名>-<key 前 8 位>.ecm`，不同版本并存免锁竞争。
@@ -83,7 +83,10 @@ interface_hash = SHA-256(CompilerVersion
 - **写**：`temp + rename` 原子替换；成功后删除同键 `.err`。
 - **错误缓存**：编译失败诊断持久化为 `.err` sidecar，同键命中即原样重报快速失败（ErrorHits 计数）；
   修复后源码变 → 新键自然失效。重放诊断统一经 `DiagnosticBag.FromMessage` 构造。
-- **进程缓存**：仅 `UseDiskCache=false` 现编路径，存 EcmFormat 字节、命中反序列化出新实例（杜绝别名共享）。
+- **进程缓存**：`UseDiskCache=false` 时可缓存完整操作数模块。存入和命中时各复制一次计划，
+  包括超过 255 槽的函数。接口元数据复用现有模块接口格式。
+- **磁盘模块缓存**：`UseDiskCache=true` 时使用紧凑的 ECM1 格式。超出格式容量的模块照常编译并链接，
+  跳过该条缓存写入。缓存键取决于源码、接口和影响编译结果的选项。
 - **GC**：运行末扫描 obj/，删除引用闭包之外且 mtime 超龄（默认 30 天，可配）的 .ecm/.err。
 
 ## 6. FFI 原生库路径

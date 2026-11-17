@@ -20,6 +20,15 @@ public static class EcsContainer
 
     public const byte HeaderFlagDebug = 0x01;   // ECX1 flags：bit0=调试块在（ECM1 flags 见 WriteModule）
 
+    static void ValidateFrameSizes(IReadOnlyList<EcsFunction> functions, int maxSlots)
+    {
+        foreach (EcsFunction function in functions)
+            if (function.NSlots < 0 || function.NSlots > maxSlots)
+                throw new BytecodeException([new BytecodeDiagnostic(
+                    $"函数 '{function.Name}' 的帧大小 {function.NSlots} 超出容器范围 0–{maxSlots}",
+                    function.Name, 0)]);
+    }
+
     /// <summary>
     /// ECX1 平铺镜像容器（v2.3 零期，2026-10-05）：无逐段框架——定长 36B 头 + 主模块名 +
     /// 自计数表依序排列（常量/类型/全局/原生/函数表/.text/可选调试块）+ 全量 CRC。
@@ -27,6 +36,7 @@ public static class EcsContainer
     /// </summary>
     public static byte[] WriteImage(EcxImage image, bool stripDebug = false, bool withCrc = true)
     {
+        ValidateFrameSizes(image.Functions, ushort.MaxValue);
         // .text 投影（函数 code_off 依赖字节布局）
         var codeOffsets = new uint[image.Functions.Count];
         var codeBuf = new List<byte>();
@@ -129,10 +139,11 @@ public static class EcsContainer
     /// metaSize/静态极值/CRC）+ 模块名 + 自计数表序（常量/类型/全局/原生/函数表/.text）
     /// + 元数据尾块（[linesLen][lines][imports][exports][ilnames][ifaceLen][iface]）+ 全量 CRC。
     /// flags：bit0=hasEval bit1=hasInit bit2=keyAction bit3=needIL。
-    /// 仅 PC 侧编译缓存消费（进程缓存 + obj/ 磁盘缓存）；不携带入口/链接结果（链接期内存隐式）。
+    /// 用于 obj/ 磁盘模块缓存，入口由链接器生成。
     /// </summary>
     public static byte[] WriteModule(ModuleArtifact module)
     {
+        ValidateFrameSizes(module.Functions, EcsRegisters.MaxRegisters);
         // .text 投影（函数 code_off 依赖字节布局）
         var codeOffsets = new uint[module.Functions.Count];
         var codeBuf = new List<byte>();

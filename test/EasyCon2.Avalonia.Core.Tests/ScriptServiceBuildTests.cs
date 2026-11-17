@@ -6,7 +6,7 @@ namespace EasyCon2.Avalonia.Core.Tests;
 public partial class ScriptServiceTests
 {
     [Test]
-    public async Task BuildAsync_UsesCurrentEditorSnapshotAndMatchesDistributableExport()
+    public async Task BuildAsync_UsesCurrentEditorSnapshotAndMatchesCliExport()
     {
         FakeLogService log = new();
         ScriptService service = CreateService(log, new FakeDeviceService(), new FakeCaptureService());
@@ -24,6 +24,18 @@ public partial class ScriptServiceTests
             Assert.That(log.Snapshot(), Does.Not.Contain("v1 Assemble"));
             Assert.That(log.Snapshot(), Does.Contain("ECX 导出完成: " + guiBytes.Length + " 字节"));
         });
+    }
+
+    [Test]
+    public async Task BuildAsync_RejectsVisionAfterSuccessfulPcCompilation()
+    {
+        FakeLogService log = new();
+        ScriptService service = CreateService(log, new FakeDeviceService(), new FakeCaptureService());
+
+        Assert.That(await service.CompileAsync("RETURN OCR_INIT(\"eng\")\n", null), Is.True);
+        Assert.That(await service.BuildAsync(stripDebug: true), Is.Empty);
+        Assert.That(log.Snapshot().Any(message => message.Contains("无法生成单片机离线字节码", StringComparison.Ordinal)),
+            Is.True);
     }
 
     [Test]

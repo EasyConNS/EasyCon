@@ -17,7 +17,7 @@ internal static class EcxPipeline
 {
     // ============ 阶段二：链接模块产物 → EcxImage ============
 
-    public static EcxImage Link(IReadOnlyList<ModuleArtifact> artifacts, bool keyAction, bool needIL)
+    public static EcxImage Link(IReadOnlyList<ModuleArtifact> artifacts, bool keyAction)
     {
         if (artifacts.Count == 0)
             throw new BytecodeException(new[] { new BytecodeDiagnostic("没有可链接的模块", null, 0) });
@@ -218,7 +218,6 @@ internal static class EcxPipeline
         imageFunctions[entry].Name = "<main>";
 
         keyAction |= artifacts.Any(a => a.KeyAction);
-        needIL |= artifacts.Any(a => a.NeedIL);
 
         var image = new EcxImage
         {
@@ -230,7 +229,6 @@ internal static class EcxPipeline
             Entry = entry,
             Modules = moduleNames,
             KeyAction = keyAction,
-            NeedIL = needIL,
         };
         // std/vision 包装函数强制内联（v2.3 对齐）：print/FRAME/ROI 等单块透传壳在调用点
         // 展开——先内联、后清扫，被展开的壳与内部残留由可达性清除 + DeadStoreSweep 收尾。
@@ -246,11 +244,9 @@ internal static class EcxPipeline
         // 全局表不参与：每个模块全局的声明即顶层语句，必被 <init:module>/<main> 的 StoreG 引用
         //（init 恒保留），不存在死项；结构体类型表同理暂不裁剪。
         StripUnreferencedTables(image);
-        // v1 语义对齐（CaptureAnalyzer 全程序视角）：采集卡需求 = 任意模块含图像标签（乐观）
-        // ∪ 自入口可达采集洞函数（精确）。各模块的 SSA 分析器看不见跨模块调用链
-        //（接口符号无函数体），这里在合并镜像上补全调用图可达性。
+        // 死代码消除后只记录实际使用的图像标签和采集洞，库里未调用的函数不引入宿主依赖。
         bool reachesHole = ImageReachesCaptureHole(image);
-        image.NeedIL = needIL || reachesHole;
+        image.NeedIL = reachesHole || image.Functions.Any(f => f.Instructions.Exists(ins => ins.Op == EcsOpcode.Img));
 
         // 特征需求掩码（VM2.md §9.1）：文件族 syscall / FFI 动态原生 / 采集洞 / IL（NeedIL 投影）。
         // 死函数消除后扫描 = 入口可达语义；FFI 判据 = 名表含 "库!导出名"（'!' 分隔符）。

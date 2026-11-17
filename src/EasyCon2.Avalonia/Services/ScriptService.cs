@@ -26,9 +26,6 @@ public class ScriptService : IScriptService
     private readonly object _runGate = new();
     private IScriptSession? _session;
     private CancellationTokenSource? _cts;
-    private string? _compiledSource;
-    private string? _compiledSourcePath;
-    private ImmutableHashSet<string> _compiledExternalLabels = ImmutableHashSet<string>.Empty;
 
     public bool IsRunning { get; private set; }
     public bool HasKeyAction => _session?.Info.KeyAction ?? false;
@@ -71,38 +68,16 @@ public class ScriptService : IScriptService
         try
         {
             // 编译大脚本可达数秒，放线程池执行，避免冻结调用方所在的 UI 线程
-            var compiled = await Task.Run(() => CompileContent(scriptText, fileName));
-            _session = compiled.Session;
-            if (_session == null)
-            {
-                ClearCompiledSnapshot();
-            }
-            else
-            {
-                _compiledSource = scriptText;
-                _compiledSourcePath = string.IsNullOrWhiteSpace(fileName)
-                    ? null
-                    : Path.GetFullPath(fileName);
-                _compiledExternalLabels = compiled.Labels == null
-                    ? ImmutableHashSet<string>.Empty
-                    : compiled.Labels.Selected.Select(label => label.Name).ToImmutableHashSet(StringComparer.Ordinal);
-            }
-            return _session != null;
+            var (session, _) = await Task.Run(() => CompileContent(scriptText, fileName));
+            _session = session;
+            return session != null;
         }
         catch (Exception ex)
         {
             _session = null;
-            ClearCompiledSnapshot();
             _logService.AddLog($"编译异常: {ex.Message}");
             return false;
         }
-    }
-
-    void ClearCompiledSnapshot()
-    {
-        _compiledSource = null;
-        _compiledSourcePath = null;
-        _compiledExternalLabels = ImmutableHashSet<string>.Empty;
     }
 
     public string GetFormattedCode()
@@ -116,17 +91,15 @@ public class ScriptService : IScriptService
     {
         try
         {
-            string? source = _compiledSource;
-            string? sourcePath = _compiledSourcePath;
-            ImmutableHashSet<string> externalLabels = _compiledExternalLabels;
-            if (source == null)
+            CompileResult? compilation = _session?.Info;
+            if (compilation == null)
             {
                 _logService.AddLog("ECX 导出失败: 没有可导出的已编译脚本");
                 return [];
             }
 
-            EcxExportResult export = await Task.Run(() => EcxExportService.Export(
-                source, sourcePath, externalLabels, stripDebug));
+            string? sourcePath = compilation.MainTree?.Text.FileName;
+            EcxExportResult export = await Task.Run(() => EcxExportService.Export(compilation, stripDebug));
             foreach (Diagnostic diagnostic in export.Diagnostics.Where(d => d.IsError))
             {
                 string location = FormatDiagnosticLocation(diagnostic, sourcePath);
@@ -181,7 +154,7 @@ public class ScriptService : IScriptService
 
     // ── 私有方法 ────────────────────────────────
 
-    // 编译档位与能力装配都走组合根（EasyCon.Core.Hosting）：
+    // 编译选项与能力装配都走组合根（EasyCon.Core.Hosting）：
     // 宿主不再手写 CompileOptions / CapabilitySet 字面量，避免与 CLI 漂移。
     static ScriptHostOptions Options(ImmutableHashSet<string> extVars) => new()
     {

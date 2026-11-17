@@ -38,7 +38,7 @@ public class BytecodeSimulationTests
     {
         // ECM roundtrip：序列化 -> 反序列化后重链接（验证格式）
         var restored = result.Artifacts.Select(a => EcsContainer.ReadModule(EcsContainer.WriteModule(a))).ToList();
-        var image = EcxPipeline.Link(restored, restored.Any(a => a.KeyAction), restored.Any(a => a.NeedIL));
+        var image = EcxPipeline.Link(restored, restored.Any(a => a.KeyAction));
         var code = EcxInterpreter.Run(image, host);
         Assert.That(code, Is.EqualTo(0), $"模拟执行失败：ECS 错误码 {code}");
         return host.Lines;

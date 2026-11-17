@@ -35,7 +35,7 @@ public class RegisterFileContractTests
     }
 
     [Test]
-    public void WideScript_ExceedingRegisterBudget_FailsWithDiagnostic()
+    public void WideScript_CompilesInMemoryAndExceedsEncodingBudget()
     {
         string source = BuildWideSource(270);
         CompileResult result = Compilation.CompileSource(source, new CompileOptions
@@ -43,9 +43,9 @@ public class RegisterFileContractTests
             UseDiskCache = false,
             UseProcessCache = false,
         });
-        Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Not.Empty,
-            "帧寄存器预算（EcsRegisters.MaxRegisters=255）超限应编译期拒绝（寄存器溢出诊断）");
-        Assert.That(result.Image, Is.Null);
+        Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty);
+        Assert.That(result.Image!.MaxSlots, Is.GreaterThan(EcsRegisters.MaxRegisters));
+        Assert.Throws<BytecodeException>(() => EcsContainer.WriteImage(result.Image));
     }
 
     [Test]
@@ -142,7 +142,7 @@ public class RegisterFileContractTests
             InitFid = 0,
         };
 
-        EcxImage image = EcxPipeline.Link([Library(), Main()], keyAction: false, needIL: false);
+        EcxImage image = EcxPipeline.Link([Library(), Main()], keyAction: false);
         EcsFunction linkedEntry = image.Functions[image.Entry];
         Assert.That(linkedEntry.Instructions[0].Op, Is.EqualTo(EcsOpcode.Call));
         Assert.That(linkedEntry.Instructions[0].C, Is.EqualTo(EcsRegisters.Ret), "init 调用接收槽 = RET 固定落点");
@@ -206,7 +206,7 @@ public class RegisterFileContractTests
             ILNames = [],
         };
 
-        EcxImage image = EcxPipeline.Link([Caller(), Callee()], keyAction: false, needIL: false);
+        EcxImage image = EcxPipeline.Link([Caller(), Callee()], keyAction: false);
         Assert.That(EcxInterpreter.Run(image, new EcxHost(), out Value value), Is.EqualTo(EcxInterpreter.OK));
         Assert.That(value.AsInt(), Is.EqualTo(9), "返回值落入 RET（C=0）固定落点");
 
