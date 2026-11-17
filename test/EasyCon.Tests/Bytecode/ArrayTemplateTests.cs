@@ -202,7 +202,7 @@ public class ArrayTemplateTests
             """;
         var result = Compile(source);
         var restored = result.Artifacts.Select(a => EcsContainer.ReadModule(EcsContainer.WriteModule(a))).ToList();
-        var image = EcxPipeline.Link(restored, restored.Any(a => a.KeyAction), restored.Any(a => a.NeedIL));
+        var image = EcxPipeline.Link(restored, restored.Any(a => a.KeyAction));
         var io = new RecordingIo();
         var host = new EcxHost();
         host.Print = (s, _) => io.Lines.Add(s);

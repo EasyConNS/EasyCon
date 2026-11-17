@@ -1,7 +1,7 @@
 # VM2 — ECS 字节码虚拟机规范
 
-> **定位**：ECS 脚本的编译目标与双端执行规范——C# `EcxInterpreter`（桌面）与 C `ecs_vm`（单片机）
-> 消费同一 ECX 镜像。本文是**现状规范**：指令集、二进制格式、宿主 ABI、分层模型。
+> **定位**：ECS 指令及双端执行规范。PC 的 `EcxInterpreter` 直接执行编译后的内存指令。
+> 单片机的 C `ecs_vm` 执行通过能力与容量检查后导出的 ECX。
 > 权威源：`EcsOpcode.cs` / `EcsFormat.cs`（C# 侧）与 `ecs_vm.h`（C 侧）逐项对齐；
 > 双端语义一致性由 corpus/FullChain/ABI 对拍测试锁定（`test/EasyCon.Tests/Bytecode/`）；编译链路见 `docs/Pipeline.md`；
 > 模块系统见 `docs/ModuleSystem.md`。冲突时以代码为准并修本文。
@@ -29,7 +29,7 @@
 | `src/EasyCon.Script/Bytecode/SlotAllocator.cs` | 槽位分类/池化/结算（含死 φ 免分配，§4.3） |
 | `src/EasyCon.Script/Bytecode/EcxLinker.cs` | 模块合并、死函数/死存储/死元素消除、特征掩码、入口合成 |
 | `src/EasyCon.Script/Bytecode/DeadStoreSweep.cs` | 链接期死存储清扫（反向活跃性，防线 3） |
-| `src/EasyCon.Script/Bytecode/EcxWriter.cs` | ECX 序列化（stripDebug 产 MCU 发布版） |
+| `src/EasyCon.Script/Bytecode/EcsContainerFormat.cs` | ECX 序列化（stripDebug 产 MCU 发布版） |
 | `src/EasyCon.Script/Bytecode/EcxInterpreter.cs` | C# 解释器 + `EcxHost`（桌面参考宿主） |
 | `src/EasyCon.Script/Modules/*` | 模块图/独立编译/接口缓存（`docs/ModuleSystem.md`） |
 | `src/EasyCon.Vm/native/ecs_vm.h|.c` | C 虚拟机公共 API + 实现（加载器/堆/解释器，纯调度） |
@@ -135,16 +135,16 @@ ToStr ToInt`。
 > 投影/抬升由 `InstructionCodec` 单处换算（线格式跳转 = 相对**字节**偏移：目标 = 指令起始 +
 > 本指令字节数 + delta）。操作数位宽由格式锁定：槽位 u8 ≤254（寄存器 ≤255 帧长上限，无哨兵值——
 > Call/CallN 的 C 恒为接收寄存器号）；AsBx=s16；ABx=Bx16（≤65535，常量池 16 位索引是 pinned 句柄编码前提）；
-> IsJ=s24。越界一律**编译期响亮失败**。
+> IsJ=s24。超出编码范围时报告错误。
 > 权威表：C# `EcsFormat.BuildTable`（漏登自检抛出）↔ C `ecs_op_words`（字数 1=4B/2=8B）。
 
 **数据字**：12 条带字指令（Ext 8 条 + ForStep/CmpJ/WaitI/KeyI）的数据字是「数据」——数值可能
 恰好等于某个操作码，一切线性扫描必须按 `EcsFormat.WordCount` 步进跳过（历史 F4 缺陷铁律，
 v3 随定长布局回归）。
 
-容量上限（R-3）：槽位上限 254 已前移到**编译期**（v3 槽位 u8，与宿主档案 `ECS_MAX_SLOTS=255`
-对齐）；加载期校验保留（nslots ≤ 宿主档案）。Jpt/Jpf 偏移越界由编码器跳转反转模板消化，
-超 s16 由 `Project` 响亮失败。
+PC 执行计划保留完整整数槽号，按函数实际槽数分配帧。离线导出在序列化前检查每函数 255 槽的
+预算，C VM 加载时继续检查宿主容量。Jpt/Jpf 偏移由跳转反转模板处理，`Project` 检查剩余的
+s16 范围。
 
 ### 3.2 指令表
 
@@ -225,8 +225,8 @@ frameLen ≤ 255           帧长 = NSlots = 发射结束后池区高水位
   （`CollectLoopCarriedValues`：定义块不在其读取所在自然循环体内——线性扫描对回边活性的盲区，
   素数筛语料实证）、编码器临时（Neq/scratch/模板守卫组）。φ 臂合并（下 P1b）后臂须退出池化
   结算，否则会把 φ 独占槽错放回空闲池。
-- **参数数没有独立的 7 项上限**：声明上限为 `MaxRegisters - ArgBase = 254`，实际编译还须让
-  参数、出站窗口、存活值和临时值一起满足 255 槽帧预算；预算不足报寄存器溢出。无出站调用或
+- **参数数没有独立的 7 项上限**：声明上限为 `MaxRegisters - ArgBase = 254`。离线导出时，
+  参数、出站窗口、存活值和临时值一起计入 255 槽帧预算。无出站调用或
   数组构建的函数不保留 STAGING。零参数调用的 A 取 R0，不读取实参。
 - **STAGING 与参数/分配区物理隔离**：出站实参 Move 不会覆写存活值，嵌套调用的结果先放在
   分配区再搬入出站窗口。链接期内联将壳体的整个窗口搬到调用者未使用的区间，先从调用点 A
@@ -251,8 +251,8 @@ frameLen ≤ 255           帧长 = NSlots = 发射结束后池区高水位
 
 实参连续暂存调用者出站窗口 `R[a..a+n)`（A 随调用点编码，位置见 §3.3），`Call` 深拷贝播种进
 被调方参数窗 `R[1..1+n)`（S-17）；接收槽 C 恒为寄存器号（无哨兵值），返回值深拷贝交接
-（C=0 即 RET 落点）。实参无独立固定上限：编码上限 254，实际与出站窗口、存活值共享 255 槽帧
-预算（§3.3；绑定层声明校验 + 编码器预算校验）。递归天然支持；深度上限 `ECS_MAX_CALL_DEPTH`（64，双端对齐）
+（C=0 即 RET 落点）。声明上限为 254 项实参。离线导出将实参与出站窗口、存活值一并计入
+255 槽帧预算（§3.3）。递归支持的深度上限为 `ECS_MAX_CALL_DEPTH`（64，双端对齐）
 → `ECS_ERR_DEPTH`；尾递归由 SSA 优化器（TRE）变循环回边，VM 无 tail-call 指令。
 
 ---

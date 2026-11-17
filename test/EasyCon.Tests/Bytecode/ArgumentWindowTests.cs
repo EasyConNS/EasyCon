@@ -1,4 +1,5 @@
 using EasyCon.Core.Hosting;
+using EasyCon.Core.Script;
 using EasyCon.Script;
 using EasyCon.Script.Bytecode;
 using EasyCon.Script.Symbols;
@@ -21,7 +22,8 @@ public class ArgumentWindowTests
 
     internal static CompileResult Compile(string source, bool optimize = true)
     {
-        CompileResult result = Compilation.CompileSource(source, ScriptCompileProfiles.Interactive(optimize: optimize));
+        CompileOptions options = ScriptCompileProfiles.Interactive(optimize: optimize);
+        CompileResult result = Compilation.CompileSource(source, options);
         Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty, string.Join("\n", result.Diagnostics));
         Assert.That(result.Image, Is.Not.Null);
         return result;
@@ -155,7 +157,7 @@ public class ArgumentWindowTests
             File.WriteAllText(Path.Combine(directory, "many.ecs"), WeightedFunction(16));
             string main = Path.Combine(directory, "main.ecs");
             File.WriteAllText(main, $"IMPORT \"many.ecs\"\nRETURN weighted({Arguments(16)})\n");
-            CompileOptions options = ScriptCompileProfiles.Distributable();
+            CompileOptions options = new();
             options.ObjDir = Path.Combine(directory, "obj");
             for (int i = 0; i < 2; i++)
             {
@@ -194,10 +196,12 @@ public class ArgumentWindowTests
         string forwarded = string.Join(", ", Enumerable.Range(0, 128).Select(i => $"$p{i}"));
         string source = $"FUNC relay({Parameters(128)}):INT\nRETURN relay({forwarded})\nENDFUNC\n" +
             $"RETURN relay({Arguments(128)})\n";
-        CompileResult result = Compilation.CompileSource(source, ScriptCompileProfiles.Interactive(optimize: false));
-        Assert.That(result.Diagnostics.Any(d => d.Message.Contains("寄存器溢出", StringComparison.Ordinal)), Is.True);
-        Assert.That(result.Diagnostics.Any(d => d.Code == DiagnosticCodes.ParamWindowOverflow), Is.False);
-        Assert.That(result.Image, Is.Null);
+        CompileOptions options = ScriptCompileProfiles.Interactive(optimize: false);
+        CompileResult result = Compilation.CompileSource(source, options);
+        Assert.That(result.Diagnostics.Where(d => d.IsError), Is.Empty);
+        EcxExportResult export = EcxExportService.Export(result);
+        Assert.That(export.Bytes, Is.Null);
+        Assert.That(export.Diagnostics.Single(d => d.IsError).Message, Does.Contain("寄存器溢出"));
     }
 
     [Test]

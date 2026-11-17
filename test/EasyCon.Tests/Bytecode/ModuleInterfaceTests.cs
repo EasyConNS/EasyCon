@@ -221,8 +221,7 @@ public class ModuleInterfaceTests
         // EcxInterpreter 链接执行不受接口区影响（既有对拍路径回归）
         var host = new EcxHost();
         host.EnableRecording();
-        var image = EcxPipeline.Link(restored2,
-            artifacts.Any(a => a.KeyAction), artifacts.Any(a => a.NeedIL));
+        var image = EcxPipeline.Link(restored2, artifacts.Any(a => a.KeyAction));
         Assert.That(EcxInterpreter.Run(image, host), Is.EqualTo(0));
         Assert.That(host.Lines, Does.Contain("3"));
     }

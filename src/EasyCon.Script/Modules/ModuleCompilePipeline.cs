@@ -166,7 +166,7 @@ internal sealed class ModuleCompilePipeline
         }
         else if (_options.UseProcessCache)
         {
-            // 进程级产物缓存：仅现编路径（UseDiskCache=false）；命中反序列化出新实例，无别名共享
+            // 进程级产物缓存：命中时复制完整操作数的模块计划。
             artifact = ProcessModuleCache.TryLoad(node.Name, cacheKey);
             if (artifact != null && artifact.Interface!.Dependencies.Count != node.Dependencies.Count)
                 artifact = null;

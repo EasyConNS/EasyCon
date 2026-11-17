@@ -39,7 +39,7 @@ public sealed class CompileResult
     public bool KeyAction { get; }
     public bool NeedIL { get; }
     public CompilationTiming? Timing { get; }
-    /// <summary>链接后的可执行镜像（统一链路产物：桌面 EcxInterpreter 与 MCU .ecx 共用；失败为 null）。</summary>
+    /// <summary>链接后的内存执行计划。编译失败时为 null。</summary>
     public EcxImage? Image { get; }
     /// <summary>链接序模块产物（std → vision → 依赖拓扑序 → main）。</summary>
     public List<ModuleArtifact> Artifacts { get; }
@@ -82,7 +82,7 @@ public sealed class CompileOptions
 {
     /// <summary>外部变量名集合（识图标签等）。</summary>
     public ImmutableHashSet<string>? ExtVars { get; set; }
-    /// <summary>启用 obj/ 磁盘缓存（默认 true：compile/MCU 分发路径收益；现编宿主可置 false，
+    /// <summary>启用 obj/ 磁盘模块缓存（默认 true；需要纯内存编译的宿主可置 false，
     /// 由进程级 <see cref="UseProcessCache"/> 兜底，ModuleSystem.md §7）。</summary>
     public bool UseDiskCache { get; set; } = true;
     /// <summary>false 时跳过 SSA 优化（DumpIr --raw 用）。</summary>
@@ -112,7 +112,8 @@ public sealed class CompileOptions
         // （无旧版缓存、仅开发测试；旧履历 M4–M7 删除）。M2：参数/出站窗口按函数需求分配。
         // M5：声音接口改为 AUDIO_LOAD/AUDIO_SCORE/AUDIO_UNLOAD。M6：AUDIO_SCORE 返回 INT。
         // M7：合入 SSA 全局提升修复，使旧音频分支的编译缓存失效。
-        return $"O={(Optimize ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}|M=7";
+        // M9：统一为完整操作数的执行计划，旧寄存器上限错误缓存失效。
+        return $"O={(Optimize ? '1' : '0')}|E={Modules.ModuleCacheKeys.ExtVarsKey(ExtVars)}|B={Bytecode.EcsSyscall.AbiRevision}|M=9";
     }
 }
 

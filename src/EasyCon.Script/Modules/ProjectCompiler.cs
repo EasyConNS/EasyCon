@@ -161,9 +161,7 @@ public static class ProjectCompiler
 
         try
         {
-            result.Image = EcxPipeline.Link(result.Artifacts,
-                result.Artifacts.Any(a => a.KeyAction),
-                result.Artifacts.Any(a => a.NeedIL));
+            result.Image = EcxPipeline.Link(result.Artifacts, result.Artifacts.Any(a => a.KeyAction));
             result.Success = true;
         }
         catch (BytecodeException ex)

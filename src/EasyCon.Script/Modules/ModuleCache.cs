@@ -81,14 +81,12 @@ internal static class ModuleCacheKeys
 }
 
 /// <summary>
-/// 进程级产物缓存（统一链路阶段 B）：仅作用于 UseDiskCache=false 的桌面现编路径——
-/// 同源码 ⊕ 同依赖接口 ⊕ 同选项的模块免重编（std/vision 等大模块二次编译近零开销）。
-/// 存 ECM1 平铺序列化字节，命中即反序列化出新实例——杜绝调用方对产物的就地修改串味
-/// （ModuleInterfaceTests 曾就地改产物字段，实例绝不共享）。与磁盘缓存正交（不读写 obj/）。
+/// 缓存完整操作数的模块计划。存入与取出均复制，避免运行或链接修改影响另一次编译。
 /// </summary>
 internal static class ProcessModuleCache
 {
-    static readonly ConcurrentDictionary<string, byte[]> Entries = new();
+    sealed record Entry(ModuleArtifact Plan, byte[] Interface);
+    static readonly ConcurrentDictionary<(string Name, string Key), Entry> Entries = new();
 
     static int _hits, _misses;   // M3：并行编译 → Interlocked 计数
     public static int Hits => _hits;
@@ -98,39 +96,84 @@ internal static class ProcessModuleCache
 
     public static ModuleArtifact? TryLoad(string moduleName, string cacheKey)
     {
-        if (!Entries.TryGetValue(ModuleCacheKeys.FileName(moduleName, cacheKey), out var bytes))
+        if (!Entries.TryGetValue((moduleName, cacheKey), out Entry? entry))
         {
             CountMiss();
             return null;
         }
-        try
-        {
-            var artifact = EcsContainer.ReadModule(bytes);
-            if (!artifact.IntegrityCheck())
-            {
-                CountMiss();   // 损坏：按未命中重编
-                return null;
-            }
-            CountHit();
-            return artifact;
-        }
-        catch (BytecodeException)
-        {
-            CountMiss();
-            return null;
-        }
+        ModuleArtifact artifact = CopyPlan(entry.Plan);
+        using BinaryReader reader = new(new MemoryStream(entry.Interface, writable: false), Encoding.UTF8);
+        artifact.Interface = ModuleInterfaceFormat.Read(reader);
+        CountHit();
+        return artifact;
     }
 
     public static void Store(ModuleArtifact artifact, string cacheKey)
     {
+        using MemoryStream stream = new();
         try
         {
-            Entries[ModuleCacheKeys.FileName(artifact.Name, cacheKey)] = EcsContainer.WriteModule(artifact);
+            using BinaryWriter writer = new(stream, Encoding.UTF8, leaveOpen: true);
+            ModuleInterfaceFormat.Write(writer, artifact.Interface!);
         }
         catch (BytecodeException)
         {
-            // 序列化失败（不应发生）：进程缓存降级为未命中
+            // 可编译的模块可能超出接口缓存的编码范围。
+            return;
         }
+        Entries[(artifact.Name, cacheKey)] = new(CopyPlan(artifact), stream.ToArray());
+    }
+
+    static ModuleArtifact CopyPlan(ModuleArtifact artifact)
+    {
+        ModulePool pool = new();
+        foreach (EcsConst value in artifact.Pool.Consts)
+            pool.Add(new EcsConst { Tag = value.Tag, Int64 = value.Int64, Float64 = value.Float64, Str = value.Str });
+
+        return new ModuleArtifact
+        {
+            Name = artifact.Name,
+            Functions = artifact.Functions.Select(f => new EcsFunction
+            {
+                Name = f.Name,
+                Module = f.Module,
+                NParams = f.NParams,
+                NSlots = f.NSlots,
+                HasReturn = f.HasReturn,
+                Instructions = [.. f.Instructions],
+                ImageIndex = f.ImageIndex,
+                LineTable = [.. f.LineTable],
+            }).ToList(),
+            Pool = pool,
+            Imports = artifact.Imports.Select(i => new EcsImport
+            { Name = i.Name, NParams = i.NParams, HasReturn = i.HasReturn }).ToList(),
+            Exports = artifact.Exports.Select(e => new EcsExport
+            { Name = e.Name, LocalFid = e.LocalFid, NParams = e.NParams, HasReturn = e.HasReturn }).ToList(),
+            Globals = artifact.Globals.Select(g => new EcsGlobal
+            { Name = g.Name, Module = g.Module, Type = g.Type, ImageSlot = g.ImageSlot }).ToList(),
+            Natives = artifact.Natives.Select(n => new EcsNative { Name = n.Name }).ToList(),
+            Structs = artifact.Structs.Select(s => new EcsStructLayout
+            {
+                Name = s.Name,
+                SlotCount = s.SlotCount,
+                Fields = [.. s.Fields.Select(f => new EcsFieldLayout
+                {
+                    Name = f.Name,
+                    Kind = f.Kind,
+                    Type = f.Type,
+                    ElementType = f.ElementType,
+                    Count = f.Count,
+                    NestedSid = f.NestedSid,
+                    SlotOffset = f.SlotOffset,
+                })],
+            }).ToList(),
+            ILNames = [.. artifact.ILNames],
+            HasEval = artifact.HasEval,
+            HasInit = artifact.HasInit,
+            InitFid = artifact.InitFid,
+            KeyAction = artifact.KeyAction,
+            NeedIL = artifact.NeedIL,
+        };
     }
 
     /// <summary>测试隔离用：清空全部条目与统计。</summary>
@@ -254,7 +297,16 @@ internal sealed class ModuleCache
     /// <summary>原子写入产物；同键的历史错误 sidecar 一并清除。</summary>
     public void Store(ModuleArtifact artifact, string cacheKey)
     {
-        var bytes = EcsContainer.WriteModule(artifact);
+        byte[] bytes;
+        try
+        {
+            bytes = EcsContainer.WriteModule(artifact);
+        }
+        catch (BytecodeException)
+        {
+            // 模块超出紧凑缓存格式时仍可在内存编译和链接。
+            return;
+        }
         var finalPath = Path.Combine(_objDir, ModuleCacheKeys.FileName(artifact.Name, cacheKey));
         var tempPath = Path.Combine(_objDir, $".{ModuleCacheKeys.Sanitize(artifact.Name)}-{Guid.NewGuid():N}.tmp");
         File.WriteAllBytes(tempPath, bytes);

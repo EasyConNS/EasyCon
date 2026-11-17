@@ -1,7 +1,8 @@
 # 统一脚本编译链路
 
 > C# 侧单一编译链路：**源码 → Parser → ProjectCompiler（模块图 + lib/ 自动加载）→ 每模块独立编译 →
-> EcxImage**；桌面由 **EcxInterpreter** 执行 ECX 镜像，单片机由 **C VM** 执行同一二进制。
+> 链接后的完整操作数计划**。PC 直接解释内存指令。离线导出检查计划所需的宿主能力，
+> 通过后编码为 **ECX1/v3**，供单片机 **C VM** 执行。
 > 关联：`docs/ModuleSystem.md`（模块/缓存）、`docs/VM2.md`（双端语义，对拍测试锁定）、
 > 产物容器规格见 `EcsContainer`/链接器测试（`test/EasyCon.Tests/Bytecode/`）。
 
@@ -9,18 +10,24 @@
 
 ```
 源码 ─► Parser ─► ProjectCompiler（模块图 + lib/ 自动加载）
-                     │  每模块：InterfaceScopeSynthesizer → Binder（模块单树绑定）→ SSA → 优化 → 编码
+                     │  每模块：InterfaceScopeSynthesizer → Binder → SSA → 优化 → 指令生成
                      ▼
-              EcxPipeline.Link ─► EcxImage（ECX 二进制）
+              EcxPipeline.Link ─► EcxImage（内存执行计划）
                      ├─ 桌面：IScriptEngine（EasyScriptEngine）→ EcxVm 桥
                      │        （CapabilitySet 能力装配：输入/控制台/环境/文件/采集/视觉/OCR/推理）
                      │        → EcxInterpreter
-                     └─ MCU ：EcxWriter → .ecx → C VM（ecs-vm）
+                     └─ MCU ：EcxExportService → EcsContainer → .ecx → C VM（ecs-vm）
 ```
 执行面（P6 收敛）：GUI/CLI 经 `IScriptEngine.FromSource/LoadFile` 得到 `IScriptSession`
 （`Info` = CompileResult 诊断/镜像/符号），`Run(token, capabilities)` 以**能力集**
 （`EasyCon.Core.Capabilities.CapabilitySet`，宿主 = 能力实例集合，null = 不可用）装配
 `EcxHost` 委托与评估桥——能力模型纯属 PC 装配层，VM 核不感知。
+
+`EcsInstruction` 保留完整的整数槽位编号。`EcxInterpreter` 按函数帧大小分配寄存器，
+直接运行链接后的指令。GUI 导出复用当前已编译的计划，CLI `compile` 使用同一套编译选项。
+`EcxExportService` 检查可达的图像标签、原生调用、OCR 和宿主文件接口，以及每函数 255 槽的离线预算。
+校验通过后，`EcsContainer.WriteImage` 调用 `InstructionCodec.Project` 生成 ECX。
+函数声明保留 254 参数限制，常量表和索引继续使用现有约束。
 
 入口函数 `<main>` = 依赖模块 `<init:module>` 调用序列按拓扑序前插 `$eval` 本体，
 顶层 RETURN 经 r0 透传；`<init>` 承载各模块顶层语句与模块私有全局初始化。
@@ -31,7 +38,7 @@
   跳过显式 import）。编译序由显式边层级 + 同层名序决定，自动边不约束层级；完整导入规则
   （R1–R5/R7）见 `docs/ModuleImportRules.md`；`ezcon init` 生成的项目骨架即该规则的参考布局。
 - **同签名跨模块导出**：链接期首匹配遮蔽 + `MD_AMBIGUOUS_EXPORT` 警告（同名同签名函数可共存）。
-- **NeedIL 判定**：链接后在完整镜像上做入口可达性 BFS（采集洞 CallN）∪ 全局 Img 标签，
+- **NeedIL 判定**：链接后扫描可达采集洞和存活的 Img 指令，
   据此设置镜像 NeedIL 标志。
 - **Link 纯函数化**：在深拷贝副本上重写——不污染调用方产物，`CompileResult.Artifacts` 可安全
   .ecm roundtrip。
@@ -68,10 +75,8 @@
 
 ## 5. 后续项（未实施）
 
-- **GUI 一键产 `.ecx` 并烧录**：方案见 `docs/McuBytecodeDelivery.md`（唯一入口
-  `McuImageBuilder` + 预检 + 复用 `NintendoSwitch.Flash`；单流化后产物同形态，
-  GUI 会话镜像可直接序列化，CLI `compile` 已可用）。
-- ~~桌面路径缓存化~~（✅ 单流化档位塌缩后桌面路径已可用进程/磁盘缓存；GUI 默认仍现编）。
+- **设备容量预检**：`docs/McuBytecodeDelivery.md` 记录固件能力查询与资源预算方案。
+  GUI 烧录与 CLI `compile` 已共用 `EcxExportService`。
 - ~~运行错误位置映射~~（✅ ECM v4 起产物带行号表，桌面路径 `EcxVm` 已实现 pc→源行；
   行号调试块保留，MCU 发布镜像省略）。
 - EcxInterpreter 性能：常量串 pinned（✅ S-20 已落地）/ 帧池复用（C VM ✅ ZeroAlloc P2）/ 取消检查三分点

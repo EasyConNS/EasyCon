@@ -496,12 +496,12 @@ modulesCommand.Arguments.Add(scriptOption);
 modulesCommand.SetAction(async (parseResult, cancellationToken) =>
 {
     string file = parseResult.GetValue(scriptOption)!;
-    // MCU 分发档：8 位槽位 + obj/ 缓存；同时加载识图标签作为外部变量，
-    // 否则含 @标签 的脚本在此命令下无法通过绑定（docs/McuBytecodeDelivery.md）。
+    // 模块清单命令保留 obj/ 缓存，以便观察独立编译命中情况。
     var (label, _, _) = ECCore.LoadImgLabels(
         Path.GetDirectoryName(Path.GetFullPath(file)) ?? "", AppDomain.CurrentDomain.BaseDirectory);
-    var project = EasyCon.Script.Modules.ProjectCompiler.CompileProject(
-        file, ScriptCompileProfiles.Distributable(label.Select(il => il.name)));
+    CompileOptions options = ScriptCompileProfiles.Interactive(label.Select(il => il.name));
+    options.UseDiskCache = true;
+    var project = EasyCon.Script.Modules.ProjectCompiler.CompileProject(file, options);
 
     Console.WriteLine($"独立编译：{(project.Success ? "成功" : "失败")}  缓存命中 {project.CacheHits} / 未命中 {project.CacheMisses} / 错误重放 {project.ErrorHits} / GC 清理 {project.GarbageCollected}");
     Console.WriteLine();
@@ -545,7 +545,6 @@ compileCommand.SetAction(async (parseResult, cancellationToken) =>
     string outPath = parseResult.GetValue(outOption) ?? Path.ChangeExtension(file, ".ecx");
     bool jsonDiag = parseResult.GetValue(diagFormatOption) == "json";
 
-    // MCU 分发档：obj/ 缓存 + 可分发 .ecx（单流化后全部产物同形态，容量由烧录前预检判定）。
     var (label, _, _) = ECCore.LoadImgLabels(
         Path.GetDirectoryName(Path.GetFullPath(file)) ?? "", AppDomain.CurrentDomain.BaseDirectory);
     string source = File.ReadAllText(file);

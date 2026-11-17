@@ -145,7 +145,7 @@ public sealed class EcsExport
 /// </summary>
 public sealed class ModuleArtifact
 {
-    /// <summary>缓存读出完整性自检（disk/process 两条 TryLoad 路径共享）：
+    /// <summary>磁盘缓存读出完整性自检：
     /// 接口区存在且接口哈希与内容自洽；损坏/被篡改 → false（调用方按未命中重编）。</summary>
     public bool IntegrityCheck()
         => Interface is { } iface && iface.InterfaceHash == InterfaceHasher.Compute(iface);
@@ -177,7 +177,7 @@ public sealed class ModuleArtifact
 }
 
 /// <summary>
-/// 链接后可执行镜像（ECX 的内存表示），纯 C 虚拟机的唯一输入。
+/// 链接后可执行计划，PC 解释器直接消费。符合单片机编码约束的计划可投影为 ECX。
 /// </summary>
 public sealed class EcxImage
 {
